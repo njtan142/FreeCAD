@@ -930,8 +930,13 @@ export function formatShapeResult(data: any): string {
   if (!data) return 'No shape data';
 
   const lines: string[] = [];
-  lines.push(`Shape: ${data.resultLabel || data.resultName} (${data.resultName})`);
-  lines.push(`Type: ${data.shapeType || 'Shape'}`);
+  
+  // Handle different field naming conventions from Python handlers
+  const resultName = data.resultName || data.featureName || data.healedObject || data.shapeName;
+  const resultLabel = data.resultLabel || data.featureLabel || data.healedLabel || data.shapeLabel;
+  
+  lines.push(`Shape: ${resultLabel || resultName} (${resultName})`);
+  lines.push(`Type: ${data.shapeType || data.featureType || 'Shape'}`);
 
   if (data.shapeCount !== undefined) {
     lines.push(`Shapes in Compound: ${data.shapeCount}`);
@@ -947,6 +952,12 @@ export function formatShapeResult(data: any): string {
 
   if (data.remainingIssues !== undefined) {
     lines.push(`Remaining Issues: ${data.remainingIssues}`);
+  }
+
+  // Handle heal_shape specific fields
+  if (data.originalValid !== undefined && data.healedValid !== undefined) {
+    lines.push(`Original Valid: ${data.originalValid ? 'Yes' : 'No'}`);
+    lines.push(`Healed Valid: ${data.healedValid ? 'Yes' : 'No'}`);
   }
 
   if (data.message) {

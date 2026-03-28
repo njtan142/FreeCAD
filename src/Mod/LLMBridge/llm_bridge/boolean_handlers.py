@@ -15,13 +15,14 @@ import FreeCAD as App
 import Part
 
 
-def handle_boolean_fuse(shape_names, name=None, body_name=None):
+def handle_boolean_fuse(base_shape, tool_shapes, result_name=None, body_name=None):
     """
     Perform Boolean fuse (union) operation on two or more shapes.
 
     Args:
-        shape_names: List of shape object names to fuse together
-        name: Optional name for the resulting fused object
+        base_shape: Name of the base shape object
+        tool_shapes: List of tool shape object names to fuse with the base
+        result_name: Optional name for the resulting fused object
         body_name: Optional name of the body to add the result to
 
     Returns:
@@ -36,7 +37,10 @@ def handle_boolean_fuse(shape_names, name=None, body_name=None):
                 "data": None
             }
 
-        if not shape_names or len(shape_names) < 2:
+        # Build list of all shapes to fuse (base + tools)
+        all_shape_names = [base_shape] + list(tool_shapes)
+        
+        if len(all_shape_names) < 2:
             return {
                 "success": False,
                 "error": "At least two shape names are required for fuse operation",
@@ -45,7 +49,7 @@ def handle_boolean_fuse(shape_names, name=None, body_name=None):
 
         # Get all shape objects
         shapes = []
-        for shape_name in shape_names:
+        for shape_name in all_shape_names:
             obj = doc.getObject(shape_name)
             if obj is None:
                 return {
@@ -61,22 +65,14 @@ def handle_boolean_fuse(shape_names, name=None, body_name=None):
                 }
             shapes.append(obj)
 
-        # Create the fuse feature
-        if name:
-            fuse = doc.addObject('Part::Fuse', name)
+        # Create the MultiFuse feature (works for 2 or more shapes)
+        if result_name:
+            fuse = doc.addObject('Part::MultiFuse', result_name)
         else:
-            fuse = doc.addObject('Part::Fuse', 'Fuse')
+            fuse = doc.addObject('Part::MultiFuse', 'Fuse')
 
-        # Set base and tool(s)
-        fuse.Base = shapes[0]
-        fuse.Tool = shapes[1]
-
-        # For more than 2 shapes, use MultiFuse
-        if len(shapes) > 2:
-            doc.removeObject(fuse.Name)
-            multifuse = doc.addObject('Part::MultiFuse', name or 'MultiFuse')
-            multifuse.Shapes = shapes
-            fuse = multifuse
+        # Set all shapes to fuse
+        fuse.Shapes = shapes
 
         # Add to body if specified
         if body_name:
@@ -91,12 +87,12 @@ def handle_boolean_fuse(shape_names, name=None, body_name=None):
             "data": {
                 "featureName": fuse.Name,
                 "featureLabel": fuse.Label,
-                "featureType": fuse.TypeId,
+                "shapeType": fuse.TypeId,
                 "documentName": doc.Name,
-                "inputShapes": shape_names,
-                "shapesCount": len(shape_names),
+                "inputShapes": all_shape_names,
+                "shapesCount": len(all_shape_names),
                 "volume": fuse.Shape.Volume if hasattr(fuse, 'Shape') and fuse.Shape else None,
-                "message": f"Fused {len(shape_names)} shape(s) into '{fuse.Label}'"
+                "message": f"Fused {len(all_shape_names)} shape(s) into '{fuse.Label}'"
             }
         }
     except Exception as e:
@@ -107,14 +103,14 @@ def handle_boolean_fuse(shape_names, name=None, body_name=None):
         }
 
 
-def handle_boolean_cut(base_shape_name, tool_shape_name, name=None, body_name=None):
+def handle_boolean_cut(base_shape, tool_shapes, result_name=None, body_name=None):
     """
-    Perform Boolean cut (subtract) operation: subtract tool shape from base shape.
+    Perform Boolean cut (subtract) operation: subtract tool shapes from base shape.
 
     Args:
-        base_shape_name: Name of the base shape to cut from
-        tool_shape_name: Name of the tool shape to subtract
-        name: Optional name for the resulting cut object
+        base_shape: Name of the base shape to cut from
+        tool_shapes: List of tool shape object names to subtract
+        result_name: Optional name for the resulting cut object
         body_name: Optional name of the body to add the result to
 
     Returns:
@@ -130,44 +126,61 @@ def handle_boolean_cut(base_shape_name, tool_shape_name, name=None, body_name=No
             }
 
         # Get base shape
-        base = doc.getObject(base_shape_name)
+        base = doc.getObject(base_shape)
         if base is None:
             return {
                 "success": False,
-                "error": f"Base shape '{base_shape_name}' not found",
+                "error": f"Base shape '{base_shape}' not found",
                 "data": None
             }
         if not hasattr(base, 'Shape') or base.Shape is None:
             return {
                 "success": False,
-                "error": f"Base shape '{base_shape_name}' has no valid shape",
+                "error": f"Base shape '{base_shape}' has no valid shape",
                 "data": None
             }
 
-        # Get tool shape
-        tool = doc.getObject(tool_shape_name)
-        if tool is None:
+        # Get all tool shapes
+        tools = []
+        for tool_name in tool_shapes:
+            tool = doc.getObject(tool_name)
+            if tool is None:
+                return {
+                    "success": False,
+                    "error": f"Tool shape '{tool_name}' not found",
+                    "data": None
+                }
+            if not hasattr(tool, 'Shape') or tool.Shape is None:
+                return {
+                    "success": False,
+                    "error": f"Tool shape '{tool_name}' has no valid shape",
+                    "data": None
+                }
+            tools.append(tool)
+
+        if not tools:
             return {
                 "success": False,
-                "error": f"Tool shape '{tool_shape_name}' not found",
-                "data": None
-            }
-        if not hasattr(tool, 'Shape') or tool.Shape is None:
-            return {
-                "success": False,
-                "error": f"Tool shape '{tool_shape_name}' has no valid shape",
+                "error": "At least one tool shape is required for cut operation",
                 "data": None
             }
 
         # Create the cut feature
-        if name:
-            cut = doc.addObject('Part::Cut', name)
+        if result_name:
+            cut = doc.addObject('Part::Cut', result_name)
         else:
             cut = doc.addObject('Part::Cut', 'Cut')
 
-        # Set base and tool
+        # Set base
         cut.Base = base
-        cut.Tool = tool
+
+        # If multiple tools, create a compound of tools first
+        if len(tools) > 1:
+            tool_compound = doc.addObject('Part::Compound', 'ToolCompound')
+            tool_compound.Links = tools
+            cut.Tool = tool_compound
+        else:
+            cut.Tool = tools[0]
 
         # Add to body if specified
         if body_name:
@@ -182,12 +195,12 @@ def handle_boolean_cut(base_shape_name, tool_shape_name, name=None, body_name=No
             "data": {
                 "featureName": cut.Name,
                 "featureLabel": cut.Label,
-                "featureType": cut.TypeId,
+                "shapeType": cut.TypeId,
                 "documentName": doc.Name,
-                "baseShape": base_shape_name,
-                "toolShape": tool_shape_name,
+                "baseShape": base_shape,
+                "toolShapes": tool_shapes,
                 "volume": cut.Shape.Volume if hasattr(cut, 'Shape') and cut.Shape else None,
-                "message": f"Cut '{base.Label}' with '{tool.Label}' resulting in '{cut.Label}'"
+                "message": f"Cut '{base.Label}' with {len(tools)} tool(s) resulting in '{cut.Label}'"
             }
         }
     except Exception as e:
@@ -198,14 +211,14 @@ def handle_boolean_cut(base_shape_name, tool_shape_name, name=None, body_name=No
         }
 
 
-def handle_boolean_common(shape1_name, shape2_name, name=None, body_name=None):
+def handle_boolean_common(base_shape, tool_shapes, result_name=None, body_name=None):
     """
-    Perform Boolean common (intersection) operation on two shapes.
+    Perform Boolean common (intersection) operation on multiple shapes.
 
     Args:
-        shape1_name: Name of the first shape
-        shape2_name: Name of the second shape
-        name: Optional name for the resulting common object
+        base_shape: Name of the base shape object
+        tool_shapes: List of tool shape object names to intersect with the base
+        result_name: Optional name for the resulting common object
         body_name: Optional name of the body to add the result to
 
     Returns:
@@ -220,45 +233,42 @@ def handle_boolean_common(shape1_name, shape2_name, name=None, body_name=None):
                 "data": None
             }
 
-        # Get first shape
-        shape1 = doc.getObject(shape1_name)
-        if shape1 is None:
+        # Build list of all shapes to intersect (base + tools)
+        all_shape_names = [base_shape] + list(tool_shapes)
+        
+        if len(all_shape_names) < 2:
             return {
                 "success": False,
-                "error": f"Shape '{shape1_name}' not found",
-                "data": None
-            }
-        if not hasattr(shape1, 'Shape') or shape1.Shape is None:
-            return {
-                "success": False,
-                "error": f"Shape '{shape1_name}' has no valid shape",
+                "error": "At least two shape names are required for common operation",
                 "data": None
             }
 
-        # Get second shape
-        shape2 = doc.getObject(shape2_name)
-        if shape2 is None:
-            return {
-                "success": False,
-                "error": f"Shape '{shape2_name}' not found",
-                "data": None
-            }
-        if not hasattr(shape2, 'Shape') or shape2.Shape is None:
-            return {
-                "success": False,
-                "error": f"Shape '{shape2_name}' has no valid shape",
-                "data": None
-            }
+        # Get all shape objects
+        shapes = []
+        for shape_name in all_shape_names:
+            obj = doc.getObject(shape_name)
+            if obj is None:
+                return {
+                    "success": False,
+                    "error": f"Shape '{shape_name}' not found",
+                    "data": None
+                }
+            if not hasattr(obj, 'Shape') or obj.Shape is None:
+                return {
+                    "success": False,
+                    "error": f"Object '{shape_name}' has no valid shape",
+                    "data": None
+                }
+            shapes.append(obj)
 
-        # Create the common feature
-        if name:
-            common = doc.addObject('Part::Common', name)
+        # Create the common feature using Part::Common with Objects property
+        if result_name:
+            common = doc.addObject('Part::Common', result_name)
         else:
             common = doc.addObject('Part::Common', 'Common')
 
-        # Set base and tool
-        common.Base = shape1
-        common.Tool = shape2
+        # Set all shapes to intersect using the Objects property
+        common.Objects = shapes
 
         # Add to body if specified
         if body_name:
@@ -273,12 +283,12 @@ def handle_boolean_common(shape1_name, shape2_name, name=None, body_name=None):
             "data": {
                 "featureName": common.Name,
                 "featureLabel": common.Label,
-                "featureType": common.TypeId,
+                "shapeType": common.TypeId,
                 "documentName": doc.Name,
-                "shape1": shape1_name,
-                "shape2": shape2_name,
+                "inputShapes": all_shape_names,
+                "shapesCount": len(all_shape_names),
                 "volume": common.Shape.Volume if hasattr(common, 'Shape') and common.Shape else None,
-                "message": f"Created intersection of '{shape1.Label}' and '{shape2.Label}' as '{common.Label}'"
+                "message": f"Created intersection of {len(all_shape_names)} shape(s) as '{common.Label}'"
             }
         }
     except Exception as e:
@@ -404,8 +414,34 @@ def handle_validate_shape(shape_name):
         # Check shape validity
         is_valid = shape.isValid()
 
-        # Get shape check results
+        # Get shape check results (returns a bitmask)
         check_result = shape.check()
+
+        # Decode the check result bitmask into human-readable issues
+        # FreeCAD shape.check() returns a bitmask where different bits indicate different issues
+        issues = []
+        issue_descriptions = {
+            1: ("FreeEdges", "Shape has free edges (edges not shared by two faces)"),
+            2: ("NonManifoldEdges", "Shape has non-manifold edges (edges shared by more than two faces)"),
+            4: ("EmptyWires", "Shape has empty wires (wires without edges)"),
+            8: ("FreeWires", "Shape has free wires (wires not part of a face boundary)"),
+            16: ("NonManifoldWires", "Shape has non-manifold wires (wires shared by more than two faces)"),
+            32: ("EmptyShells", "Shape has empty shells (shells without faces)"),
+            64: ("FreeShells", "Shape has free shells (shells not part of a solid)"),
+            128: ("SolidsInShell", "Shape has solids in shell (shells containing solids)"),
+            256: ("BadOrientation", "Shape has bad orientation (faces or solids with inconsistent orientation)"),
+            512: ("InvalidRange", "Shape has invalid parameter range (curves or surfaces with invalid parameters)"),
+            1024: ("InvalidCurveOnSurface", "Shape has invalid 2D curve on surface (pcurves)"),
+            2048: ("InvalidPolygonOnTriangulation", "Shape has invalid polygon on triangulation"),
+        }
+
+        for bit_value, (issue_type, description) in issue_descriptions.items():
+            if check_result & bit_value:
+                issues.append({
+                    "type": issue_type,
+                    "description": description,
+                    "bit": bit_value
+                })
 
         # Count topological elements
         validation_info = {
@@ -444,9 +480,11 @@ def handle_validate_shape(shape_name):
                 "objectLabel": obj.Label,
                 "isValid": is_valid,
                 "checkResult": check_result,
+                "issueCount": len(issues),
+                "issues": issues,
                 "validationInfo": validation_info,
                 "message": f"Shape '{shape_name}' is {'valid' if is_valid else 'INVALID'}" +
-                          (f" (check result: {check_result})" if check_result != 0 else "")
+                          (f" - {len(issues)} issue(s) found" if issues else "")
             }
         }
     except Exception as e:
@@ -517,39 +555,37 @@ def handle_heal_shape(shape_name, heal_options=None):
         original_valid = original_shape.isValid()
 
         # Create a Part::Feature with the healed shape using ShapeFix
-        # FreeCAD's Part module provides shape healing through ShapeFix
+        # FreeCAD's Part module provides ShapeFix utilities:
+        # Part.ShapeFix.Shape, Part.ShapeFix.Solid, Part.ShapeFix.Shell,
+        # Part.ShapeFix.Face, Part.ShapeFix.Wire, Part.ShapeFix.Edge
         try:
-            # Use Part.makeCompound and shape healing methods
             healed_shape = original_shape.copy()
 
-            # Apply shape fixes using Part.ShapeFix utilities if available
-            # Note: ShapeFix is available through Part.ShapeFix module in FreeCAD
-            if hasattr(Part, 'ShapeFix'):
-                shape_fix = Part.ShapeFix(healed_shape)
-
-                if options["fixOrientation"]:
-                    shape_fix.fixOrientation()
-
-                if options["fixSmallEdges"]:
-                    shape_fix.fixSmallEdges()
-
-                if options["fixSmallFaces"]:
-                    shape_fix.fixSmallFaces()
-
-                if options["sewShells"]:
-                    shape_fix.sewShells()
-
-                if options["fixGaps2d"]:
-                    shape_fix.fixGaps2d()
-
-                if options["fixGaps3d"]:
-                    shape_fix.fixGaps3d()
-
+            # Use Part.ShapeFix.Shape for general shape healing
+            if hasattr(Part, 'ShapeFix') and hasattr(Part.ShapeFix, 'Shape'):
+                shape_fix = Part.ShapeFix.Shape(healed_shape)
+                
+                # Set tolerance
+                if options["tolerance"]:
+                    shape_fix.setPrecision(options["tolerance"])
+                
+                # Perform shape fix
+                shape_fix.perform()
+                healed_shape = shape_fix.shape()
+                
+            elif hasattr(Part, 'ShapeFix_Shape'):
+                # Alternative API name
+                shape_fix = Part.ShapeFix_Shape(healed_shape)
+                shape_fix.perform()
                 healed_shape = shape_fix.shape()
             else:
-                # Fallback: use basic shape refinement
-                # This attempts to create a refined version of the shape
-                healed_shape = original_shape.removeSplitter()
+                # Fallback: use basic shape refinement methods available on TopoShape
+                # These methods are available on FreeCAD TopoShape objects
+                if options["fixSmallEdges"] or options["fixSmallFaces"]:
+                    try:
+                        healed_shape = healed_shape.removeSplitter()
+                    except Exception:
+                        pass
 
             # Create a new feature with the healed shape
             healed_obj = doc.addObject('Part::Feature', f'{obj.Name}_Healed')
@@ -651,108 +687,67 @@ def handle_get_shape_info(shape_name):
 
         shape = obj.Shape
 
-        # Basic properties
-        shape_info = {
-            "name": shape_name,
-            "label": obj.Label,
-            "type": obj.TypeId,
-            "isValid": shape.isValid(),
-            "isNull": shape.isNull(),
+        # Build response structure expected by formatShapeInfo formatter
+        # Topology section
+        topology = {
+            "vertices": len(shape.Vertexes),
+            "edges": len(shape.Edges),
+            "faces": len(shape.Faces),
+            "wires": len(shape.Wires),
+            "shells": len(shape.Shells),
+            "solids": len(shape.Solids),
+            "compounds": 1 if shape.ShapeType == "Compound" else 0,
         }
 
-        # Geometric properties
+        # Geometric properties section
+        properties = {}
+        
         if not shape.isNull():
-            shape_info["volume"] = shape.Volume
-            shape_info["area"] = shape.Area
-            shape_info["centerOfMass"] = {
-                "x": shape.CenterOfMass.x,
-                "y": shape.CenterOfMass.y,
-                "z": shape.CenterOfMass.z,
-            }
+            # Volume and area
+            properties["volume"] = shape.Volume
+            properties["area"] = shape.Area
+            
+            # Center of mass with error handling
+            try:
+                com = shape.CenterOfMass
+                properties["centerOfMass"] = {
+                    "x": com.x,
+                    "y": com.y,
+                    "z": com.z,
+                }
+            except Exception:
+                properties["centerOfMass"] = None
 
             # Bounding box
             if shape.BoundBox:
-                shape_info["boundingBox"] = {
-                    "min": {
-                        "x": shape.BoundBox.XMin,
-                        "y": shape.BoundBox.YMin,
-                        "z": shape.BoundBox.ZMin,
-                    },
-                    "max": {
-                        "x": shape.BoundBox.XMax,
-                        "y": shape.BoundBox.YMax,
-                        "z": shape.BoundBox.ZMax,
-                    },
-                    "dimensions": {
-                        "x": shape.BoundBox.XLength,
-                        "y": shape.BoundBox.YLength,
-                        "z": shape.BoundBox.ZLength,
-                    },
+                bb = shape.BoundBox
+                properties["boundingBox"] = {
+                    "minX": bb.XMin,
+                    "minY": bb.YMin,
+                    "minZ": bb.ZMin,
+                    "maxX": bb.XMax,
+                    "maxY": bb.YMax,
+                    "maxZ": bb.ZMax,
+                    "xSize": bb.XLength,
+                    "ySize": bb.YLength,
+                    "zSize": bb.ZLength,
                 }
 
-        # Topological element counts
-        shape_info["topology"] = {
-            "solids": len(shape.Solids),
-            "shells": len(shape.Shells),
-            "faces": len(shape.Faces),
-            "wires": len(shape.Wires),
-            "edges": len(shape.Edges),
-            "vertices": len(shape.Vertexes),
+        # Basic properties at top level for formatter
+        result_data = {
+            "shapeName": shape_name,
+            "shapeLabel": obj.Label,
+            "shapeType": obj.TypeId,
+            "isValid": shape.isValid(),
+            "isNull": shape.isNull(),
+            "topology": topology,
+            "properties": properties,
         }
-
-        # Face details
-        shape_info["faces"] = []
-        for i, face in enumerate(shape.Faces):
-            face_info = {
-                "index": i,
-                "area": face.Area,
-                "surfaceType": type(face.Surface).__name__ if face.Surface else None,
-            }
-            if hasattr(face, 'Orientation'):
-                face_info["orientation"] = face.Orientation
-            shape_info["faces"].append(face_info)
-
-        # Edge details
-        shape_info["edges"] = []
-        for i, edge in enumerate(shape.Edges):
-            edge_info = {
-                "index": i,
-                "length": edge.Length,
-                "curveType": type(edge.Curve).__name__ if edge.Curve else None,
-            }
-            shape_info["edges"].append(edge_info)
-
-        # Material properties (if available)
-        if hasattr(obj, 'Material'):
-            shape_info["material"] = obj.Material
-
-        # Placement information
-        if hasattr(obj, 'Placement'):
-            placement = obj.Placement
-            shape_info["placement"] = {
-                "position": {
-                    "x": placement.Base.x,
-                    "y": placement.Base.y,
-                    "z": placement.Base.z,
-                },
-                "rotation": {
-                    "axis": {
-                        "x": placement.Rotation.Axis.x,
-                        "y": placement.Rotation.Axis.y,
-                        "z": placement.Rotation.Axis.z,
-                    },
-                    "angle": placement.Rotation.Angle,
-                },
-            }
 
         return {
             "success": True,
-            "data": {
-                "shapeName": shape_name,
-                "objectLabel": obj.Label,
-                "shapeInfo": shape_info,
-                "message": f"Retrieved shape information for '{shape_name}'"
-            }
+            "data": result_data,
+            "message": f"Retrieved shape information for '{shape_name}'"
         }
     except Exception as e:
         return {
