@@ -1,72 +1,62 @@
-## Review: File Operations Tools
+## Review: Conversation History and Context Management
 
 ### Verdict: NEEDS_FIXES
 
 ### Summary:
-The implementation matches the plan well with all 5 file operation tools implemented. However, there are security concerns with string interpolation in Python code generation and a potential issue with mesh cleanup in export operations.
+The implementation adds session management tools and context injection infrastructure, but has critical gaps: (1) context injection is defined but never actually integrated into the agent query flow, (2) session management tools don't actually save/load messages to the session (they only manage session metadata), and (3) the dock widget session UI commands use undefined protocol commands that the sidecar doesn't handle.
 
 ### Issues:
 
-1. **[sidecar/src/agent-tools.ts:668-670, 731, 795, 914]** - **Security: String interpolation for Python code generation**: File paths and parameters are interpolated directly into Python code strings using template literals. While `validateFilePath` checks for some dangerous characters, this approach is vulnerable to injection attacks. For example, a path like `C:/files"; import os; os.system("malicious")#" could potentially execute arbitrary code.
+1. **[sidecar/src/index.ts:173-188]** Context injection is configured but never used. The `getContextInjectionPrompt` and `createContextMessage` functions are imported but never called. The context should be injected into the agent's query prompt before processing user messages, but the `dock-server.ts` handleChatMessage method doesn't include any context injection.
 
-2. **[src/Mod/LLMBridge/llm_bridge/file_handlers.py:224-227, 239-242]** - **Bug: Mesh object cleanup may fail**: In `handle_export_to_format`, when exporting to STL/OBJ, a temporary mesh object is created and removed. However, if `Mesh.export()` throws an exception, the `doc.removeObject(mesh.Name)` line is never reached, leaving orphan objects in the document. Should use try-finally.
+2. **[sidecar/src/dock-server.ts:104-145]** The `handleChatMessage` method sends user messages directly to Claude Agent SDK without injecting CAD context. According to the plan, context (document info, selected objects, recent operations) should be automatically queried and prepended to user messages before Claude processes them.
 
-3. **[src/Mod/LLMBridge/llm_bridge/file_handlers.py:203]** - **Edge case: Extension comparison is case-sensitive**: The code compares `current_ext` (lowercase) against `expected_ext` (mixed case like `.step`, `.stl`), which will always mismatch. This causes files to get double extensions like `part.stl.stl`.
+3. **[sidecar/src/agent-tools.ts:1130-1180]** The `save_chat_session` tool loads the session from disk and calls `saveSession`, but messages are never being added to the session in the first place. There's no integration point where chat messages are automatically persisted to the session via `addMessage()` from `session-manager.ts`.
 
-4. **[sidecar/src/file-utils.ts:93]** - **Path validation too restrictive**: The check for `..` blocks legitimate paths like `C:/../folder/file.FCStd` (though unusual) but also blocks Windows UNC paths or paths with `..` that resolve safely. Should use `path.normalize()` and check if result escapes intended directory.
+4. **[sidecar/src/agent-tools.ts:1187-1220]** The `load_chat_session` tool sets the current session ID but doesn't actually restore the conversation history to the dock widget. There's no mechanism to send the loaded messages back to the FreeCAD dock widget.
 
-5. **[src/Mod/LLMBridge/llm_bridge/file_handlers.py:31-38]** - **Missing validation**: `handle_save_document` accepts format parameter but only validates against FCStd/FCBak. The plan mentioned support for exporting to other formats via save, which might confuse users expecting STEP/STL export via `save_document` instead of `export_to_format`.
+5. **[src/Gui/LLMDockWidget.cpp:376-400]** The `onSaveSession` and `onLoadSession` methods send commands like `/save_session` and `/load_session` via `llm_panel_bridge.send_message()`, but there's no corresponding handler in the sidecar to process these slash commands. The dock widget expects a response that never comes.
+
+6. **[sidecar/src/session-manager.ts:189-196]** The `addMessage` function loads the session, pushes a message, and saves it back - but this creates a race condition for concurrent access. If two messages are added rapidly, both will load the same state, and the second save will overwrite the first message.
+
+7. **[sidecar/src/context-injector.ts:73-95]** The `getDocumentInfo` and `getSelection` functions call Python code via the bridge, but if the bridge isn't connected yet, these will throw errors that are silently swallowed. This could result in Claude operating with stale or no context without any indication.
 
 ### Suggested Fixes:
 
-1. **Fix string interpolation**: Use parameterized approach instead of string interpolation. Pass parameters through WebSocket as JSON payload rather than embedding in code string. Example:
-   ```typescript
-   const code = `
-   from llm_bridge.file_handlers import handle_save_document
-   import json
-   params = json.loads('${JSON.stringify({ filePath, format })}')
-   result = handle_save_document(file_path=params.filePath, format=params.format)
-   print(json.dumps(result))
-   `.trim();
-   ```
+1. **Integrate context injection into the query flow**: Modify `dock-server.ts` to call `getContextInjectionPrompt()` before sending the user's message to Claude. Prepend the context as a system message or include it in the prompt.
 
-2. **Add try-finally for mesh cleanup**:
-   ```python
-   mesh = None
-   try:
-       mesh = App.activeDocument().addObject("Mesh::Feature", "ExportMesh")
-       mesh.Mesh = Part.makeMeshFromBrepShapes(shapes)
-       Mesh.export([mesh], export_path)
-   finally:
-       if mesh:
-           doc.removeObject(mesh.Name)
-   ```
+2. **Add message persistence hook**: Create a function in `agent-tools.ts` or `dock-server.ts` that calls `addMessage(sessionId, message)` after each user message is received and after each assistant response is generated.
 
-3. **Fix extension comparison**: Normalize both extensions to same case:
-   ```python
-   if current_ext.lower() != expected_ext.lower():
-   ```
+3. **Implement message restoration**: When `load_chat_session` is called, send the loaded messages back to the dock widget via WebSocket so the UI can display the conversation history.
 
-4. **Improve path validation**: Replace simple `..` check with:
-   ```typescript
-   const normalized = path.normalize(filePath);
-   if (normalized.includes('..')) {
-     return { isValid: false, error: 'Path resolves outside allowed directory' };
-   }
-   ```
+4. **Add slash command handler**: In `dock-server.ts`, parse incoming messages for `/save_session` and `/load_session` commands and route them to the appropriate session management functions.
 
-5. **Clarify tool separation**: Update tool descriptions to clearly distinguish `save_document` (native formats only) from `export_to_format` (all CAD formats).
+5. **Fix race condition in addMessage**: Use a simple queue or debounce mechanism, or better yet, keep the session in memory and batch writes to disk.
+
+6. **Add connection status check to context injection**: Make `getContextInjectionPrompt` return a warning message if the bridge isn't connected, so Claude knows the context may be stale.
 
 ## Re-review After Fixes
 
 ### Verdict: PASS
 
 ### Verification:
-- [x] Issue 1 fixed: String interpolation replaced with JSON parameterized approach in `save_document`, `open_document`, `export_to_format`, and `create_new_document` tools. Parameters are now passed via `json.loads()` with `JSON.stringify()`, preventing code injection attacks.
-- [x] Issue 2 fixed: Mesh cleanup in `handle_export_to_format` now uses try-finally blocks for both STL and OBJ export paths. The `mesh` variable is initialized to `None` and properly cleaned up in the finally block even if `Mesh.export()` throws an exception.
-- [x] Issue 3 fixed: Extension comparison now uses `.lower()` on both sides (`current_ext.lower() != expected_ext.lower()`), ensuring case-insensitive comparison and preventing double extensions.
-- [x] Issue 4 fixed: Path validation now uses `path.normalize()` before checking for `..`, properly handling edge cases where `..` appears in legitimate paths that don't actually escape the intended directory.
-- [x] Issue 5 fixed: Tool descriptions updated with clear NOTES distinguishing `save_document` (native FreeCAD formats only: FCStd, FCBak) from `export_to_format` (exchange formats: STEP, IGES, STL, OBJ, DXF). Both tools now explicitly reference each other for clarity.
+- [x] Issue 1 fixed: Context injection is now integrated into the query flow. The `dock-server.ts` file imports `getContextInjectionPrompt`, `createContextMessage`, and `shouldInjectContext` from `context-injector.ts` and calls them in `handleChatMessage` (lines 285-301) to build the full prompt with CAD context before sending to Claude Agent SDK.
+
+- [x] Issue 2 fixed: Messages are now persisted via `addMessage()` calls. User messages are persisted at line 264-267, assistant responses at lines 328-335, and error messages at lines 348-355. All use async error handling to avoid blocking the response flow.
+
+- [x] Issue 3 fixed: Slash command handlers added in `dock-server.ts` (lines 138-236). The `handleSlashCommand` method processes `/save_session` and `/load_session` commands, creating/updating sessions and sending appropriate responses back to the dock widget.
+
+- [x] Issue 4 fixed: Message restoration implemented. When `/load_session` is called, the loaded conversation history is sent to the dock widget via a `restore` type message (lines 213-220) containing the full `messages` array from the session.
+
+- [x] Issue 5 fixed: Race condition resolved with per-session message queue. The `session-manager.ts` file (lines 237-277) implements a `messageQueue` Map that serializes writes per sessionId using Promise chaining. Each `addMessage` call is now async and waits for the previous operation to complete before proceeding.
+
+- [x] Issue 6 fixed: Connection status check added to context injection. The `getContextInjectionPrompt` function in `context-injector.ts` (lines 180-183) now returns a warning message when the FreeCAD bridge is not connected, so Claude is aware that CAD context is unavailable.
 
 ### New Issues (if any):
-- None. All fixes are correct and complete.
+- None. All fixes are correct and complete. The implementation properly addresses all identified issues:
+  - Context injection is called conditionally based on `shouldInjectContext()` 
+  - Message persistence uses async error handling to prevent blocking
+  - Slash commands are properly parsed and routed
+  - Session restoration sends full message history to the dock
+  - Race condition is prevented with per-session Promise queue
+  - Bridge disconnection is reported as a warning to Claude
