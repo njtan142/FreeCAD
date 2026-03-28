@@ -1,0 +1,194 @@
+/**
+ * FreeCAD Bridge - WebSocket Client
+ * 
+ * Connects to FreeCAD's Python WebSocket bridge to execute Python code
+ * in the running FreeCAD session.
+ */
+
+import WebSocket from 'ws';
+
+export interface FreeCADBridgeConfig {
+  host: string;
+  port: number;
+}
+
+export interface ExecuteResult {
+  output: string;
+  success: boolean;
+  error?: string;
+}
+
+export class FreeCADBridge {
+  private ws: WebSocket | null = null;
+  private config: FreeCADBridgeConfig;
+  private connectionPromise: Promise<void> | null = null;
+  private reconnectAttempts = 0;
+  private maxReconnectAttempts = 3;
+  private reconnectDelay = 1000;
+  private pendingRequests = new Map<string, { resolve: (result: ExecuteResult) => void; reject: (error: Error) => void; timeout: NodeJS.Timeout }>();
+
+  constructor(config: FreeCADBridgeConfig) {
+    this.config = config;
+  }
+
+  isConnected(): boolean {
+    return this.ws !== null && this.ws.readyState === WebSocket.OPEN;
+  }
+
+  async connect(): Promise<void> {
+    if (this.isConnected()) {
+      return Promise.resolve();
+    }
+
+    if (this.connectionPromise) {
+      return this.connectionPromise;
+    }
+
+    this.connectionPromise = new Promise((resolve, reject) => {
+      const url = `ws://${this.config.host}:${this.config.port}`;
+      console.log(`[FreeCADBridge] Connecting to ${url}...`);
+
+      this.ws = new WebSocket(url);
+
+      this.ws.on('open', () => {
+        console.log('[FreeCADBridge] Connected to FreeCAD Python bridge');
+        this.reconnectAttempts = 0;
+        resolve();
+      });
+
+      this.ws.on('error', (error) => {
+        console.error('[FreeCADBridge] Connection error:', error);
+        this.connectionPromise = null;
+        this.ws = null;
+        reject(error);
+      });
+
+      this.ws.on('close', () => {
+        console.log('[FreeCADBridge] Connection closed');
+        this.ws = null;
+        this.connectionPromise = null;
+        this.attemptReconnect();
+      });
+
+      this.ws.on('message', (data: WebSocket.Data) => {
+        this.handleMessage(data);
+      });
+    });
+
+    return this.connectionPromise;
+  }
+
+  private attemptReconnect(): void {
+    if (this.reconnectAttempts < this.maxReconnectAttempts) {
+      this.reconnectAttempts++;
+      const delay = this.reconnectDelay * this.reconnectAttempts;
+      console.log(`[FreeCADBridge] Attempting reconnect in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+      
+      setTimeout(() => {
+        this.connect().catch((err) => {
+          console.warn('[FreeCADBridge] Reconnect failed:', err.message);
+        });
+      }, delay);
+    } else {
+      console.warn('[FreeCADBridge] Max reconnect attempts reached');
+    }
+  }
+
+  private handleMessage(data: WebSocket.Data): void {
+    try {
+      const message = JSON.parse(data.toString());
+      console.log('[FreeCADBridge] Received:', message);
+
+      // Handle response for pending request by ID
+      if (message.id && this.pendingRequests.has(message.id)) {
+        const pending = this.pendingRequests.get(message.id)!;
+        clearTimeout(pending.timeout);
+        this.pendingRequests.delete(message.id);
+
+        if (message.type === 'result' || message.type === 'response') {
+          pending.resolve({
+            output: message.output || message.result || '',
+            success: message.success !== false,
+            error: message.error,
+          });
+        } else if (message.type === 'error') {
+          pending.resolve({
+            output: '',
+            success: false,
+            error: message.error || 'Unknown error',
+          });
+        }
+      }
+    } catch (error) {
+      console.error('[FreeCADBridge] Failed to parse message:', error);
+    }
+  }
+
+  onMessage?: (message: any) => void;
+
+  async executePython(code: string): Promise<ExecuteResult> {
+    if (!this.isConnected()) {
+      await this.connect();
+    }
+
+    return new Promise((resolve, reject) => {
+      if (!this.ws) {
+        reject(new Error('Not connected to FreeCAD bridge'));
+        return;
+      }
+
+      const requestId = Date.now().toString() + '-' + Math.random().toString(36).substring(2, 9);
+      const timeout = setTimeout(() => {
+        this.pendingRequests.delete(requestId);
+        reject(new Error('Execution timeout'));
+      }, 30000); // 30 second timeout
+
+      // Store pending request in Map
+      this.pendingRequests.set(requestId, { resolve, reject, timeout });
+
+      // Send execution request with unique ID
+      const request = {
+        type: 'execute',
+        code: code,
+        id: requestId,
+      };
+
+      console.log('[FreeCADBridge] Executing Python code...');
+      this.ws.send(JSON.stringify(request));
+    });
+  }
+
+  async disconnect(): Promise<void> {
+    return new Promise((resolve) => {
+      if (!this.ws) {
+        resolve();
+        return;
+      }
+
+      console.log('[FreeCADBridge] Disconnecting...');
+      this.ws.close();
+      
+      const timeout = setTimeout(() => {
+        this.ws = null;
+        resolve();
+      }, 2000);
+
+      this.ws.on('close', () => {
+        clearTimeout(timeout);
+        this.ws = null;
+        console.log('[FreeCADBridge] Disconnected');
+        resolve();
+      });
+    });
+  }
+
+  getStatus(): 'connected' | 'connecting' | 'disconnected' {
+    if (this.isConnected()) {
+      return 'connected';
+    }
+    if (this.connectionPromise) {
+      return 'connecting';
+    }
+    return 'disconnected';
+  }
+}
