@@ -1065,3 +1065,239 @@ export function formatShapeValidation(data: any): string {
 
   return lines.join('\n');
 }
+
+// ============================================================================
+// Assembly Constraint Formatters
+// ============================================================================
+
+/**
+ * Format assembly creation result
+ */
+export function formatAssemblyCreationResult(data: any): string {
+  if (!data) return 'No assembly data';
+
+  const lines: string[] = [];
+  lines.push(`Assembly: ${data.assemblyLabel || data.assemblyName} (${data.assemblyName})`);
+  lines.push(`Document: ${data.documentName || '(current)'}`);
+
+  if (data.componentCount !== undefined) {
+    lines.push(`Components: ${data.componentCount}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Format component list from list_assembly_components
+ */
+export function formatComponentList(data: any): string {
+  if (!data) return 'No component data';
+
+  const lines: string[] = [];
+  lines.push(`Assembly: ${data.assemblyLabel || data.assemblyName} (${data.assemblyName})`);
+  lines.push(`Total Components: ${data.componentCount || 0}`);
+  lines.push('');
+
+  if (data.components && data.components.length > 0) {
+    lines.push(formatTableRow(['Name', 'Label', 'Constraints']));
+    lines.push('─'.repeat(60));
+
+    for (const comp of data.components) {
+      lines.push(formatTableRow([
+        comp.name || '-',
+        comp.label || '-',
+        String(comp.constraintCount || 0)
+      ]));
+    }
+  } else {
+    lines.push('(No components in assembly)');
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Format assembly constraint creation result
+ */
+export function formatConstraintCreationResult(data: any): string {
+  if (!data) return 'No constraint data';
+
+  const lines: string[] = [];
+
+  if (data.constraintAdded) {
+    lines.push(`Constraint Added: ${data.constraintLabel || data.constraintName} (${data.constraintName})`);
+    lines.push(`Type: ${formatAssemblyConstraintType(data.constraintType)}`);
+    lines.push('');
+
+    if (data.object1 && data.object2) {
+      lines.push(`Objects: ${data.object1} ↔ ${data.object2}`);
+    }
+
+    if (data.subobject1 && data.subobject2) {
+      lines.push(`Subobjects: ${data.subobject1} ↔ ${data.subobject2}`);
+    }
+
+    if (data.value !== undefined) {
+      if (data.constraintType && (data.constraintType.toLowerCase().includes('angle') || data.constraintType.toLowerCase().includes('parallel') || data.constraintType.toLowerCase().includes('perpendicular'))) {
+        lines.push(`Value: ${formatAngleValue(data.value)}`);
+      } else {
+        lines.push(`Value: ${formatDistanceValue(data.value)}`);
+      }
+    }
+
+    if (data.solverStatus) {
+      lines.push(`Solver Status: ${data.solverStatus}`);
+    }
+  } else {
+    lines.push('Failed to add constraint');
+    if (data.error) {
+      lines.push(`Error: ${data.error}`);
+    }
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Format assembly constraint list
+ */
+export function formatConstraintList(data: any): string {
+  if (!data) return 'No constraint data';
+
+  const lines: string[] = [];
+
+  if (data.assemblyName) {
+    lines.push(`Assembly: ${data.assemblyLabel || data.assemblyName} (${data.assemblyName})`);
+  }
+
+  lines.push(`Total Constraints: ${data.constraintCount || 0}`);
+  lines.push('');
+
+  if (data.constraints && data.constraints.length > 0) {
+    lines.push(formatTableRow(['Name', 'Type', 'Objects', 'Value', 'Status']));
+    lines.push('─'.repeat(80));
+
+    for (const constraint of data.constraints) {
+      const objects = constraint.object1 && constraint.object2
+        ? `${constraint.object1} ↔ ${constraint.object2}`
+        : '-';
+
+      let value = '-';
+      if (constraint.value !== undefined) {
+        if (constraint.constraintType && (constraint.constraintType.toLowerCase().includes('angle'))) {
+          value = formatAngleValue(constraint.value);
+        } else {
+          value = formatDistanceValue(constraint.value);
+        }
+      }
+
+      const status = constraint.suppressed ? 'Suppressed' : (constraint.solverStatus || 'Active');
+
+      lines.push(formatTableRow([
+        constraint.name || '-',
+        formatAssemblyConstraintType(constraint.type),
+        objects.length > 25 ? objects.substring(0, 22) + '...' : objects,
+        value,
+        status
+      ]));
+    }
+  } else {
+    lines.push('(No constraints in assembly)');
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Format constraint update result
+ */
+export function formatConstraintUpdate(data: any): string {
+  if (!data) return 'No update data';
+
+  const lines: string[] = [];
+  lines.push(`Constraint: ${data.constraintLabel || data.constraintName} (${data.constraintName})`);
+  lines.push(`Type: ${formatAssemblyConstraintType(data.constraintType)}`);
+  lines.push('');
+
+  if (data.oldValue !== undefined && data.newValue !== undefined) {
+    const isAngle = data.constraintType && (data.constraintType.toLowerCase().includes('angle'));
+    const formattedOld = isAngle ? formatAngleValue(data.oldValue) : formatDistanceValue(data.oldValue);
+    const formattedNew = isAngle ? formatAngleValue(data.newValue) : formatDistanceValue(data.newValue);
+    lines.push(`Updated: ${formattedOld} → ${formattedNew}`);
+  }
+
+  if (data.solverStatus) {
+    lines.push(`Solver Status: ${data.solverStatus}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Helper: Format assembly constraint type string
+ */
+function formatAssemblyConstraintType(typeId: string): string {
+  if (!typeId) return '-';
+  const typeMap: Record<string, string> = {
+    'Coincident': 'Coincident',
+    'Parallel': 'Parallel',
+    'Perpendicular': 'Perpendicular',
+    'Angle': 'Angle',
+    'Distance': 'Distance',
+    'Insert': 'Insert',
+    'Tangent': 'Tangent',
+    'Equal': 'Equal',
+    'Symmetric': 'Symmetric',
+    'Contact': 'Contact'
+  };
+  return typeMap[typeId] || typeId;
+}
+
+/**
+ * Helper: Format angle value with degrees
+ */
+function formatAngleValue(value: number | string): string {
+  if (value === undefined || value === null) return '-';
+
+  const numValue = typeof value === 'number' ? value : parseFloat(value);
+  if (isNaN(numValue)) return String(value);
+
+  return `${numValue.toFixed(1)}°`;
+}
+
+/**
+ * Helper: Format distance value with mm
+ */
+function formatDistanceValue(value: number | string): string {
+  if (value === undefined || value === null) return '-';
+
+  const numValue = typeof value === 'number' ? value : parseFloat(value);
+  if (isNaN(numValue)) return String(value);
+
+  return `${numValue.toFixed(2)} mm`;
+}
