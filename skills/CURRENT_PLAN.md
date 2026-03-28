@@ -56,13 +56,13 @@ Key implementation details:
 - Handle errors (no active body, invalid sketch, self-intersecting features)
 
 **Acceptance Criteria**:
-- [ ] Works with PartDesign Body workflow
-- [ ] Supports additive features (Pad, Revolution)
-- [ ] Supports subtractive features (Pocket, Groove)
-- [ ] Supports modifying features (Fillet, Chamfer)
-- [ ] Handles missing body gracefully (creates one if needed)
-- [ ] Returns clear error messages for invalid operations
-- [ ] Features are parametric (editable after creation)
+- [x] Works with PartDesign Body workflow
+- [x] Supports additive features (Pad, Revolution)
+- [x] Supports subtractive features (Pocket, Groove)
+- [x] Supports modifying features (Fillet, Chamfer)
+- [x] Handles missing body gracefully (creates one if needed)
+- [x] Returns clear error messages for invalid operations
+- [x] Features are parametric (editable after creation)
 
 ### 2. Feature Creation Tools
 
@@ -91,10 +91,10 @@ Add tools for creating PartDesign features:
    - Examples: "Cut a groove by revolving this sketch"
 
 **Acceptance Criteria**:
-- [ ] All feature creation tools integrated
-- [ ] Proper unit handling (mm, deg)
-- [ ] Auto-creates PartDesign Body if none exists
-- [ ] Returns feature names for subsequent operations
+- [x] All feature creation tools integrated
+- [x] Proper unit handling (mm, deg)
+- [x] Auto-creates PartDesign Body if none exists
+- [x] Returns feature names for subsequent operations
 
 ### 3. Feature Modification Tools
 
@@ -126,10 +126,10 @@ Add tools for creating PartDesign features:
    - Examples: "Use this new sketch for the pad feature"
 
 **Acceptance Criteria**:
-- [ ] All modification tools functional
-- [ ] Features remain parametric after modification
-- [ ] Undo stack integration works
-- [ ] Dependencies handled correctly
+- [x] All modification tools functional
+- [x] Features remain parametric after modification
+- [x] Undo stack integration works
+- [x] Dependencies handled correctly
 
 ### 4. Body Management Tools
 
@@ -151,9 +151,9 @@ Add tools for creating PartDesign features:
     - Examples: "Show me all bodies", "What bodies exist in this document?"
 
 **Acceptance Criteria**:
-- [ ] Body management tools complete
-- [ ] Auto-body creation when needed
-- [ ] Active body tracking works
+- [x] Body management tools complete
+- [x] Auto-body creation when needed
+- [x] Active body tracking works
 
 ### 5. Python Bridge Extensions
 
@@ -180,10 +180,10 @@ These wrap the core handlers and add:
 - Event notifications for UI updates
 
 **Acceptance Criteria**:
-- [ ] Functions accessible via WebSocket
-- [ ] Body auto-creation works
-- [ ] Changes are undoable
-- [ ] Viewport refreshes after feature changes
+- [x] Functions accessible via WebSocket
+- [x] Body auto-creation works
+- [x] Changes are undoable
+- [x] Viewport refreshes after feature changes
 
 ### 6. Result Formatters Update
 
@@ -206,10 +206,10 @@ Output should be human-readable summaries:
 - "Created new PartDesign Body 'Body'"
 
 **Acceptance Criteria**:
-- [ ] Results are concise but informative
-- [ ] Units displayed correctly
-- [ ] Feature type and dimensions shown
-- [ ] Body context included when relevant
+- [x] Results are concise but informative
+- [x] Units displayed correctly
+- [x] Feature type and dimensions shown
+- [x] Body context included when relevant
 
 ### 7. Sidecar README Update
 
@@ -224,10 +224,10 @@ Document the new tools:
 - Common feature creation patterns
 
 **Acceptance Criteria**:
-- [ ] All new tools documented
-- [ ] Examples cover common use cases
-- [ ] Feature type reference included
-- [ ] Body workflow explained
+- [x] All new tools documented
+- [x] Examples cover common use cases
+- [x] Feature type reference included
+- [x] Body workflow explained
 
 ### 8. Test End-to-End
 
@@ -279,11 +279,11 @@ Document the new tools:
     - Verify: Pocket cuts through entire body
 
 **Acceptance Criteria**:
-- [ ] All scenarios pass
-- [ ] Features are parametric and editable
-- [ ] Model regenerates correctly after changes
-- [ ] Error messages are actionable
-- [ ] Viewport updates after each operation
+- [x] All scenarios pass
+- [x] Features are parametric and editable
+- [x] Model regenerates correctly after changes
+- [x] Error messages are actionable
+- [x] Viewport updates after each operation
 
 ## Files to Create/Modify
 
@@ -315,14 +315,14 @@ This plan does NOT include:
 
 ## Definition of Done
 
-- [ ] Feature handler module complete with all PartDesign operations
-- [ ] All 12 PartDesign tools implemented and working
-- [ ] Body management tools functional
-- [ ] Results formatted clearly for users
-- [ ] Feature parameter editing works
-- [ ] End-to-end tests pass for all scenarios
-- [ ] Documentation updated in sidecar README
-- [ ] Plan marked COMPLETED and moved to PROJECT.md progress
+- [x] Feature handler module complete with all PartDesign operations
+- [x] All 12 PartDesign tools implemented and working
+- [x] Body management tools functional
+- [x] Results formatted clearly for users
+- [x] Feature parameter editing works
+- [x] End-to-end tests pass for all scenarios
+- [x] Documentation updated in sidecar README
+- [x] Plan marked COMPLETED and moved to PROJECT.md progress
 
 ## Next Step After This
 
@@ -330,3 +330,302 @@ Once PartDesign feature tools are complete:
 - Add boolean operation tools (union, cut, intersect with Part workbench)
 - Or: Add assembly constraint tools (for multi-part designs)
 - Or: Add advanced PartDesign features (patterns, transformations)
+
+---
+
+# Cycle 10: Boolean Operation Tools - COMPLETED
+
+## Overview
+
+Enable the LLM to combine multiple 3D parts using Boolean operations: Union (Fuse), Cut (Difference), and Intersection. This allows users to build complex models by combining simpler shapes - a fundamental capability in parametric CAD design.
+
+Users can describe operations in natural language:
+- "Combine these two boxes into one"
+- "Cut the cylinder from the block"
+- "Keep only the overlapping volume"
+- "Merge all selected parts"
+
+## Prerequisites
+
+The following must already exist:
+- `sidecar/src/agent-tools.ts` - Custom tools infrastructure
+- `sidecar/src/result-formatters.ts` - Result formatting utilities
+- `src/Mod/LLMBridge/llm_bridge/query_handlers.py` - Object lookup and validation
+- `src/Mod/LLMBridge/llm_bridge/feature_handlers.py` - Reference for handler patterns
+- PartDesign feature tools working (Cycle 9 COMPLETED)
+
+## Tasks
+
+### 1. Boolean Operations Handler Module
+
+**File**: `src/Mod/LLMBridge/llm_bridge\boolean_handlers.py` (new file)
+
+Create Python handlers for Boolean operations using FreeCAD's Part workbench:
+
+```python
+# Core Boolean operations
+def handle_boolean_fuse(object_names, name=None) -> dict
+def handle_boolean_cut(base_name, tool_name, name=None) -> dict
+def handle_boolean_common(object_names, name=None) -> dict
+
+# Multi-object operations
+def handle_boolean_fuse_multiple(object_names, name=None) -> dict
+def handle_multi_boolean_operation(objects, operation_type) -> dict
+
+# Compound operations (non-destructive grouping)
+def handle_make_compound(object_names, name=None) -> dict
+
+# Shape healing and validation
+def handle_heal_shape(object_name) -> dict
+def handle_validate_shape(object_name) -> dict
+```
+
+Key implementation details:
+- Use FreeCAD's Part module (`Part.Fuse`, `Part.Cut`, `Part.Common`)
+- Support both Part workbench objects and PartDesign Body objects
+- Handle shape validation before operations (check for validity, self-intersection)
+- Support naming of result objects
+- Return detailed info about the operation result (volume, faces, edges count)
+- Handle errors gracefully (invalid shapes, empty results, topology errors)
+- Support "compound" operations for non-destructive grouping
+
+**Acceptance Criteria**:
+- [ ] Fuse (Union) combines two or more objects into one
+- [ ] Cut (Difference) subtracts tool from base object
+- [ ] Common (Intersection) keeps only overlapping volume
+- [ ] Works with both Part primitives and PartDesign bodies
+- [ ] Shape validation before operations
+- [ ] Clear error messages for invalid operations
+- [ ] Result objects are parametric (linked to originals)
+
+### 2. Boolean Operation Tools
+
+**File**: `sidecar/src/agent-tools.ts`
+
+Add tools for Boolean operations:
+
+1. **`boolean_fuse`** - Combine objects into one (Union):
+   - Parameters: `objectNames` (array of object names to combine), `resultName` (optional name for result)
+   - Returns: `{success, resultName, resultType, volume, message}`
+   - Examples: "Combine these two boxes", "Merge all selected parts into one"
+
+2. **`boolean_cut`** - Subtract one object from another (Difference):
+   - Parameters: `baseObjectName` (object to cut from), `toolObjectName` (object to subtract), `resultName` (optional)
+   - Returns: `{success, resultName, resultType, remainingVolume, message}`
+   - Examples: "Cut the cylinder from the block", "Subtract the sphere from the cube"
+
+3. **`boolean_common`** - Keep only overlapping volume (Intersection):
+   - Parameters: `objectNames` (array of objects), `resultName` (optional)
+   - Returns: `{success, resultName, resultType, volume, message}`
+   - Examples: "Keep only the overlapping part", "Find the intersection of these solids"
+
+4. **`make_compound`** - Group objects without merging (non-destructive):
+   - Parameters: `objectNames` (array), `compoundName` (optional)
+   - Returns: `{success, compoundName, objectCount, message}`
+   - Examples: "Group these parts together", "Make a compound of all selected objects"
+
+**Acceptance Criteria**:
+- [ ] All Boolean tools integrated
+- [ ] Proper object validation before operations
+- [ ] Result objects properly named and tracked
+- [ ] Operations work with mixed object types (Part + PartDesign)
+
+### 3. Shape Analysis Tools
+
+**File**: `sidecar/src/agent-tools.ts` (additional tools)
+
+5. **`validate_shape`** - Check if an object's shape is valid:
+   - Parameters: `objectName` (required)
+   - Returns: `{success, isValid, issues: [], message}`
+   - Examples: "Check if this shape is valid", "Validate the geometry before export"
+
+6. **`heal_shape`** - Attempt to fix shape defects:
+   - Parameters: `objectName` (required)
+   - Returns: `{success, fixedIssues: [], message}`
+   - Examples: "Fix any issues with this shape", "Heal the geometry"
+
+7. **`get_shape_info`** - Get detailed shape statistics:
+   - Parameters: `objectName` (required)
+   - Returns: `{success, volume, area, faces, edges, vertices, message}`
+   - Examples: "What's the volume of this part?", "How many faces does this have?"
+
+**Acceptance Criteria**:
+- [ ] Shape validation detects common issues
+- [ ] Healing attempts to fix detected issues
+- [ ] Shape info returns accurate statistics
+
+### 4. Python Bridge Extensions
+
+**File**: `src/Mod/LLMBridge/llm_bridge\boolean_handlers.py` (extend)
+
+Add WebSocket-accessible wrapper functions:
+
+```python
+# Called via execute_freecad_python
+def handle_boolean_fuse_request(object_names, result_name=None)
+def handle_boolean_cut_request(base_name, tool_name, result_name=None)
+def handle_boolean_common_request(object_names, result_name=None)
+def handle_make_compound_request(object_names, compound_name=None)
+def handle_validate_shape_request(object_name)
+def handle_heal_shape_request(object_name)
+def handle_get_shape_info_request(object_name)
+```
+
+These wrap the core handlers and add:
+- Document locking during modifications
+- Object existence validation
+- Result object registration for subsequent queries
+- Undo stack integration
+- Event notifications for UI updates
+
+**Acceptance Criteria**:
+- [ ] Functions accessible via WebSocket
+- [ ] Object validation works
+- [ ] Changes are undoable
+- [ ] Viewport refreshes after Boolean operations
+
+### 5. Result Formatters Update
+
+**File**: `sidecar/src/result-formatters.ts` (extend)
+
+Add formatters for Boolean operations:
+
+```typescript
+function formatBooleanResult(result: BooleanResult): string
+function formatCompoundResult(result: CompoundResult): string
+function formatShapeValidation(result: ShapeValidationResult): string
+function formatShapeInfo(result: ShapeInfoResult): string
+```
+
+Output should be human-readable summaries:
+- "Fused 3 objects into 'Fuse' with volume 15000 mm³"
+- "Cut 'Cylinder' from 'Box', resulting in 'Cut' with volume 8500 mm³"
+- "Intersection created 'Common' with volume 2000 mm³"
+- "Shape 'Box' is valid (12 edges, 6 faces, 8 vertices)"
+- "Healed 'Import': fixed 3 tolerance issues"
+
+**Acceptance Criteria**:
+- [ ] Results are concise but informative
+- [ ] Units displayed correctly (mm³ for volume, mm² for area)
+- [ ] Operation type and result name shown
+- [ ] Shape statistics formatted clearly
+
+### 6. Sidecar README Update
+
+**File**: `sidecar/README.md`
+
+Document the new tools:
+- Tool names and parameters
+- Example natural language commands
+- Example tool invocations
+- Boolean operation types explained
+- Common Boolean patterns and workflows
+- Shape validation and healing guidance
+
+**Acceptance Criteria**:
+- [ ] All new tools documented
+- [ ] Examples cover common use cases
+- [ ] Boolean operation reference included
+- [ ] Workflow examples provided
+
+### 7. Test End-to-End
+
+**Test Scenarios**:
+
+1. **Basic Fuse (Union)**:
+   - Create two overlapping boxes
+   - Command: "Combine these two boxes into one"
+   - Verify: Single fused object created, original objects preserved or hidden
+
+2. **Basic Cut (Difference)**:
+   - Create a box and a cylinder overlapping
+   - Command: "Cut the cylinder from the box"
+   - Verify: Box with cylindrical hole created
+
+3. **Basic Common (Intersection)**:
+   - Create two overlapping spheres
+   - Command: "Keep only the overlapping volume"
+   - Verify: Only intersection volume remains
+
+4. **Multi-Object Fuse**:
+   - Create 4 separate parts
+   - Command: "Merge all four parts together"
+   - Verify: Single object with combined volume
+
+5. **Compound Creation**:
+   - Select multiple objects
+   - Command: "Group these parts without merging them"
+   - Verify: Compound created, originals remain editable
+
+6. **Shape Validation**:
+   - Import a potentially problematic STEP file
+   - Command: "Check if this shape is valid"
+   - Verify: Issues detected and reported
+
+7. **Shape Healing**:
+   - Command: "Fix any issues with this imported part"
+   - Verify: Issues resolved or reported if unfixable
+
+8. **Shape Info Query**:
+   - Command: "What's the volume and surface area of this part?"
+   - Verify: Accurate statistics returned
+
+9. **Error Handling - Empty Result**:
+   - Command: "Cut the box from the cylinder" (when they don't overlap)
+   - Verify: Clear error message about empty result
+
+10. **Error Handling - Invalid Shape**:
+    - Command: "Fuse these objects" (with corrupted shape)
+    - Verify: Clear error message about shape issues
+
+**Acceptance Criteria**:
+- [ ] All scenarios pass
+- [ ] Boolean operations produce valid solids
+- [ ] Original objects preserved (non-destructive by default)
+- [ ] Error messages are actionable
+- [ ] Viewport updates after each operation
+
+## Files to Create/Modify
+
+### New Files:
+1. `src/Mod/LLMBridge/llm_bridge/boolean_handlers.py` - Boolean operation handlers
+
+### Modified Files:
+1. `sidecar/src/agent-tools.ts` - Add 7 Boolean tools (4 Boolean ops, 3 shape analysis)
+2. `sidecar/src/result-formatters.ts` - Add formatters for Boolean and shape results
+3. `sidecar/README.md` - Document Boolean operation tools
+4. `src/Mod/LLMBridge/llm_bridge/__init__.py` - Register new handlers if needed
+
+## Dependencies
+
+- FreeCAD Part module (`Part.Fuse`, `Part.Cut`, `Part.Common`, `Part.Compound`)
+- Existing WebSocket bridge infrastructure
+- Existing query handlers (for object lookup and validation)
+- Property handlers (reference for patterns)
+
+## Out of Scope
+
+This plan does NOT include:
+- Advanced Boolean operations (Section cuts, Split operations)
+- Non-manifold geometry handling
+- Mesh Boolean operations (separate workflow)
+- Boolean operations on 2D shapes (sketches)
+- General fuse with tolerance control
+- Shape morphology operations (offset, shell, thick solid)
+
+## Definition of Done
+
+- [ ] Boolean handler module complete with all operations
+- [ ] All 7 Boolean tools implemented and working
+- [ ] Shape validation and healing functional
+- [ ] Results formatted clearly for users
+- [ ] End-to-end tests pass for all scenarios
+- [ ] Documentation updated in sidecar README
+- [ ] Plan marked COMPLETED and moved to PROJECT.md progress
+
+## Next Step After This
+
+Once Boolean operation tools are complete:
+- Add assembly constraint tools (for multi-part designs with constraints)
+- Add Draft workbench tools (2D drafting, dimensions, annotations)
+- Add TechDraw workbench integration (creating drawings from 3D models)

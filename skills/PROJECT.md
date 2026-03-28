@@ -112,4 +112,10 @@ This is a diverging fork. We modify FreeCAD directly without worrying about upst
   - Extended `sidecar/src/result-formatters.ts` with formatters for feature creation and body management results
   - Implemented PartDesign Body workflow with auto-body creation and feature dependency tracking
   - All end-to-end test scenarios passed (basic pad creation, pocket cut, revolution feature, fillet/chamfer addition, dimension update, multi-feature part, body management, error handling, through-all pocket)
+- [x] **Cycle 10: Boolean Operation Tools** (COMPLETED)
+  - Created `src/Mod/LLMBridge/llm_bridge/boolean_handlers.py` - Boolean operation handlers
+  - Added 7 Boolean tools: `boolean_fuse`, `boolean_cut`, `boolean_common`, `make_compound`, `validate_shape`, `heal_shape`, `get_shape_info`
+  - Extended `sidecar/src/result-formatters.ts` with formatters for Boolean operations and shape analysis results
+  - Implemented shape validation and healing with tolerance checking
+  - All end-to-end test scenarios passed (basic fuse/union, cut/difference, common/intersection, multi-object fuse, compound creation, shape validation, shape healing, shape info query, error handling)
 - [ ] Define additional custom tools as needed
