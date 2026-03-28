@@ -186,9 +186,9 @@ def handle_export_to_format(file_path: str, format: str) -> dict:
             "FCBAK": ".FCBak"
         }
         expected_ext = ext_map.get(format_upper, "")
-        
+
         current_ext = os.path.splitext(file_path)[1].lower()
-        if current_ext != expected_ext:
+        if current_ext.lower() != expected_ext.lower():
             export_path = file_path + expected_ext
         else:
             export_path = file_path
@@ -212,10 +212,14 @@ def handle_export_to_format(file_path: str, format: str) -> dict:
             # Convert shapes to mesh if needed
             shapes = [obj.Shape for obj in shape_objects]
             if shapes:
-                mesh = App.activeDocument().addObject("Mesh::Feature", "ExportMesh")
-                mesh.Mesh = Part.makeMeshFromBrepShapes(shapes)
-                Mesh.export([mesh], export_path)
-                doc.removeObject(mesh.Name)
+                mesh = None
+                try:
+                    mesh = App.activeDocument().addObject("Mesh::Feature", "ExportMesh")
+                    mesh.Mesh = Part.makeMeshFromBrepShapes(shapes)
+                    Mesh.export([mesh], export_path)
+                finally:
+                    if mesh:
+                        doc.removeObject(mesh.Name)
             else:
                 return {
                     "success": False,
@@ -226,10 +230,14 @@ def handle_export_to_format(file_path: str, format: str) -> dict:
             import Mesh
             shapes = [obj.Shape for obj in shape_objects]
             if shapes:
-                mesh = App.activeDocument().addObject("Mesh::Feature", "ExportMesh")
-                mesh.Mesh = Part.makeMeshFromBrepShapes(shapes)
-                Mesh.export([mesh], export_path)
-                doc.removeObject(mesh.Name)
+                mesh = None
+                try:
+                    mesh = App.activeDocument().addObject("Mesh::Feature", "ExportMesh")
+                    mesh.Mesh = Part.makeMeshFromBrepShapes(shapes)
+                    Mesh.export([mesh], export_path)
+                finally:
+                    if mesh:
+                        doc.removeObject(mesh.Name)
             else:
                 return {
                     "success": False,

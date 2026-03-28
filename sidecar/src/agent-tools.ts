@@ -615,7 +615,9 @@ print(json.dumps(result))
 function createSaveDocumentTool(freeCADBridge: FreeCADBridge) {
   return tool(
     'save_document',
-    `Save the current FreeCAD document to a file.
+    `Save the current FreeCAD document to a file in native FreeCAD format.
+
+NOTE: This tool only supports native FreeCAD formats (FCStd, FCBak). For exporting to other CAD formats like STEP, STL, OBJ, etc., use the 'export_to_format' tool instead.
 
 Parameters:
 - filePath (optional): Full path to save the document. If omitted, saves to current document path.
@@ -626,7 +628,7 @@ Returns:
 - filePath: Path where the document was saved
 - message: Status message
 
-Use this tool when the user wants to save their work. Always confirm the file path with the user if not specified.
+Use this tool when the user wants to save their FreeCAD work in native format. Always confirm the file path with the user if not specified.
 
 Example:
 - Save to specific location: { filePath: "C:/Users/John/Desktop/part.FCStd" }
@@ -654,12 +656,12 @@ Example:
         }
       }
 
-      // Generate Python code with parameters passed safely
+      // Generate Python code with parameters passed safely via JSON to prevent injection
       const code = `
 from llm_bridge.file_handlers import handle_save_document
 import json
-filePath = r"${filePath ? filePath.replace(/"/g, '\\"') : ''}" if r"${filePath ? 'true' : 'false'}" == 'true' else None
-result = handle_save_document(file_path=filePath, format='${format}')
+params = json.loads('${JSON.stringify({ filePath: filePath || null, format })}')
+result = handle_save_document(file_path=params['filePath'], format=params['format'])
 print(json.dumps(result))
 `.trim();
 
@@ -755,7 +757,8 @@ Example:
       const code = `
 from llm_bridge.file_handlers import handle_open_document
 import json
-result = handle_open_document(r"${filePath.replace(/"/g, '\\"')}")
+params = json.loads('${JSON.stringify({ filePath })}')
+result = handle_open_document(file_path=params['filePath'])
 print(json.dumps(result))
 `.trim();
 
@@ -810,6 +813,8 @@ function createExportToFormatTool(freeCADBridge: FreeCADBridge) {
     'export_to_format',
     `Export the current FreeCAD model to a specific CAD format.
 
+NOTE: Use this tool for exporting to exchange formats (STEP, IGES, STL, OBJ, DXF) or when you need a different format than native FreeCAD. For saving in native FreeCAD format only, use 'save_document' instead.
+
 Parameters:
 - filePath (required): Full path to export the file to
 - format (required): Export format - ${formatList}
@@ -858,7 +863,8 @@ Example:
       const code = `
 from llm_bridge.file_handlers import handle_export_to_format
 import json
-result = handle_export_to_format(r"${filePath.replace(/"/g, '\\"')}", '${format}')
+params = json.loads('${JSON.stringify({ filePath, format })}')
+result = handle_export_to_format(file_path=params['filePath'], format=params['format'])
 print(json.dumps(result))
 `.trim();
 
@@ -1016,8 +1022,8 @@ Example:
       const code = `
 from llm_bridge.file_handlers import handle_create_new_document
 import json
-name = r"${sanitizedName ? sanitizedName.replace(/"/g, '\\"') : ''}" if r"${sanitizedName ? 'true' : 'false'}" == 'true' else None
-result = handle_create_new_document(name=name, doc_type='${type}')
+params = json.loads('${JSON.stringify({ name: sanitizedName || null, type })}')
+result = handle_create_new_document(name=params['name'], doc_type=params['type'])
 print(json.dumps(result))
 `.trim();
 

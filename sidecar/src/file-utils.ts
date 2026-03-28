@@ -91,9 +91,11 @@ export function validateFilePath(filePath: string): { isValid: boolean; error?: 
     return { isValid: false, error: 'File path cannot be empty' };
   }
 
-  // Check for path traversal attempts
-  if (filePath.includes('..')) {
-    return { isValid: false, error: 'Path traversal (..) is not allowed' };
+  // Check for path traversal attempts using normalized path
+  // This handles cases like 'C:/../folder/file.FCStd' properly
+  const normalizedPath = path.normalize(filePath);
+  if (normalizedPath.includes('..')) {
+    return { isValid: false, error: 'Path resolves outside allowed directory' };
   }
 
   // Check for null bytes
