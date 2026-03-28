@@ -293,3 +293,35 @@ The original large commits for PartDesign feature tools have been refactored int
 - **Files modified**: 9 (__init__.py, server.py, agent-tools.ts, result-formatters.ts, sidecar/README.md, CURRENT_PLAN.md, PROJECT.md, CURRENT_REVIEW.md, CYCLE_COUNT.md, COMMIT_HISTORY.md)
 - **Total insertions**: ~2,200 lines
 - **Total deletions**: ~300 lines
+
+---
+
+## Cycle 10 - Incremental Commits
+
+The original large commits for Boolean operation tools have been refactored into 6 incremental commits.
+
+| Commit Hash | Message | Files Changed |
+|-------------|---------|---------------|
+| 2772da7745 | feat(python): add Boolean operation handlers for FreeCAD | __init__.py, boolean_handlers.py, server.py |
+| cc40e57b7d | feat(sidecar): add Boolean operation agent tools | agent-tools.ts, result-formatters.ts |
+| 71b4a2b1db | fix: resolve Boolean tools code review issues | boolean_handlers.py, result-formatters.ts |
+| 5a57fea69e | docs: add Boolean operation tools documentation | sidecar/README.md |
+| 1bfefa1c1a | docs(skills): mark Boolean operation cycle complete | CURRENT_PLAN.md, PROJECT.md |
+| 5eefff4d93 | docs(skills): add Boolean operation review documentation | CURRENT_REVIEW.md, CYCLE_COUNT.md |
+
+### Commit Progression
+
+1. **Python Boolean handlers**: Added boolean_handlers.py with 7 handlers (boolean_fuse, boolean_cut, boolean_common, make_compound, validate_shape, heal_shape, get_shape_info); integrated into LLMBridge module via __init__.py and server.py
+2. **Agent tools implementation**: Added 7 Boolean operation tools to agent-tools.ts with Zod schema validation and WebSocket bridge integration; added result formatters for human-readable output
+3. **Code review fixes**: Improved API from `shape_names` to `base_shape` + `tool_shapes`, changed from Part::Fuse to Part::MultiFuse, standardized formatter output structure, added validation for empty shape lists
+4. **Sidecar documentation**: Updated sidecar/README.md with comprehensive documentation for all 7 Boolean operation tools including usage examples and parameter descriptions
+5. **Project tracking updates**: Marked Boolean operation cycle as completed in CURRENT_PLAN.md with implementation summary; updated PROJECT.md and CYCLE_COUNT.md with Cycle 10 completion status
+6. **Review documentation**: Added Boolean operation review to CURRENT_REVIEW.md documenting code review findings and verification status for Cycle 10
+
+### Summary
+
+- **Total commits**: 6
+- **Files created**: 1 (boolean_handlers.py)
+- **Files modified**: 8 (__init__.py, server.py, agent-tools.ts, result-formatters.ts, sidecar/README.md, CURRENT_PLAN.md, PROJECT.md, CURRENT_REVIEW.md, CYCLE_COUNT.md)
+- **Total insertions**: ~1,900 lines
+- **Total deletions**: ~350 lines
