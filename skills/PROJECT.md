@@ -55,6 +55,13 @@ This is a diverging fork. We modify FreeCAD directly without worrying about upst
   - Created Python bridge modules (`sidecar_client.py`, `llm_panel_bridge.py`) for sidecar communication
   - Integrated dock widget into `MainWindow.cpp` with registration in `DockWindowManager`
   - Added stub placeholder responses for when sidecar is not connected
-- [ ] **Next**: Build the Node.js sidecar with Claude Agent SDK
-- [ ] Define custom tool interface
-- [ ] End-to-end integration and testing
+- [x] Build the Node.js sidecar with Claude Agent SDK
+  - Created `sidecar/package.json` with dependencies (`@anthropic-ai/claude-agent-sdk`, `ws`)
+  - Created `sidecar/tsconfig.json` for TypeScript configuration
+  - Created `sidecar/src/index.ts` main entry point with configuration and startup logic
+  - Created `sidecar/src/dock-server.ts` WebSocket server for dock widget (port 8765)
+  - Created `sidecar/src/freecad-bridge.ts` WebSocket client to FreeCAD Python bridge (port 8766)
+  - Created `sidecar/src/agent-tools.ts` with custom tools: `execute_freecad_python`, `query_model_state`, `export_model`
+  - Created `sidecar/README.md` with setup instructions
+- [ ] **Next**: End-to-end integration and testing
+- [ ] Define additional custom tools as needed
