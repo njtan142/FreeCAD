@@ -695,6 +695,504 @@ Remove expressions from an object's property, converting it back to a fixed valu
 }
 ```
 
+### Sketcher Tools
+
+The sketcher tools allow you to create and edit 2D sketches with geometric and dimensional constraints. Sketches are the foundation for parametric 3D features like pads, revolutions, and lofts.
+
+---
+
+#### `create_sketch(plane?: string, faceName?: string)`
+
+Create a new sketch on a specified plane or face.
+
+**Parameters:**
+- `plane` (optional): Plane to create sketch on. Options: `"XY"`, `"XZ"`, `"YZ"`, or custom plane object name. Default: `"XY"`
+- `faceName` (optional): Name of a face to attach the sketch to. If provided, `plane` is ignored.
+
+**Response format:**
+```json
+{
+  "success": true,
+  "sketchName": "Sketch",
+  "sketchLabel": "Sketch",
+  "plane": "XY",
+  "faceName": null,
+  "message": "Created sketch on XY plane"
+}
+```
+
+**Example usage:**
+```typescript
+// Create sketch on default XY plane
+{
+  name: "create_sketch",
+  arguments: {}
+}
+
+// Create sketch on XZ plane
+{
+  name: "create_sketch",
+  arguments: {
+    plane: "XZ"
+  }
+}
+
+// Create sketch on a specific face
+{
+  name: "create_sketch",
+  arguments: {
+    faceName: "Box.Face1"
+  }
+}
+```
+
+---
+
+#### `add_geometry(type: string, points: Array<{x: number, y: number}>, radius?: number, center?: {x: number, y: number})`
+
+Add geometric elements to a sketch.
+
+**Parameters:**
+- `type` (required): Geometry type - `"line"`, `"circle"`, `"arc"`, `"rectangle"`, `"point"`
+- `points` (required): Array of points defining the geometry:
+  - For `line`: `[{x, y}, {x, y}]` (start and end points)
+  - For `rectangle`: `[{x, y}, {x, y}]` (opposite corners)
+  - For `circle`: `[{x, y}]` (single point on circumference, use with `center` and `radius`)
+  - For `arc`: `[{x, y}, {x, y}, {x, y}]` (start, end, and a point on arc)
+  - For `point`: `[{x, y}]` (single point)
+- `radius` (optional): Radius for circles and arcs
+- `center` (optional): Center point `{x, y}` for circles and arcs
+
+**Response format:**
+```json
+{
+  "success": true,
+  "geometryType": "line",
+  "geometryId": 0,
+  "points": [{"x": 0, "y": 0}, {"x": 50, "y": 0}],
+  "message": "Added line geometry (ID: 0)"
+}
+```
+
+**Example usage:**
+```typescript
+// Add a horizontal line from origin to (50, 0)
+{
+  name: "add_geometry",
+  arguments: {
+    type: "line",
+    points: [{"x": 0, "y": 0}, {"x": 50, "y": 0}]
+  }
+}
+
+// Add a circle centered at (25, 25) with radius 10
+{
+  name: "add_geometry",
+  arguments: {
+    type: "circle",
+    center: {"x": 25, "y": 25},
+    radius: 10,
+    points: [{"x": 35, "y": 25}]
+  }
+}
+
+// Add a rectangle with corners at (0, 0) and (40, 30)
+{
+  name: "add_geometry",
+  arguments: {
+    type: "rectangle",
+    points: [{"x": 0, "y": 0}, {"x": 40, "y": 30}]
+  }
+}
+
+// Add an arc from (0, 0) to (30, 0) passing through (15, 15)
+{
+  name: "add_geometry",
+  arguments: {
+    type: "arc",
+    points: [{"x": 0, "y": 0}, {"x": 30, "y": 0}, {"x": 15, "y": 15}]
+  }
+}
+
+// Add a construction point
+{
+  name: "add_geometry",
+  arguments: {
+    type: "point",
+    points: [{"x": 20, "y": 20}]
+  }
+}
+```
+
+---
+
+#### `add_geometric_constraint(type: string, geometryIds: number[], value?: number | string)`
+
+Add a geometric constraint between sketch elements.
+
+**Parameters:**
+- `type` (required): Constraint type:
+  - `"coincident"` - Two points coincide (2 geometry IDs: point1, point2)
+  - `"horizontal"` - Line is horizontal (1 geometry ID: line)
+  - `"vertical"` - Line is vertical (1 geometry ID: line)
+  - `"parallel"` - Two lines are parallel (2 geometry IDs: line1, line2)
+  - `"perpendicular"` - Two lines are perpendicular (2 geometry IDs: line1, line2)
+  - `"tangent"` - Curve tangent to line/curve (2 geometry IDs)
+  - `"equal"` - Two lines equal length or two circles/arcs equal radius (2 geometry IDs)
+  - `"symmetric"` - Two points symmetric about a line/axis (3 geometry IDs: point1, point2, line/axis)
+  - `"concentric"` - Two circles/arcs share same center (2 geometry IDs)
+  - `"midpoint"` - Point is midpoint of a line (2 geometry IDs: point, line)
+- `geometryIds` (required): Array of geometry element IDs the constraint applies to
+- `value` (optional): Additional value for certain constraints (rarely used)
+
+**Response format:**
+```json
+{
+  "success": true,
+  "constraintType": "perpendicular",
+  "constraintId": 0,
+  "geometryIds": [0, 1],
+  "message": "Added perpendicular constraint (ID: 0)"
+}
+```
+
+**Example usage:**
+```typescript
+// Make a line horizontal
+{
+  name: "add_geometric_constraint",
+  arguments: {
+    type: "horizontal",
+    geometryIds: [0]
+  }
+}
+
+// Make two lines perpendicular
+{
+  name: "add_geometric_constraint",
+  arguments: {
+    type: "perpendicular",
+    geometryIds: [0, 1]
+  }
+}
+
+// Make two lines parallel
+{
+  name: "add_geometric_constraint",
+  arguments: {
+    type: "parallel",
+    geometryIds: [1, 2]
+  }
+}
+
+// Make two circles concentric
+{
+  name: "add_geometric_constraint",
+  arguments: {
+    type: "concentric",
+    geometryIds: [0, 1]
+  }
+}
+
+// Make two lines equal length
+{
+  name: "add_geometric_constraint",
+  arguments: {
+    type: "equal",
+    geometryIds: [0, 1]
+  }
+}
+```
+
+---
+
+#### `add_dimensional_constraint(type: string, geometryIds: number[], value: number | string)`
+
+Add a dimensional constraint (distance, angle, radius, or diameter) to sketch elements.
+
+**Parameters:**
+- `type` (required): Dimension type:
+  - `"distance"` - Distance between two points or point to line (2+ geometry IDs)
+  - `"horizontal_distance"` - Horizontal distance between points (2 geometry IDs)
+  - `"vertical_distance"` - Vertical distance between points (2 geometry IDs)
+  - `"angle"` - Angle between two lines (2 geometry IDs)
+  - `"radius"` - Radius of circle/arc (1 geometry ID)
+  - `"diameter"` - Diameter of circle (1 geometry ID)
+- `geometryIds` (required): Array of geometry element IDs the constraint applies to
+- `value` (required): Dimension value. Can be:
+  - Numeric value in mm (for distances/radius/diameter) or radians (for angles)
+  - String with units: `"50mm"`, `"90deg"`, `"30deg"`, `"5cm"`
+
+**Response format:**
+```json
+{
+  "success": true,
+  "constraintType": "distance",
+  "constraintId": 0,
+  "geometryIds": [0, 1],
+  "value": "50.00mm",
+  "message": "Added distance constraint: 50.00mm (ID: 0)"
+}
+```
+
+**Example usage:**
+```typescript
+// Set line length to 50mm
+{
+  name: "add_dimensional_constraint",
+  arguments: {
+    type: "distance",
+    geometryIds: [0, 1],
+    value: "50mm"
+  }
+}
+
+// Set horizontal distance between points
+{
+  name: "add_dimensional_constraint",
+  arguments: {
+    type: "horizontal_distance",
+    geometryIds: [0, 1],
+    value: "30mm"
+  }
+}
+
+// Set angle between two lines to 90 degrees
+{
+  name: "add_dimensional_constraint",
+  arguments: {
+    type: "angle",
+    geometryIds: [0, 1],
+    value: "90deg"
+  }
+}
+
+// Set circle radius to 10mm
+{
+  name: "add_dimensional_constraint",
+  arguments: {
+    type: "radius",
+    geometryIds: [0],
+    value: "10mm"
+  }
+}
+
+// Set circle diameter to 25mm
+{
+  name: "add_dimensional_constraint",
+  arguments: {
+    type: "diameter",
+    geometryIds: [0],
+    value: "25mm"
+  }
+}
+```
+
+---
+
+#### `set_constraint_value(constraintId: number, value: number | string)`
+
+Modify the value of an existing dimensional constraint.
+
+**Parameters:**
+- `constraintId` (required): ID of the constraint to modify
+- `value` (required): New value. Can be:
+  - Numeric value in mm (for distances) or radians (for angles)
+  - String with units: `"75mm"`, `"45deg"`, `"20mm"`
+
+**Response format:**
+```json
+{
+  "success": true,
+  "constraintId": 0,
+  "constraintType": "distance",
+  "beforeValue": "50.00mm",
+  "afterValue": "75.00mm",
+  "message": "Updated constraint 0 from 50.00mm to 75.00mm"
+}
+```
+
+**Example usage:**
+```typescript
+// Change a distance constraint to 75mm
+{
+  name: "set_constraint_value",
+  arguments: {
+    constraintId: 0,
+    value: "75mm"
+  }
+}
+
+// Change an angle constraint to 45 degrees
+{
+  name: "set_constraint_value",
+  arguments: {
+    constraintId: 2,
+    value: "45deg"
+  }
+}
+
+// Change a radius constraint to 15mm
+{
+  name: "set_constraint_value",
+  arguments: {
+    constraintId: 1,
+    value: 15
+  }
+}
+```
+
+---
+
+#### `list_sketch_constraints(sketchName?: string)`
+
+List all constraints in a sketch.
+
+**Parameters:**
+- `sketchName` (optional): Name of the sketch to query. If omitted, uses the active sketch.
+
+**Response format:**
+```json
+{
+  "success": true,
+  "sketchName": "Sketch",
+  "constraints": [
+    {
+      "id": 0,
+      "type": "distance",
+      "geometryIds": [0, 1],
+      "value": "50.00mm"
+    },
+    {
+      "id": 1,
+      "type": "horizontal",
+      "geometryIds": [0],
+      "value": null
+    },
+    {
+      "id": 2,
+      "type": "angle",
+      "geometryIds": [0, 1],
+      "value": "90.00deg"
+    }
+  ],
+  "constraintCount": 3,
+  "message": "Found 3 constraint(s)"
+}
+```
+
+**Example usage:**
+```typescript
+// List constraints in active sketch
+{
+  name: "list_sketch_constraints",
+  arguments: {}
+}
+
+// List constraints in a specific sketch
+{
+  name: "list_sketch_constraints",
+  arguments: {
+    sketchName: "Sketch001"
+  }
+}
+```
+
+---
+
+#### `delete_constraint(constraintId: number, sketchName?: string)`
+
+Remove a constraint from a sketch.
+
+**Parameters:**
+- `constraintId` (required): ID of the constraint to delete
+- `sketchName` (optional): Name of the sketch. If omitted, uses the active sketch.
+
+**Response format:**
+```json
+{
+  "success": true,
+  "constraintId": 0,
+  "constraintType": "distance",
+  "sketchName": "Sketch",
+  "message": "Deleted constraint 0 (distance)"
+}
+```
+
+**Example usage:**
+```typescript
+// Delete constraint with ID 0 from active sketch
+{
+  name: "delete_constraint",
+  arguments: {
+    constraintId: 0
+  }
+}
+
+// Delete constraint from a specific sketch
+{
+  name: "delete_constraint",
+  arguments: {
+    constraintId: 2,
+    sketchName: "Sketch001"
+  }
+}
+```
+
+---
+
+#### `get_sketch_geometry(sketchName?: string)`
+
+Query all geometry elements in a sketch.
+
+**Parameters:**
+- `sketchName` (optional): Name of the sketch to query. If omitted, uses the active sketch.
+
+**Response format:**
+```json
+{
+  "success": true,
+  "sketchName": "Sketch",
+  "geometry": [
+    {
+      "id": 0,
+      "type": "line",
+      "points": [{"x": 0, "y": 0}, {"x": 50, "y": 0}]
+    },
+    {
+      "id": 1,
+      "type": "line",
+      "points": [{"x": 50, "y": 0}, {"x": 50, "y": 30}]
+    },
+    {
+      "id": 2,
+      "type": "circle",
+      "center": {"x": 25, "y": 15},
+      "radius": "10.00mm"
+    }
+  ],
+  "geometryCount": 3,
+  "message": "Found 3 geometry element(s)"
+}
+```
+
+**Example usage:**
+```typescript
+// Get geometry from active sketch
+{
+  name: "get_sketch_geometry",
+  arguments: {}
+}
+
+// Get geometry from a specific sketch
+{
+  name: "get_sketch_geometry",
+  arguments: {
+    sketchName: "Sketch001"
+  }
+}
+```
+
 ### Export Tool (Legacy)
 
 #### `export_model(filePath: string, format: string)`
