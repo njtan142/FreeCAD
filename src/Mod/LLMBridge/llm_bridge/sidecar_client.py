@@ -11,8 +11,9 @@ from typing import Optional, Callable, List, Dict, Any
 
 import FreeCAD as App
 
+# Default port for the dock widget WebSocket server (sidecar)
+DEFAULT_SIDECAR_PORT = 8765
 DEFAULT_SIDECAR_HOST = "127.0.0.1"
-DEFAULT_SIDECAR_PORT = 9877
 
 
 class SidecarClient:

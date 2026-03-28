@@ -13,7 +13,8 @@ import FreeCAD as App
 from .executor import execute_code
 from .main_thread import run_on_main_thread
 
-DEFAULT_PORT = 9876
+# Default port for FreeCAD Python execution bridge
+DEFAULT_PORT = 8766
 
 
 class BridgeServer:
