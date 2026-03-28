@@ -87,4 +87,11 @@ This is a diverging fork. We modify FreeCAD directly without worrying about upst
   - Added `list_recent_documents` tool - Show recently opened files
   - Added `create_new_document` tool - Create new empty documents
   - Updated `sidecar/README.md` with file operation tools documentation
+- [x] Conversation History and Context Management
+  - Created `sidecar/src/types.ts` - TypeScript type definitions for messages, sessions, and context
+  - Created `sidecar/src/session-manager.ts` - Session storage as JSON files with lifecycle management
+  - Created `sidecar/src/context-injector.ts` - Automatic model state injection before Claude responds
+  - Added session management tools: `save_chat_session`, `load_chat_session`, `list_chat_sessions`
+  - Added CLI flags: `--resume <sessionId>`, `--session <name>`, `--list-sessions`, `--no-context-injection`
+  - Updated `LLMDockWidget` with session display label and session management menu
 - [ ] Define additional custom tools as needed
