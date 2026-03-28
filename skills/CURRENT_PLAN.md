@@ -1,192 +1,242 @@
 ## Status: COMPLETED
 
-# Current Plan: Enhanced Model Query Tools
+# Current Plan: File Operations Tools
 
 ## Overview
 
-Expand the `query_model_state` tool to provide Claude with comprehensive visibility into the FreeCAD document structure. This enables Claude to understand existing models before modifying them, which is essential for iterative CAD workflows.
+Add file operation tools to enable Claude to open existing CAD files, save work, and export to different formats. This is essential for practical workflows where users want to:
+- Open existing Part/Assembly files to modify them
+- Save their work incrementally
+- Export to standard CAD formats (STEP, IGES, STL, etc.) for manufacturing or sharing
 
-Currently, Claude can execute Python code and export models, but has limited ability to query what already exists in the document. This plan adds structured query capabilities for:
-- Document structure and all objects
-- Individual object properties and parameters
-- Selected objects in the viewport
-- Document history/undo stack
-- Object dependencies and parent-child relationships
+Currently, Claude can only execute Python and query model state, but cannot persist work or load existing designs.
+
+## Implementation Summary
+
+All 5 file operation tools have been successfully implemented:
+
+1. **`save_document`** - Save current FreeCAD document (FCStd, FCBak formats)
+2. **`open_document`** - Open existing CAD files (FCStd, STEP, IGES, STL, OBJ, DXF)
+3. **`export_to_format`** - Export to STEP, IGES, STL, OBJ, DXF formats
+4. **`list_recent_documents`** - Show recently opened files from FreeCAD preferences
+5. **`create_new_document`** - Create new empty documents (Part, Assembly, Sketch)
+
+## Files Created/Modified
+
+### New Files:
+- `src/Mod/LLMBridge/llm_bridge/file_handlers.py` - Python file operation handlers
+- `sidecar/src/file-utils.ts` - File path utilities
+
+### Modified Files:
+- `sidecar/src/agent-tools.ts` - Added 5 file operation tools
+- `src/Mod/LLMBridge/llm_bridge/server.py` - Import file handlers module
+- `sidecar/README.md` - Updated with file operation tools documentation
+
+## Completed Tasks
+
+- [x] Define File Operation Tool Schema
+- [x] Implement Python File Handlers
+- [x] Update Sidecar Tool Implementations
+- [x] Add File Path Utilities
+- [x] Test File Operations End-to-End
+
+## Blockers
+
+None.
 
 ## Prerequisites
 
 The following must already exist:
-- `sidecar/src/agent-tools.ts` - Existing custom tools with basic `query_model_state`
+- `sidecar/src/agent-tools.ts` - Custom tools infrastructure
 - `src/Mod/LLMBridge/` - Python WebSocket execution bridge
-- `sidecar/` - Node.js sidecar with Claude Agent SDK working end-to-end
+- `sidecar/src/result-formatters.ts` - Result formatting utilities
+- End-to-end integration working with query tools
 
 ## Tasks
 
-### 1. Define Enhanced Query Tool Schema
+### 1. Define File Operation Tool Schema
 
 **File**: `sidecar/src/agent-tools.ts`
 
-Expand the tools to include:
+Add the following tools:
 
-1. **`query_model_state`** (enhanced) - Query with specific intent:
-   - `intent`: "document_overview" | "object_details" | "selection" | "dependencies"
-   - `objectName`: optional, for object-specific queries
-   - Returns structured JSON instead of raw Python output
+1. **`save_document`** - Save current document:
+   - Parameters: `filePath` (optional, saves to current path if omitted), `format` (optional, default: "FCStd")
+   - Returns: `{success, filePath, message}`
 
-2. **`list_objects`** (new) - List all objects in active document:
-   - Returns: array of `{name, label, type, visibility}`
-   - Includes object type (Part::Box, Part::Cylinder, etc.)
+2. **`open_document`** - Open a CAD file:
+   - Parameters: `filePath` (required)
+   - Returns: `{success, documentName, objectCount, message}`
 
-3. **`get_object_properties`** (new) - Get detailed properties of a specific object:
-   - Parameters: `objectName` (required)
-   - Returns: `{name, label, type, placement, properties: {}}`
-   - Includes dimensions, position, rotation, color, etc.
+3. **`export_to_format`** - Export to specific CAD format:
+   - Parameters: `filePath` (required), `format` (required: "STEP" | "IGES" | "STL" | "OBJ" | "DXF")
+   - Returns: `{success, filePath, format, message}`
 
-4. **`get_selection`** (new) - Get currently selected objects:
-   - Returns: array of selected object names and types
-   - Essential for context-aware operations
+4. **`list_recent_documents`** - List recently opened files:
+   - Parameters: none
+   - Returns: array of recent file paths from FreeCAD preferences
 
-5. **`get_document_info`** (new) - Get document metadata:
-   - Returns: `{name, label, objectCount, modified, filePath}`
+5. **`create_new_document`** - Create empty new document:
+   - Parameters: `name` (optional), `type` (optional: "Part" | "Assembly" | "Sketch")
+   - Returns: `{success, documentName, message}`
 
 **Acceptance Criteria**:
 - [ ] Each tool has clear TypeScript type definitions
-- [ ] Tools use Zod schemas for validation (if used in project)
-- [ ] Tool descriptions are clear for Claude to understand when to use each
+- [ ] Input validation for file paths and formats
+- [ ] Tool descriptions explain when Claude should use each
 
-### 2. Implement Python Query Handlers
+### 2. Implement Python File Handlers
 
-**File**: `src/Mod/LLMBridge/llm_bridge/query_handlers.py` (new file)
+**File**: `src/Mod/LLMBridge/llm_bridge/file_handlers.py` (new file)
 
-Create dedicated handler functions for each query type:
+Create handler functions:
 
 ```python
-def handle_document_overview() -> dict
-def handle_object_details(object_name: str) -> dict
-def handle_selection() -> dict
-def handle_dependencies(object_name: str) -> dict
+def handle_save_document(file_path: str = None, format: str = "FCStd") -> dict
+def handle_open_document(file_path: str) -> dict
+def handle_export_to_format(file_path: str, format: str) -> dict
+def handle_list_recent_documents() -> dict
+def handle_create_new_document(name: str = None, doc_type: str = "Part") -> dict
 ```
 
-Each handler should:
-- Use proper FreeCAD API calls (`FreeCAD.ActiveDocument`, `Gui.ActiveDocument`, etc.)
-- Handle cases where document is None
-- Catch and return errors gracefully
-- Return JSON-serializable structures
+Key implementation details:
+- Use `FreeCAD.ActiveDocument.saveAs()` for saving
+- Use `FreeCAD.open()` for opening files
+- Use appropriate exporters (Part, Mesh, Drawing modules) for exports
+- Handle file path resolution (absolute vs relative)
+- Check file existence before operations
+- Catch FreeCAD-specific exceptions
 
 **Acceptance Criteria**:
-- [ ] All handlers return valid JSON structures
-- [ ] Errors are caught and returned as structured error messages
-- [ ] Handles edge cases (no document, invalid object names, etc.)
-- [ ] Uses FreeCAD's API correctly (verify with existing Python console patterns)
+- [ ] All handlers return JSON-serializable structures
+- [ ] Errors include actionable messages (file not found, permission denied, etc.)
+- [ ] Supports common CAD formats: FCStd, STEP, IGES, STL, OBJ
+- [ ] Handles edge cases (unsaved documents, invalid paths, format incompatibilities)
 
 ### 3. Update Sidecar Tool Implementations
 
 **File**: `sidecar/src/agent-tools.ts`
 
-Update each tool to:
-- Call the appropriate Python handler via WebSocket
-- Parse the JSON response
-- Format results for Claude consumption
-- Handle connection errors gracefully
+Implement each file operation tool:
+- Validate file paths (check for valid format, dangerous characters)
+- Execute Python handlers via WebSocket
+- Parse responses and format for Claude
+- Handle connection errors
 
-Example tool structure:
+Example:
 ```typescript
-const listObjectsTool = {
-  name: 'list_objects',
-  description: 'List all objects in the active FreeCAD document...',
-  inputSchema: z.object({}),
+const saveDocumentTool = {
+  name: 'save_document',
+  description: 'Save the current FreeCAD document...',
+  inputSchema: z.object({
+    filePath: z.string().optional(),
+    format: z.enum(['FCStd', 'STEP', 'IGES', 'STL']).optional()
+  }),
   execute: async (input) => {
-    const result = await freeCADBridge.execute('handle_list_objects()');
-    return formatResult(result);
+    const result = await freeCADBridge.execute(
+      `handle_save_document('${input.filePath}', '${input.format}')`
+    );
+    return formatFileOperationResult(result);
   }
 };
 ```
 
 **Acceptance Criteria**:
-- [ ] All 5 tools implemented and registered with Claude Agent SDK
-- [ ] Tools return formatted, readable output
-- [ ] Error messages are clear and actionable
+- [ ] All 5 tools implemented and registered
+- [ ] File path validation prevents injection attacks
+- [ ] Results include clear success/failure indicators
 - [ ] Tools appear in Claude's available tool list
 
-### 4. Add Query Result Formatting
+### 4. Add File Path Utilities
 
-**File**: `sidecar/src/result-formatters.ts` (new file)
+**File**: `sidecar/src/file-utils.ts` (new file)
 
-Create utility functions to format query results for readability:
-- Format object lists as tables
-- Format properties as key-value pairs
-- Truncate long outputs with "..." and character counts
-- Highlight important values (dimensions, positions)
+Create utility functions:
+- `validateFilePath(path: string)` - Check for valid path format
+- `resolveAbsolutePath(path: string)` - Convert relative to absolute
+- `getFileExtension(path: string)` - Extract and normalize extension
+- `sanitizeFileName(name: string)` - Remove invalid characters
+- `getSupportedFormats()` - List formats with descriptions
 
 **Acceptance Criteria**:
-- [ ] Formatters produce human-readable output
-- [ ] Large result sets are paginated or truncated
-- [ ] Output fits within Claude's context limits
+- [ ] Path validation catches common issues
+- [ ] Cross-platform path handling (Windows/Linux/Mac)
+- [ ] Format list matches FreeCAD capabilities
 
-### 5. Test Query Tools End-to-End
+### 5. Test File Operations End-to-End
 
 **Test Scenarios**:
 
-1. **Empty Document**:
-   - Start FreeCAD with new document
-   - Call `list_objects` → should return empty array
-   - Call `get_document_info` → should show 0 objects
+1. **Save Document**:
+   - Create simple box
+   - Save to temp directory
+   - Verify file exists on disk
+   - Save again (overwrite)
 
-2. **Document with Objects**:
-   - Create cube via Python: `Part.makeBox(10,10,10)`
-   - Call `list_objects` → should show the box
-   - Call `get_object_properties` → should show dimensions, placement
+2. **Open Document**:
+   - Open the saved file
+   - Verify object count matches
+   - Query model state to confirm
 
-3. **Selection Query**:
-   - Select object in GUI
-   - Call `get_selection` → should return selected object
+3. **Export Formats**:
+   - Export box as STEP
+   - Export box as STL
+   - Verify both files exist and have content
 
-4. **Error Handling**:
-   - Call `get_object_properties` with invalid name
-   - Should return clear error, not crash
+4. **Error Cases**:
+   - Open non-existent file → clear error
+   - Save to invalid path → clear error
+   - Export unsupported format → clear error
+
+5. **New Document**:
+   - Create new document
+   - Verify it's active
+   - List objects (should be empty)
 
 **Acceptance Criteria**:
-- [ ] All test scenarios pass
-- [ ] Query response time < 2 seconds
-- [ ] Results are accurate and match FreeCAD GUI state
-- [ ] No crashes on edge cases
+- [ ] All scenarios pass
+- [ ] File operations complete in < 5 seconds
+- [ ] Files are actually created/modified on disk
+- [ ] No crashes on error cases
 
 ## Files to Create/Modify
 
 ### New Files:
-1. `src/Mod/LLMBridge/llm_bridge/query_handlers.py` - Python query handlers
-2. `sidecar/src/result-formatters.ts` - Result formatting utilities
+1. `src/Mod/LLMBridge/llm_bridge/file_handlers.py` - Python file operation handlers
+2. `sidecar/src/file-utils.ts` - File path utilities
 
 ### Modified Files:
-1. `sidecar/src/agent-tools.ts` - Add/expand query tools
-2. `src/Mod/LLMBridge/llm_bridge/server.py` - Import and register new handlers
+1. `sidecar/src/agent-tools.ts` - Add file operation tools
+2. `src/Mod/LLMBridge/llm_bridge/server.py` - Import and register file handlers
+3. `sidecar/README.md` - Update with file operation examples
 
 ## Dependencies
 
-- FreeCAD Python API knowledge (Part, Gui, Document objects)
-- Existing WebSocket bridge for Python execution
-- Claude Agent SDK tool registration pattern
+- FreeCAD file I/O API (FreeCAD.open, saveAs, export methods)
+- Understanding of supported CAD formats and their modules
+- Existing WebSocket bridge infrastructure
 
 ## Out of Scope
 
 This plan does NOT include:
-- Modifying existing geometry (that's for execute_freecad_python)
-- File I/O operations (covered by export_model tool)
-- Undo/redo stack manipulation
-- Multi-document support (only ActiveDocument)
+- Version control integration (Git)
+- Cloud storage (Dropbox, OneDrive, etc.)
+- Auto-save functionality
+- Document comparison/diff
+- Import from non-CAD formats (images, point clouds)
 
 ## Definition of Done
 
-- [ ] All 5 query tools implemented and working
-- [ ] Tools return structured, readable output
-- [ ] Error handling works for all edge cases
-- [ ] End-to-end tests pass
-- [ ] Claude can successfully query document state and understand results
+- [ ] All 5 file operation tools implemented and working
+- [ ] Tools handle errors gracefully with clear messages
+- [ ] End-to-end tests pass for all scenarios
+- [ ] Files are correctly created/modified on disk
+- [ ] Claude can successfully open, save, and export CAD files
 - [ ] Plan marked COMPLETED and moved to PROJECT.md progress
 
 ## Next Step After This
 
-Once query tools are complete:
-- Add tools for file operations (open, save, import formats)
-- Or: Add conversation history persistence
-- Or: Improve LLM prompt context with automatic state queries
+Once file operations are complete:
+- Add conversation history persistence (save/load chat sessions)
+- Or: Add automatic context injection (query state before each operation)
+- Or: Add multi-document management tools

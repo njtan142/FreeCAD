@@ -78,4 +78,13 @@ This is a diverging fork. We modify FreeCAD directly without worrying about upst
   - Added `get_object_properties` tool - Get detailed properties (dimensions, placement, color)
   - Added `get_selection` tool - Get currently selected objects in viewport
   - Added `get_document_info` tool - Get document metadata (name, modified status, object count)
+- [x] File Operations Tools
+  - Created `src/Mod/LLMBridge/llm_bridge/file_handlers.py` - Python handlers for file operations
+  - Created `sidecar/src/file-utils.ts` - Path validation and format utilities
+  - Added `save_document` tool - Save current document (FCStd, FCBak formats)
+  - Added `open_document` tool - Open existing CAD files
+  - Added `export_to_format` tool - Export to STEP, IGES, STL, OBJ, DXF formats
+  - Added `list_recent_documents` tool - Show recently opened files
+  - Added `create_new_document` tool - Create new empty documents
+  - Updated `sidecar/README.md` with file operation tools documentation
 - [ ] Define additional custom tools as needed
