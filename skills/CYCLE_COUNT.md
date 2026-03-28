@@ -1,6 +1,6 @@
 # Cycle Count
 
-**Current Cycle**: 9
+**Current Cycle**: 10
 
 ## History
 - Cycle 1: LLM Dock Widget (Qt/C++) - COMPLETED
@@ -11,4 +11,5 @@
 - Cycle 6: Conversation History and Context Management - COMPLETED
 - Cycle 7: Parametric Feature Editing Tools - COMPLETED
 - Cycle 8: Sketcher Constraint Tools - COMPLETED
-- Cycle 9: In Progress
+- Cycle 9: PartDesign Feature Tools - COMPLETED
+- Cycle 10: Boolean Operation Tools - COMPLETED
