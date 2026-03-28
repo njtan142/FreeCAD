@@ -8,6 +8,15 @@
 import { tool } from '@anthropic-ai/claude-agent-sdk';
 import { z } from 'zod';
 import { FreeCADBridge } from './freecad-bridge';
+import {
+  formatQueryResult,
+  formatDocumentOverview,
+  formatObjectList,
+  formatObjectProperties,
+  formatSelection,
+  formatDependencies,
+  formatDocumentInfo,
+} from './result-formatters';
 
 /**
  * Creates custom tools for the Claude Agent SDK
@@ -17,6 +26,10 @@ export function createAgentTools(freeCADBridge: FreeCADBridge) {
     createExecuteFreeCADPythonTool(freeCADBridge),
     createQueryModelStateTool(freeCADBridge),
     createExportModelTool(freeCADBridge),
+    createListObjectsTool(freeCADBridge),
+    createGetObjectPropertiesTool(freeCADBridge),
+    createGetSelectionTool(freeCADBridge),
+    createGetDocumentInfoTool(freeCADBridge),
   ];
 }
 
@@ -106,71 +119,126 @@ Always use this tool when you need to:
 /**
  * Tool: query_model_state
  *
- * Queries the current state of the FreeCAD model.
+ * Queries the current state of the FreeCAD model with specific intent.
  */
 function createQueryModelStateTool(freeCADBridge: FreeCADBridge) {
   return tool(
     'query_model_state',
-    `Query the current state of the FreeCAD model.
+    `Query the current state of the FreeCAD model with a specific intent.
 
-Returns information about:
-- Active document name
-- List of all objects in the document
-- Object types and properties
-- Current view settings
+Parameters:
+- intent (required): Type of query - "document_overview", "object_details", "selection", or "dependencies"
+- objectName (optional): Name of specific object for object_details or dependencies queries
 
-Use this tool when you need to understand what exists in the current model before making modifications.`,
+Returns structured JSON with:
+- Document overview: All objects with names, types, visibility
+- Object details: Placement, dimensions, color, properties
+- Selection: Currently selected objects in viewport
+- Dependencies: Parent-child relationships between objects
+
+Use this tool when you need structured information about the model state before making modifications.`,
     {
-      query: z
-        .enum(['objects', 'document', 'view'])
-        .describe('Specific query type: "objects", "document", or "view"'),
+      intent: z
+        .enum(['document_overview', 'object_details', 'selection', 'dependencies'])
+        .describe('Type of query to perform'),
+      objectName: z
+        .string()
+        .optional()
+        .describe('Object name for object_details or dependencies queries'),
     },
     async (input) => {
-      const query = input.query;
+      const intent = input.intent;
+      const objectName = input.objectName;
 
       let code: string;
-      switch (query) {
-        case 'objects':
+      switch (intent) {
+        case 'document_overview':
           code = `
+from llm_bridge.query_handlers import handle_document_overview
 import json
-objects = []
-for obj in FreeCAD.ActiveDocument.Objects:
-    objects.append({
-        'Name': obj.Name,
-        'Label': obj.Label,
-        'Type': obj.TypeId,
-        'Placement': str(obj.Placement) if hasattr(obj, 'Placement') else None
-    })
-print(json.dumps(objects, indent=2))
+result = handle_document_overview()
+print(json.dumps(result))
 `.trim();
           break;
-        case 'document':
+        case 'object_details':
+          if (!objectName) {
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: 'Error: objectName is required for object_details query',
+                },
+              ],
+            };
+          }
           code = `
-print(f"Document: {FreeCAD.ActiveDocument.Name}")
-print(f"Label: {FreeCAD.ActiveDocument.Label}")
-print(f"Objects: {len(FreeCAD.ActiveDocument.Objects)}")
+from llm_bridge.query_handlers import handle_object_details
+import json
+result = handle_object_details(r"${objectName.replace(/"/g, '\\"')}")
+print(json.dumps(result))
 `.trim();
           break;
-        case 'view':
+        case 'selection':
           code = `
-import FreeCADGui as Gui
-view = Gui.ActiveDocument.ActiveView
-print(f"View mode: {view.viewMode()}")
-print(f"Camera type: {view.getCameraNode().getTypeId().Name if hasattr(view, 'getCameraNode') else 'Unknown'}")
+from llm_bridge.query_handlers import handle_selection
+import json
+result = handle_selection()
+print(json.dumps(result))
+`.trim();
+          break;
+        case 'dependencies':
+          if (!objectName) {
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: 'Error: objectName is required for dependencies query',
+                },
+              ],
+            };
+          }
+          code = `
+from llm_bridge.query_handlers import handle_dependencies
+import json
+result = handle_dependencies(r"${objectName.replace(/"/g, '\\"')}")
+print(json.dumps(result))
 `.trim();
           break;
       }
 
       try {
         const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        
+        // Format based on intent
+        let formatted: string;
+        if (!parsed.success) {
+          formatted = `Error: ${parsed.error}`;
+        } else {
+          switch (intent) {
+            case 'document_overview':
+              formatted = formatDocumentOverview(parsed.data);
+              break;
+            case 'object_details':
+              formatted = formatObjectProperties(parsed.data);
+              break;
+            case 'selection':
+              formatted = formatSelection(parsed.data);
+              break;
+            case 'dependencies':
+              formatted = formatDependencies(parsed.data);
+              break;
+          }
+        }
+        
         return {
           content: [
             {
               type: 'text',
-              text: result.output || 'Query completed (no output)',
+              text: formatted,
             },
-          ];
-        }
+          ],
+        };
       } catch (error) {
         return {
           content: [
@@ -303,6 +371,224 @@ print(f"Saved to {filePath}")
             {
               type: 'text',
               text: `Export failed: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ];
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: list_objects
+ *
+ * Lists all objects in the active FreeCAD document.
+ */
+function createListObjectsTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'list_objects',
+    `List all objects in the active FreeCAD document.
+
+Returns:
+- Array of objects with name, label, type, and visibility
+- Total object count
+
+Use this tool when you need to see what objects exist in the current document before performing operations on them.`,
+    {
+      // No parameters needed
+    },
+    async () => {
+      const code = `
+from llm_bridge.query_handlers import handle_list_objects
+import json
+result = handle_list_objects()
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatObjectList(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: get_object_properties
+ *
+ * Gets detailed properties of a specific object.
+ */
+function createGetObjectPropertiesTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'get_object_properties',
+    `Get detailed properties of a specific object in the FreeCAD document.
+
+Parameters:
+- objectName (required): Name of the object to query
+
+Returns:
+- Object type and label
+- Placement (position and rotation)
+- Dimensions (bounding box, volume, area)
+- Color
+- Other shape-specific properties (radius, length, etc.)
+
+Use this tool when you need to know the exact properties of an object before modifying it or creating related geometry.`,
+    {
+      objectName: z.string().describe('Name of the object to query'),
+    },
+    async (input) => {
+      const objectName = input.objectName;
+
+      const code = `
+from llm_bridge.query_handlers import handle_get_object_properties
+import json
+result = handle_get_object_properties(r"${objectName.replace(/"/g, '\\"')}")
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatObjectProperties(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: get_selection
+ *
+ * Gets currently selected objects in the viewport.
+ */
+function createGetSelectionTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'get_selection',
+    `Get the currently selected objects in the FreeCAD viewport.
+
+Returns:
+- Array of selected objects with name, label, and type
+- Selection count
+
+Use this tool when you need to know what the user has selected, or when performing operations on the current selection.`,
+    {
+      // No parameters needed
+    },
+    async () => {
+      const code = `
+from llm_bridge.query_handlers import handle_selection
+import json
+result = handle_selection()
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatSelection(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: get_document_info
+ *
+ * Gets document metadata.
+ */
+function createGetDocumentInfoTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'get_document_info',
+    `Get metadata about the active FreeCAD document.
+
+Returns:
+- Document name and label
+- Object count
+- Modified status
+- File path (if saved)
+
+Use this tool when you need to understand the current document context, check if changes have been saved, or get the document's file path.`,
+    {
+      // No parameters needed
+    },
+    async () => {
+      const code = `
+from llm_bridge.query_handlers import handle_get_document_info
+import json
+result = handle_get_document_info()
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatDocumentInfo(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
             },
           ],
         };
