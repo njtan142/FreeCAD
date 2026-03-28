@@ -3375,6 +3375,1079 @@ Result: Plates at right angles forming a corner
 
 ---
 
+### Draft Workbench Tools
+
+The Draft workbench tools allow you to create and modify 2D geometry, dimensions, and annotations. Draft objects are the foundation for technical drawings, 2D layouts, and can be used to create 3D features via extrusion or revolution.
+
+**Draft Workbench Overview:**
+
+- **Geometry Creation** - Points, lines, circles, arcs, ellipses, rectangles, polygons, BSplines, Bezier curves
+- **Dimensions** - Linear, radial, and angular dimensions that link to geometry parametrically
+- **Annotations** - Text labels for documentation and callouts
+- **Modifications** - Move, rotate, scale, offset, join, and split operations
+- **Working Plane** - The XY, XZ, or YZ plane determines where geometry is created
+
+---
+
+#### Geometry Creation Tools
+
+##### `create_point(x: number, y: number, z?: number, name?: string)`
+
+Create a point in 3D space.
+
+**Parameters:**
+- `x` (required): X coordinate in mm
+- `y` (required): Y coordinate in mm
+- `z` (optional): Z coordinate in mm (default: 0)
+- `name` (optional): Name for the point object
+
+**Response format:**
+```json
+{
+  "success": true,
+  "objectName": "Point",
+  "objectType": "Point",
+  "coordinates": {"x": 10, "y": 20, "z": 0},
+  "message": "Created Point 'Point' at (10, 20, 0)"
+}
+```
+
+**Example usage:**
+```typescript
+// Create a point at origin
+{
+  name: "create_point",
+  arguments: { x: 0, y: 0, z: 0 }
+}
+
+// Create a point at (100, 50)
+{
+  name: "create_point",
+  arguments: { x: 100, y: 50 }
+}
+
+// Create a named point
+{
+  name: "create_point",
+  arguments: { x: 25, y: 75, z: 10, name: "PointA" }
+}
+```
+
+**Natural language examples:**
+- "Create a point at (0, 0, 0)"
+- "Add a point at the origin"
+- "Create a point named PointA at (100, 50)"
+
+---
+
+##### `create_line(startX: number, startY: number, startZ: number, endX: number, endY: number, endZ: number, name?: string)`
+
+Create a line segment between two points.
+
+**Parameters:**
+- `startX`, `startY`, `startZ` (required): Start point coordinates in mm
+- `endX`, `endY`, `endZ` (required): End point coordinates in mm
+- `name` (optional): Name for the line object
+
+**Response format:**
+```json
+{
+  "success": true,
+  "objectName": "Line",
+  "objectType": "Line",
+  "startPoint": {"x": 0, "y": 0, "z": 0},
+  "endPoint": {"x": 100, "y": 50, "z": 0},
+  "message": "Created Line 'Line' from (0, 0, 0) to (100, 50, 0)"
+}
+```
+
+**Example usage:**
+```typescript
+// Create a horizontal line
+{
+  name: "create_line",
+  arguments: { startX: 0, startY: 0, startZ: 0, endX: 100, endY: 0, endZ: 0 }
+}
+
+// Create a diagonal line
+{
+  name: "create_line",
+  arguments: { startX: 0, startY: 0, startZ: 0, endX: 50, endY: 80, endZ: 0, name: "Diagonal" }
+}
+```
+
+**Natural language examples:**
+- "Draw a line from (0,0) to (100,0)"
+- "Create a line from point A to point B"
+- "Add a diagonal line from origin to (50, 80)"
+
+---
+
+##### `create_circle(centerX: number, centerY: number, centerZ: number, radius: number | string, name?: string)`
+
+Create a circle with a given center and radius.
+
+**Parameters:**
+- `centerX`, `centerY`, `centerZ` (required): Center point coordinates in mm
+- `radius` (required): Circle radius. Can be numeric (mm) or string with units ("10mm")
+- `name` (optional): Name for the circle object
+
+**Response format:**
+```json
+{
+  "success": true,
+  "objectName": "Circle",
+  "objectType": "Circle",
+  "center": {"x": 50, "y": 50, "z": 0},
+  "radius": "10.00mm",
+  "message": "Created Circle 'Circle' at (50, 50, 0) with 10.00mm radius"
+}
+```
+
+**Example usage:**
+```typescript
+// Create a 10mm radius circle at origin
+{
+  name: "create_circle",
+  arguments: { centerX: 0, centerY: 0, centerZ: 0, radius: 10 }
+}
+
+// Create a circle with units
+{
+  name: "create_circle",
+  arguments: { centerX: 50, centerY: 50, centerZ: 0, radius: "25mm", name: "Hole" }
+}
+```
+
+**Natural language examples:**
+- "Create a 10mm radius circle at (50, 50)"
+- "Draw a circle with 25mm radius"
+- "Add a circle named Hole at the origin with 5mm radius"
+
+---
+
+##### `create_arc(centerX: number, centerY: number, centerZ: number, radius: number | string, startAngle: number, endAngle: number, name?: string)`
+
+Create a circular arc.
+
+**Parameters:**
+- `centerX`, `centerY`, `centerZ` (required): Center point coordinates in mm
+- `radius` (required): Arc radius. Can be numeric or string with units
+- `startAngle` (required): Start angle in degrees
+- `endAngle` (required): End angle in degrees
+- `name` (optional): Name for the arc object
+
+**Response format:**
+```json
+{
+  "success": true,
+  "objectName": "Arc",
+  "objectType": "Arc",
+  "center": {"x": 0, "y": 0, "z": 0},
+  "radius": "10.00mm",
+  "startAngle": "0.00deg",
+  "endAngle": "90.00deg",
+  "message": "Created Arc 'Arc' from 0.00deg to 90.00deg with 10.00mm radius"
+}
+```
+
+**Example usage:**
+```typescript
+// Create a 90 degree arc
+{
+  name: "create_arc",
+  arguments: { centerX: 0, centerY: 0, centerZ: 0, radius: 50, startAngle: 0, endAngle: 90 }
+}
+
+// Create a semicircle arc
+{
+  name: "create_arc",
+  arguments: { centerX: 0, centerY: 0, centerZ: 0, radius: "20mm", startAngle: 0, endAngle: 180, name: "SemiCircle" }
+}
+```
+
+**Natural language examples:**
+- "Create a 90 degree arc starting at 0"
+- "Draw an arc from 0 to 180 degrees"
+- "Add a semicircle arc with 20mm radius"
+
+---
+
+##### `create_ellipse(centerX: number, centerY: number, centerZ: number, majorRadius: number | string, minorRadius: number | string, name?: string)`
+
+Create an ellipse.
+
+**Parameters:**
+- `centerX`, `centerY`, `centerZ` (required): Center point coordinates in mm
+- `majorRadius` (required): Major (long) axis radius. Can be numeric or string with units
+- `minorRadius` (required): Minor (short) axis radius. Can be numeric or string with units
+- `name` (optional): Name for the ellipse object
+
+**Response format:**
+```json
+{
+  "success": true,
+  "objectName": "Ellipse",
+  "objectType": "Ellipse",
+  "center": {"x": 0, "y": 0, "z": 0},
+  "majorRadius": "50.00mm",
+  "minorRadius": "30.00mm",
+  "message": "Created Ellipse 'Ellipse' at (0, 0, 0) with major 50.00mm, minor 30.00mm"
+}
+```
+
+**Example usage:**
+```typescript
+// Create an ellipse with 50mm major and 30mm minor radius
+{
+  name: "create_ellipse",
+  arguments: { centerX: 0, centerY: 0, centerZ: 0, majorRadius: 50, minorRadius: 30 }
+}
+
+// Create a named ellipse
+{
+  name: "create_ellipse",
+  arguments: { centerX: 100, centerY: 100, centerZ: 0, majorRadius: "40mm", minorRadius: "25mm", name: "EllipseA" }
+}
+```
+
+**Natural language examples:**
+- "Create an ellipse with 50mm and 30mm axes"
+- "Draw an ellipse at the origin with 40mm major and 25mm minor"
+- "Add an ellipse with major radius 60mm and minor radius 35mm"
+
+---
+
+##### `create_rectangle(width: number | string, height: number | string, name?: string)`
+
+Create a rectangle.
+
+**Parameters:**
+- `width` (required): Rectangle width. Can be numeric or string with units
+- `height` (required): Rectangle height. Can be numeric or string with units
+- `name` (optional): Name for the rectangle object
+
+**Response format:**
+```json
+{
+  "success": true,
+  "objectName": "Rectangle",
+  "objectType": "Rectangle",
+  "width": "100.00mm",
+  "height": "50.00mm",
+  "message": "Created Rectangle 'Rectangle' with 100.00mm x 50.00mm"
+}
+```
+
+**Example usage:**
+```typescript
+// Create a 100mm by 50mm rectangle
+{
+  name: "create_rectangle",
+  arguments: { width: 100, height: 50 }
+}
+
+// Create a rectangle with units
+{
+  name: "create_rectangle",
+  arguments: { width: "80mm", height: "40mm", name: "Plate" }
+}
+```
+
+**Natural language examples:**
+- "Create a 100mm by 50mm rectangle"
+- "Draw a rectangle 80mm wide and 40mm tall"
+- "Add a rectangle named Plate with dimensions 120mm by 60mm"
+
+---
+
+##### `create_polygon(sides: number, radius: number | string, name?: string)`
+
+Create a regular polygon.
+
+**Parameters:**
+- `sides` (required): Number of sides (3-12 for triangle to dodecagon)
+- `radius` (required): Radius from center to vertices. Can be numeric or string with units
+- `name` (optional): Name for the polygon object
+
+**Response format:**
+```json
+{
+  "success": true,
+  "objectName": "Polygon",
+  "objectType": "Polygon",
+  "sides": 6,
+  "radius": "20.00mm",
+  "message": "Created Polygon 'Polygon' with 6 sides and 20.00mm radius"
+}
+```
+
+**Example usage:**
+```typescript
+// Create a hexagon with 20mm radius
+{
+  name: "create_polygon",
+  arguments: { sides: 6, radius: 20 }
+}
+
+// Create an octagon
+{
+  name: "create_polygon",
+  arguments: { sides: 8, radius: "15mm", name: "OctagonPart" }
+}
+```
+
+**Natural language examples:**
+- "Create a hexagon with 20mm radius"
+- "Draw an octagon"
+- "Add a pentagon (5 sides) with 25mm radius"
+
+---
+
+##### `create_bspline(points: Array<{x: number, y: number, z?: number}>, name?: string)`
+
+Create a B-spline curve through specified points.
+
+**Parameters:**
+- `points` (required): Array of 3D points [{x, y, z}, ...] - minimum 2 points
+- `name` (optional): Name for the BSpline object
+
+**Response format:**
+```json
+{
+  "success": true,
+  "objectName": "BSpline",
+  "objectType": "BSpline",
+  "pointCount": 3,
+  "message": "Created BSpline 'BSpline' through 3 points"
+}
+```
+
+**Example usage:**
+```typescript
+// Create a B-spline through three points
+{
+  name: "create_bspline",
+  arguments: {
+    points: [
+      {x: 0, y: 0, z: 0},
+      {x: 50, y: 80, z: 0},
+      {x: 100, y: 0, z: 0}
+    ]
+  }
+}
+
+// Create a named B-spline
+{
+  name: "create_bspline",
+  arguments: {
+    points: [
+      {x: 0, y: 0},
+      {x: 25, y: 50},
+      {x: 50, y: 25},
+      {x: 75, y: 75},
+      {x: 100, y: 50}
+    ],
+    name: "CurveA"
+  }
+}
+```
+
+**Natural language examples:**
+- "Create a B-spline through these points"
+- "Draw a smooth curve through (0,0), (50,80), (100,0)"
+- "Add a B-spline named CurveA through five control points"
+
+---
+
+##### `create_bezier(points: Array<{x: number, y: number, z?: number}>, name?: string)`
+
+Create a Bezier curve through control points.
+
+**Parameters:**
+- `points` (required): Array of 3D control points [{x, y, z}, ...] - minimum 2 points
+- `name` (optional): Name for the Bezier object
+
+**Response format:**
+```json
+{
+  "success": true,
+  "objectName": "Bezier",
+  "objectType": "BezierCurve",
+  "pointCount": 4,
+  "message": "Created BezierCurve 'Bezier' with 4 control points"
+}
+```
+
+**Example usage:**
+```typescript
+// Create a Bezier curve with 4 control points
+{
+  name: "create_bezier",
+  arguments: {
+    points: [
+      {x: 0, y: 0, z: 0},
+      {x: 20, y: 100, z: 0},
+      {x: 80, y: 100, z: 0},
+      {x: 100, y: 0, z: 0}
+    ]
+  }
+}
+
+// Create a named Bezier
+{
+  name: "create_bezier",
+  arguments: {
+    points: [{x: 0, y: 0}, {x: 30, y: 60}, {x: 70, y: 40}, {x: 100, y: 80}],
+    name: "BezierCurve"
+  }
+}
+```
+
+**Natural language examples:**
+- "Create a Bezier curve"
+- "Draw a smooth curve through these control points"
+- "Add a Bezier curve named Curve1 with four points"
+
+---
+
+#### Dimension and Annotation Tools
+
+##### `create_linear_dimension(startX: number, startY: number, startZ: number, endX: number, endY: number, endZ: number, offset?: number | string, name?: string)`
+
+Create a linear dimension between two points.
+
+**Parameters:**
+- `startX`, `startY`, `startZ` (required): Start point coordinates in mm
+- `endX`, `endY`, `endZ` (required): End point coordinates in mm
+- `offset` (optional): Offset distance from the measured line. Can be numeric or string with units
+- `name` (optional): Name for the dimension object
+
+**Response format:**
+```json
+{
+  "success": true,
+  "objectName": "Dimension",
+  "objectType": "LinearDimension",
+  "measurement": "100.00mm",
+  "startPoint": {"x": 0, "y": 0, "z": 0},
+  "endPoint": {"x": 100, "y": 0, "z": 0},
+  "offset": "5.00mm",
+  "message": "Created LinearDimension 'Dimension': 100.00mm"
+}
+```
+
+**Example usage:**
+```typescript
+// Create a 100mm dimension
+{
+  name: "create_linear_dimension",
+  arguments: { startX: 0, startY: 0, startZ: 0, endX: 100, endY: 0, endZ: 0 }
+}
+
+// Create a dimension with offset
+{
+  name: "create_linear_dimension",
+  arguments: { startX: 0, startY: 0, startZ: 0, endX: 50, endY: 0, endZ: 0, offset: 10, name: "WidthDim" }
+}
+```
+
+**Natural language examples:**
+- "Add a dimension from (0,0,0) to (100,0,0)"
+- "Dimension this edge"
+- "Add a 50mm dimension with 5mm offset"
+
+---
+
+##### `create_radial_dimension(objectName: string, name?: string)`
+
+Create a radial dimension (radius) for a circle or arc.
+
+**Parameters:**
+- `objectName` (required): Name of the circle or arc object to dimension
+- `name` (optional): Name for the dimension object
+
+**Response format:**
+```json
+{
+  "success": true,
+  "objectName": "Dimension",
+  "objectType": "RadiusDimension",
+  "targetObject": "Circle",
+  "measurement": "10.00mm",
+  "message": "Created RadiusDimension 'Dimension' for 'Circle': 10.00mm"
+}
+```
+
+**Example usage:**
+```typescript
+// Add radius dimension to a circle
+{
+  name: "create_radial_dimension",
+  arguments: { objectName: "Circle" }
+}
+
+// Add named radius dimension
+{
+  name: "create_radial_dimension",
+  arguments: { objectName: "Hole", name: "HoleRadiusDim" }
+}
+```
+
+**Natural language examples:**
+- "Add a radius dimension to this circle"
+- "Dimension the arc"
+- "Show the radius of Circle as a dimension"
+
+---
+
+##### `create_angular_dimension(objectName1: string, objectName2: string, name?: string)`
+
+Create an angular dimension between two lines.
+
+**Parameters:**
+- `objectName1` (required): Name of first line object
+- `objectName2` (required): Name of second line object
+- `name` (optional): Name for the dimension object
+
+**Response format:**
+```json
+{
+  "success": true,
+  "objectName": "Dimension",
+  "objectType": "AngularDimension",
+  "line1": "Line1",
+  "line2": "Line2",
+  "measurement": "45.00deg",
+  "message": "Created AngularDimension 'Dimension' between 'Line1' and 'Line2': 45.00deg"
+}
+```
+
+**Example usage:**
+```typescript
+// Create angular dimension between two lines
+{
+  name: "create_angular_dimension",
+  arguments: { objectName1: "Line1", objectName2: "Line2" }
+}
+
+// Create named angular dimension
+{
+  name: "create_angular_dimension",
+  arguments: { objectName1: "EdgeA", objectName2: "EdgeB", name: "AngleDim" }
+}
+```
+
+**Natural language examples:**
+- "Add an angle dimension between these lines"
+- "Show the angle between Line1 and Line2"
+- "Create an angular dimension for the corner"
+
+---
+
+##### `create_text(text: string, x: number, y: number, z?: number, name?: string)`
+
+Create a text annotation at a specified position.
+
+**Parameters:**
+- `text` (required): Text content to display
+- `x`, `y`, `z` (required): Position coordinates in mm (z defaults to 0)
+- `name` (optional): Name for the text object
+
+**Response format:**
+```json
+{
+  "success": true,
+  "objectName": "Text",
+  "objectType": "Text",
+  "text": "DANGER",
+  "position": {"x": 100, "y": 100, "z": 0},
+  "message": "Created Text 'Text' at (100, 100, 0): 'DANGER'"
+}
+```
+
+**Example usage:**
+```typescript
+// Create a warning text
+{
+  name: "create_text",
+  arguments: { text: "DANGER", x: 100, y: 100, z: 0 }
+}
+
+// Create a label
+{
+  name: "create_text",
+  arguments: { text: "MAX 50mm", x: 50, y: 50, z: 0, name: "MaxLabel" }
+}
+
+// Create multiline text
+{
+  name: "create_text",
+  arguments: { text: "Part A\nRevision 1", x: 0, y: 0, z: 0, name: "TitleBlock" }
+}
+```
+
+**Natural language examples:**
+- "Add text 'DANGER' at (100, 100)"
+- "Create a label 'MAX 50mm' at the center"
+- "Add title block text at the origin"
+
+---
+
+#### Modification Tools
+
+##### `move_object(objectNames: string[], deltaX: number, deltaY: number, deltaZ: number)`
+
+Move one or more objects by a translation vector.
+
+**Parameters:**
+- `objectNames` (required): Array of object names to move
+- `deltaX`, `deltaY`, `deltaZ` (required): Translation vector components in mm
+
+**Response format:**
+```json
+{
+  "success": true,
+  "objectNames": ["Circle", "Rectangle"],
+  "delta": {"x": 10, "y": 20, "z": 0},
+  "message": "Moved 2 objects by (10, 20, 0)"
+}
+```
+
+**Example usage:**
+```typescript
+// Move a single object
+{
+  name: "move_object",
+  arguments: { objectNames: ["Circle"], deltaX: 50, deltaY: 0, deltaZ: 0 }
+}
+
+// Move multiple objects
+{
+  name: "move_object",
+  arguments: { objectNames: ["Box", "Cylinder"], deltaX: 10, deltaY: 10, deltaZ: 5 }
+}
+```
+
+**Natural language examples:**
+- "Move this 10mm to the right"
+- "Move the circle 50mm in the X direction"
+- "Translate these objects by (10, 20, 0)"
+
+---
+
+##### `rotate_object(objectNames: string[], angle: number | string, centerX?: number, centerY?: number, centerZ?: number)`
+
+Rotate one or more objects around a center point.
+
+**Parameters:**
+- `objectNames` (required): Array of object names to rotate
+- `angle` (required): Rotation angle. Can be numeric (radians) or string with units ("45deg")
+- `centerX`, `centerY`, `centerZ` (optional): Center of rotation coordinates (default: object's current position)
+
+**Response format:**
+```json
+{
+  "success": true,
+  "objectNames": ["Rectangle"],
+  "angle": "45.00deg",
+  "center": {"x": 0, "y": 0, "z": 0},
+  "message": "Rotated 'Rectangle' by 45.00deg around (0, 0, 0)"
+}
+```
+
+**Example usage:**
+```typescript
+// Rotate 45 degrees around origin
+{
+  name: "rotate_object",
+  arguments: { objectNames: ["Rectangle"], angle: "45deg", centerX: 0, centerY: 0, centerZ: 0 }
+}
+
+// Rotate 90 degrees
+{
+  name: "rotate_object",
+  arguments: { objectNames: ["Circle"], angle: 1.5708 }  // radians
+}
+
+// Rotate multiple objects
+{
+  name: "rotate_object",
+  arguments: { objectNames: ["Line1", "Line2"], angle: "90deg", centerX: 0, centerY: 0, centerZ: 0 }
+}
+```
+
+**Natural language examples:**
+- "Rotate 45 degrees"
+- "Rotate around (0, 0, 0)"
+- "Rotate the rectangle 90 degrees around its center"
+
+---
+
+##### `scale_object(objectNames: string[], scale: number | string, centerX?: number, centerY?: number, centerZ?: number)`
+
+Scale one or more objects uniformly from a center point.
+
+**Parameters:**
+- `objectNames` (required): Array of object names to scale
+- `scale` (required): Scale factor (e.g., 2.0 for 2x size, 0.5 for half size)
+- `centerX`, `centerY`, `centerZ` (optional): Center of scaling coordinates (default: object's current position)
+
+**Response format:**
+```json
+{
+  "success": true,
+  "objectNames": ["Rectangle"],
+  "scaleFactor": 2,
+  "center": {"x": 0, "y": 0, "z": 0},
+  "message": "Scaled 'Rectangle' by factor 2 around (0, 0, 0)"
+}
+```
+
+**Example usage:**
+```typescript
+// Scale by 2x
+{
+  name: "scale_object",
+  arguments: { objectNames: ["Circle"], scale: 2 }
+}
+
+// Scale to half size around specific center
+{
+  name: "scale_object",
+  arguments: { objectNames: ["Rectangle"], scale: 0.5, centerX: 0, centerY: 0, centerZ: 0 }
+}
+```
+
+**Natural language examples:**
+- "Scale by 2"
+- "Make this twice as big"
+- "Scale the rectangle to half size"
+
+---
+
+##### `offset_object(objectName: string, distance: number | string)`
+
+Create an offset copy of a draft object at a specified distance.
+
+**Parameters:**
+- `objectName` (required): Name of the object to offset
+- `distance` (required): Offset distance. Can be numeric or string with units (positive = outward/right, negative = inward/left)
+
+**Response format:**
+```json
+{
+  "success": true,
+  "originalName": "Line",
+  "newObjectName": "Line_Offset",
+  "distance": "10.00mm",
+  "message": "Created offset of 'Line' by 10.00mm"
+}
+```
+
+**Example usage:**
+```typescript
+// Offset a line by 10mm
+{
+  name: "offset_object",
+  arguments: { objectName: "Line", distance: 10 }
+}
+
+// Offset with units
+{
+  name: "offset_object",
+  arguments: { objectName: "Rectangle", distance: "5mm" }
+}
+```
+
+**Natural language examples:**
+- "Offset this by 5mm"
+- "Create a parallel line 10mm away"
+- "Offset the rectangle inward by 3mm"
+
+---
+
+##### `join_objects(objectNames: string[])`
+
+Join multiple draft objects into a single polyline or compound.
+
+**Parameters:**
+- `objectNames` (required): Array of object names to join (lines, arcs, etc.)
+
+**Response format:**
+```json
+{
+  "success": true,
+  "originalNames": ["Line1", "Line2", "Arc1"],
+  "newObjectName": "Polyline",
+  "objectType": "Polyline",
+  "message": "Joined 3 objects into 'Polyline'"
+}
+```
+
+**Example usage:**
+```typescript
+// Join two lines
+{
+  name: "join_objects",
+  arguments: { objectNames: ["Line1", "Line2"] }
+}
+
+// Join multiple objects
+{
+  name: "join_objects",
+  arguments: { objectNames: ["Line1", "Line2", "Arc1", "Line3"] }
+}
+```
+
+**Natural language examples:**
+- "Join these lines"
+- "Merge these shapes into one"
+- "Connect the line and arc into a polyline"
+
+---
+
+##### `split_object(objectName: string, points: Array<{x: number, y: number, z?: number}>)`
+
+Split a draft object at specified points.
+
+**Parameters:**
+- `objectName` (required): Name of the object to split
+- `points` (required): Array of 3D points [{x, y, z}, ...] where splits occur
+
+**Response format:**
+```json
+{
+  "success": true,
+  "originalName": "Line",
+  "newObjectNames": ["Line001", "Line002", "Line003"],
+  "splitCount": 2,
+  "message": "Split 'Line' into 3 objects at 2 points"
+}
+```
+
+**Example usage:**
+```typescript
+// Split a line at one point
+{
+  name: "split_object",
+  arguments: { objectName: "Line", points: [{x: 50, y: 0, z: 0}] }
+}
+
+// Split at multiple points
+{
+  name: "split_object",
+  arguments: { objectName: "Polyline", points: [{x: 25, y: 0, z: 0}, {x: 75, y: 0, z: 0}] }
+}
+```
+
+**Natural language examples:**
+- "Split this line at this point"
+- "Break this into two pieces"
+- "Divide the polyline at the midpoint"
+
+---
+
+#### Draft Query Tools
+
+##### `list_draft_objects()`
+
+List all Draft objects in the current document.
+
+**Parameters:** None
+
+**Response format:**
+```json
+{
+  "success": true,
+  "objects": [
+    { "name": "Point", "type": "Point", "layer": null, "visible": true },
+    { "name": "Line", "type": "Line", "layer": null, "visible": true },
+    { "name": "Circle", "type": "Circle", "layer": null, "visible": true }
+  ],
+  "objectCount": 3,
+  "message": "Found 3 draft object(s)"
+}
+```
+
+**Example usage:**
+```typescript
+{
+  name: "list_draft_objects",
+  arguments: {}
+}
+```
+
+**Natural language examples:**
+- "Show all draft objects"
+- "What geometry have I created?"
+- "List all Draft workbench objects"
+
+---
+
+##### `get_working_plane()`
+
+Get the current Draft working plane configuration.
+
+**Parameters:** None
+
+**Response format:**
+```json
+{
+  "success": true,
+  "plane": "XY",
+  "position": {"x": 0, "y": 0, "z": 0},
+  "normal": {"x": 0, "y": 0, "z": 1},
+  "offset": 0,
+  "message": "Working plane is XY at offset 0"
+}
+```
+
+**Example usage:**
+```typescript
+{
+  name: "get_working_plane",
+  arguments: {}
+}
+```
+
+**Natural language examples:**
+- "What's the current working plane?"
+- "Show me the current Draft plane"
+- "What plane am I working on?"
+
+---
+
+##### `set_working_plane(plane: "XY" | "XZ" | "YZ", offset?: number | string)`
+
+Set the Draft working plane.
+
+**Parameters:**
+- `plane` (required): Plane identifier - "XY" (horizontal), "XZ" (vertical front/back), "YZ" (vertical side)
+- `offset` (optional): Offset distance from the plane. Can be numeric or string with units
+
+**Response format:**
+```json
+{
+  "success": true,
+  "plane": "XZ",
+  "offset": "5.00mm",
+  "message": "Working plane set to XZ at offset 5.00mm"
+}
+```
+
+**Example usage:**
+```typescript
+// Set to XY plane (horizontal)
+{
+  name: "set_working_plane",
+  arguments: { plane: "XY" }
+}
+
+// Set to XZ plane with offset
+{
+  name: "set_working_plane",
+  arguments: { plane: "XZ", offset: 10 }
+}
+
+// Set to YZ plane
+{
+  name: "set_working_plane",
+  arguments: { plane: "YZ" }
+}
+```
+
+**Natural language examples:**
+- "Set working plane to XZ"
+- "Switch to XY plane"
+- "Set working plane to XY with 5mm offset"
+
+---
+
+#### Geometry Types Reference
+
+| Type | Description | Parameters | Natural Language Example |
+|------|-------------|------------|-------------------------|
+| `Point` | Single point in 3D space | x, y, z | "Create a point at (10, 20)" |
+| `Line` | Straight line segment | startX, startY, startZ, endX, endY, endZ | "Draw a line from (0,0) to (100,0)" |
+| `Circle` | Full circle | centerX, centerY, centerZ, radius | "Create a 10mm radius circle at origin" |
+| `Arc` | Circular arc | centerX, centerY, centerZ, radius, startAngle, endAngle | "Create a 90 degree arc" |
+| `Ellipse` | Ellipse | centerX, centerY, centerZ, majorRadius, minorRadius | "Create an ellipse 50mm by 30mm" |
+| `Rectangle` | Rectangle | width, height | "Create a 100mm by 50mm rectangle" |
+| `Polygon` | Regular polygon (3-12 sides) | sides, radius | "Create a hexagon with 20mm radius" |
+| `BSpline` | B-spline curve | points array | "Create a B-spline through these points" |
+| `BezierCurve` | Bezier curve | points array | "Create a Bezier curve" |
+
+---
+
+#### Dimension Types Reference
+
+| Type | Description | Parameters | Natural Language Example |
+|------|-------------|------------|-------------------------|
+| `LinearDimension` | Distance between two points | startX, startY, startZ, endX, endY, endZ | "Add a dimension from A to B" |
+| `RadiusDimension` | Radius of circle/arc | objectName | "Add radius dimension to this circle" |
+| `AngularDimension` | Angle between two lines | objectName1, objectName2 | "Show angle between these lines" |
+| `Text` | Text annotation | text, x, y, z | "Add text 'DANGER' at (100,100)" |
+
+---
+
+#### Common Drafting Workflows
+
+**Workflow 1: Simple 2D Drawing**
+
+```
+1. Set working plane: set_working_plane({ plane: "XY" })
+2. Create geometry: create_rectangle({ width: 100, height: 50 })
+3. Add dimensions: create_linear_dimension({ startX: 0, startY: 0, startZ: 0, endX: 100, endY: 0, endZ: 0 })
+4. Add text labels: create_text({ text: "Front View", x: 50, y: -10 })
+```
+
+**Workflow 2: Technical Drawing with Multiple Views**
+
+```
+1. Set working plane to XY (top view)
+2. Create main rectangle for front view
+3. Create linear dimensions for width and height
+4. Set working plane to XZ (side view)
+5. Create geometry aligned to side view
+6. Add dimensions for depth
+7. Set working plane to YZ (front view)  
+8. Add text annotations for labels
+```
+
+**Workflow 3: Parametric Dimensioned Drawing**
+
+```
+1. Create baseline geometry (lines, circles)
+2. Add radial dimensions to circles: create_radial_dimension({ objectName: "Circle" })
+3. Add linear dimensions: create_linear_dimension({ startX: 0, startY: 0, endX: 100, endY: 0 })
+4. Modify geometry with move_object or rotate_object
+5. Dimensions update parametrically
+```
+
+**Workflow 4: Complex Curve Creation**
+
+```
+1. Define control points for B-spline: create_bspline({ points: [...] })
+2. Adjust curve by adding/moving points
+3. Create offset copies: offset_object({ objectName: "BSpline", distance: 10 })
+4. Join related curves: join_objects({ objectNames: ["BSpline", "BSpline_Offset"] })
+```
+
+**Workflow 5: Layout and Assembly Drawing**
+
+```
+1. Set working plane to XY
+2. Create title block rectangle at origin
+3. Add text for company name, part number, revision
+4. Create view frames: create_rectangle({ width: 200, height: 150 })
+5. Add part geometry in each view
+6. Add dimensions and annotations
+7. List all draft objects to verify completeness
+```
+
+---
+
 ### Export Tool (Legacy)
 
 #### `export_model(filePath: string, format: string)`
