@@ -2,6 +2,8 @@
 # LLMBridge module - GUI initialization
 # Auto-starts the WebSocket bridge server when FreeCAD GUI loads.
 
+import atexit
+
 import FreeCAD as App
 import FreeCADGui as Gui
 
@@ -47,3 +49,4 @@ def stop_llm_bridge():
 
 # Start the bridge server
 start_llm_bridge()
+atexit.register(stop_llm_bridge)

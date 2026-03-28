@@ -4,7 +4,7 @@
 import threading
 from concurrent.futures import Future
 
-from PySide2.QtCore import QTimer, QCoreApplication
+from PySide.QtCore import QTimer
 
 
 def run_on_main_thread(func):

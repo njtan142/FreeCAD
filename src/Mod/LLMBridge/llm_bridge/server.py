@@ -146,7 +146,7 @@ class BridgeServer:
             future = run_on_main_thread(lambda: execute_code(code))
             # Wait for the main thread to complete execution.
             # We run this in the executor to avoid blocking the asyncio loop.
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
             result = await loop.run_in_executor(
                 None, lambda: future.result(timeout=30)
             )
