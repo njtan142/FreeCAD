@@ -910,6 +910,147 @@ function formatDimensionValue(value: string | number, dimensionType: string): st
     return `${numValue.toFixed(1)}°`;
   }
 
+  // Volume and area use cubic/square mm
+  if (dimensionType === 'volume') {
+    return `${numValue.toFixed(2)} mm³`;
+  }
+
+  if (dimensionType === 'area') {
+    return `${numValue.toFixed(2)} mm²`;
+  }
+
   // Default to mm for length/distance/radius
   return `${numValue.toFixed(2)} mm`;
+}
+
+/**
+ * Format shape operation result from boolean operations, heal_shape, etc.
+ */
+export function formatShapeResult(data: any): string {
+  if (!data) return 'No shape data';
+
+  const lines: string[] = [];
+  lines.push(`Shape: ${data.resultLabel || data.resultName} (${data.resultName})`);
+  lines.push(`Type: ${data.shapeType || 'Shape'}`);
+
+  if (data.shapeCount !== undefined) {
+    lines.push(`Shapes in Compound: ${data.shapeCount}`);
+  }
+
+  if (data.volume !== undefined) {
+    lines.push(`Volume: ${formatDimensionValue(data.volume, 'volume')}`);
+  }
+
+  if (data.issuesFixed !== undefined) {
+    lines.push(`Issues Fixed: ${data.issuesFixed}`);
+  }
+
+  if (data.remainingIssues !== undefined) {
+    lines.push(`Remaining Issues: ${data.remainingIssues}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Format shape info result from get_shape_info
+ */
+export function formatShapeInfo(data: any): string {
+  if (!data) return 'No shape info data';
+
+  const lines: string[] = [];
+  lines.push(`Shape: ${data.shapeLabel || data.shapeName} (${data.shapeName})`);
+  lines.push(`Shape Type: ${data.shapeType || 'Unknown'}`);
+  lines.push('');
+
+  // Topology
+  if (data.topology) {
+    const topo = data.topology;
+    lines.push('Topology:');
+    lines.push(`  Vertices: ${topo.vertices ?? 0}`);
+    lines.push(`  Edges: ${topo.edges ?? 0}`);
+    lines.push(`  Faces: ${topo.faces ?? 0}`);
+    lines.push(`  Wires: ${topo.wires ?? 0}`);
+    lines.push(`  Shells: ${topo.shells ?? 0}`);
+    lines.push(`  Solids: ${topo.solids ?? 0}`);
+    lines.push(`  Compounds: ${topo.compounds ?? 0}`);
+    lines.push('');
+  }
+
+  // Geometric properties
+  if (data.properties) {
+    const props = data.properties;
+    lines.push('Geometric Properties:');
+
+    if (props.volume !== undefined) {
+      lines.push(`  Volume: ${formatDimensionValue(props.volume, 'volume')}`);
+    }
+
+    if (props.area !== undefined) {
+      lines.push(`  Surface Area: ${formatDimensionValue(props.area, 'area')}`);
+    }
+
+    if (props.centerOfMass) {
+      const com = props.centerOfMass;
+      lines.push(`  Center of Mass: (${com.x?.toFixed(2) ?? 0}, ${com.y?.toFixed(2) ?? 0}, ${com.z?.toFixed(2) ?? 0})`);
+    }
+
+    if (props.boundingBox) {
+      const bb = props.boundingBox;
+      lines.push(`  Bounding Box: (${bb.minX?.toFixed(2) ?? 0}, ${bb.minY?.toFixed(2) ?? 0}, ${bb.minZ?.toFixed(2) ?? 0})`);
+      lines.push(`              to (${bb.maxX?.toFixed(2) ?? 0}, ${bb.maxY?.toFixed(2) ?? 0}, ${bb.maxZ?.toFixed(2) ?? 0})`);
+      if (bb.xSize !== undefined && bb.ySize !== undefined && bb.zSize !== undefined) {
+        lines.push(`  Dimensions: ${bb.xSize.toFixed(2)} x ${bb.ySize.toFixed(2)} x ${bb.zSize.toFixed(2)} mm`);
+      }
+    }
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Format shape validation result from validate_shape
+ */
+export function formatShapeValidation(data: any): string {
+  if (!data) return 'No validation data';
+
+  const lines: string[] = [];
+  lines.push(`Shape: ${data.shapeLabel || data.shapeName} (${data.shapeName})`);
+  lines.push('');
+
+  if (data.isValid !== undefined) {
+    lines.push(`Valid: ${data.isValid ? 'Yes' : 'No'}`);
+  }
+
+  lines.push(`Issues Found: ${data.issueCount ?? 0}`);
+
+  if (data.issues && data.issues.length > 0) {
+    lines.push('');
+    lines.push('Detected Issues:');
+    for (const issue of data.issues) {
+      lines.push(`  - ${issue.type || 'Unknown'}: ${issue.description || issue.message || 'No description'}`);
+    }
+  }
+
+  if (!data.isValid && data.issues && data.issues.length > 0) {
+    lines.push('');
+    lines.push('Recommendation: Consider using heal_shape to fix detected issues.');
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
 }

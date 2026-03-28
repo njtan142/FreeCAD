@@ -28,6 +28,9 @@ import {
   formatBodyResult,
   formatBodyList,
   formatFeatureUpdate,
+  formatShapeResult,
+  formatShapeInfo,
+  formatShapeValidation,
 } from './result-formatters';
 import {
   validateFilePath,
@@ -112,6 +115,14 @@ export function createAgentTools(freeCADBridge: FreeCADBridge) {
     updateFeatureTool(freeCADBridge),
     replaceSketchTool(freeCADBridge),
     deleteFeatureTool(freeCADBridge),
+    // Boolean operation tools
+    booleanFuseTool(freeCADBridge),
+    booleanCutTool(freeCADBridge),
+    booleanCommonTool(freeCADBridge),
+    makeCompoundTool(freeCADBridge),
+    validateShapeTool(freeCADBridge),
+    healShapeTool(freeCADBridge),
+    getShapeInfoTool(freeCADBridge),
     // Session management tools
     createSaveChatSessionTool(),
     createLoadChatSessionTool(),
@@ -3326,6 +3337,512 @@ print(json.dumps(result))
         const result = await freeCADBridge.executePython(code);
         const parsed = JSON.parse(result.output || '{}');
         const formatted = formatFeatureResult(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: boolean_fuse
+ *
+ * Perform a boolean union (fuse) operation on shapes.
+ */
+function booleanFuseTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'boolean_fuse',
+    `Perform a boolean union (fuse) operation on two or more shapes.
+
+Parameters:
+- baseShape (required): Name of the base shape/object
+- toolShapes (required): Array of shape/object names to fuse with the base
+- resultName (optional): Name for the resulting fused shape. If omitted, auto-generated.
+
+Returns:
+- success: Whether the fuse operation was successful
+- resultName: Name of the resulting fused shape
+- resultLabel: User-friendly label
+- shapeType: Type of the resulting shape
+- volume: Volume of the result (if calculable)
+- message: Status message
+
+Use this tool to combine multiple shapes into a single unified shape.
+
+Example:
+- Fuse two shapes: { baseShape: "Box", toolShapes: ["Cylinder"] }
+- Fuse multiple shapes: { baseShape: "Box", toolShapes: ["Cylinder", "Sphere"], resultName: "CombinedPart" }`,
+    {
+      baseShape: z.string().describe('Name of the base shape/object'),
+      toolShapes: z.array(z.string()).describe('Array of shape/object names to fuse with the base'),
+      resultName: z.string().optional().describe('Name for the resulting fused shape'),
+    },
+    async (input) => {
+      const { baseShape, toolShapes, resultName } = input;
+
+      const code = `
+from llm_bridge.boolean_handlers import handle_boolean_fuse
+import json
+params = json.loads('${JSON.stringify({ baseShape, toolShapes, resultName: resultName || null })}')
+result = handle_boolean_fuse(
+    base_shape=params['baseShape'],
+    tool_shapes=params['toolShapes'],
+    result_name=params['resultName']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatShapeResult(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: boolean_cut
+ *
+ * Perform a boolean cut (subtract) operation on shapes.
+ */
+function booleanCutTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'boolean_cut',
+    `Perform a boolean cut (subtract) operation - subtract tool shapes from a base shape.
+
+Parameters:
+- baseShape (required): Name of the base shape/object to cut from
+- toolShapes (required): Array of shape/object names to subtract from the base
+- resultName (optional): Name for the resulting cut shape. If omitted, auto-generated.
+
+Returns:
+- success: Whether the cut operation was successful
+- resultName: Name of the resulting cut shape
+- resultLabel: User-friendly label
+- shapeType: Type of the resulting shape
+- volume: Volume of the result (if calculable)
+- message: Status message
+
+Use this tool to subtract material from a base shape, creating cuts, holes, or cavities.
+
+Example:
+- Cut one shape from another: { baseShape: "Box", toolShapes: ["Cylinder"] }
+- Cut multiple shapes: { baseShape: "Box", toolShapes: ["Cylinder", "Sphere"], resultName: "CutPart" }`,
+    {
+      baseShape: z.string().describe('Name of the base shape/object to cut from'),
+      toolShapes: z.array(z.string()).describe('Array of shape/object names to subtract from the base'),
+      resultName: z.string().optional().describe('Name for the resulting cut shape'),
+    },
+    async (input) => {
+      const { baseShape, toolShapes, resultName } = input;
+
+      const code = `
+from llm_bridge.boolean_handlers import handle_boolean_cut
+import json
+params = json.loads('${JSON.stringify({ baseShape, toolShapes, resultName: resultName || null })}')
+result = handle_boolean_cut(
+    base_shape=params['baseShape'],
+    tool_shapes=params['toolShapes'],
+    result_name=params['resultName']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatShapeResult(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: boolean_common
+ *
+ * Perform a boolean intersection (common) operation on shapes.
+ */
+function booleanCommonTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'boolean_common',
+    `Perform a boolean intersection (common) operation - find the shared volume between shapes.
+
+Parameters:
+- baseShape (required): Name of the base shape/object
+- toolShapes (required): Array of shape/object names to intersect with the base
+- resultName (optional): Name for the resulting intersection shape. If omitted, auto-generated.
+
+Returns:
+- success: Whether the intersection operation was successful
+- resultName: Name of the resulting intersection shape
+- resultLabel: User-friendly label
+- shapeType: Type of the resulting shape
+- volume: Volume of the result (if calculable)
+- message: Status message
+
+Use this tool to find the common/shared volume between multiple shapes.
+
+Example:
+- Intersect two shapes: { baseShape: "Box", toolShapes: ["Cylinder"] }
+- Intersect multiple shapes: { baseShape: "Box", toolShapes: ["Cylinder", "Sphere"], resultName: "CommonPart" }`,
+    {
+      baseShape: z.string().describe('Name of the base shape/object'),
+      toolShapes: z.array(z.string()).describe('Array of shape/object names to intersect with the base'),
+      resultName: z.string().optional().describe('Name for the resulting intersection shape'),
+    },
+    async (input) => {
+      const { baseShape, toolShapes, resultName } = input;
+
+      const code = `
+from llm_bridge.boolean_handlers import handle_boolean_common
+import json
+params = json.loads('${JSON.stringify({ baseShape, toolShapes, resultName: resultName || null })}')
+result = handle_boolean_common(
+    base_shape=params['baseShape'],
+    tool_shapes=params['toolShapes'],
+    result_name=params['resultName']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatShapeResult(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: make_compound
+ *
+ * Create a compound of multiple shapes without boolean fusion.
+ */
+function makeCompoundTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'make_compound',
+    `Create a compound of multiple shapes - groups shapes together without boolean fusion.
+
+Parameters:
+- shapes (required): Array of shape/object names to compound
+- resultName (optional): Name for the resulting compound. If omitted, auto-generated.
+
+Returns:
+- success: Whether the compound was created
+- resultName: Name of the resulting compound
+- resultLabel: User-friendly label
+- shapeCount: Number of shapes in the compound
+- message: Status message
+
+Use this tool to group multiple shapes together while keeping them as separate solids within a compound.
+Unlike boolean_fuse, this does not merge the shapes - they remain distinct but are treated as a single object.
+
+Example:
+- Compound two shapes: { shapes: ["Box", "Cylinder"] }
+- Compound multiple shapes: { shapes: ["Box", "Cylinder", "Sphere"], resultName: "Assembly" }`,
+    {
+      shapes: z.array(z.string()).describe('Array of shape/object names to compound'),
+      resultName: z.string().optional().describe('Name for the resulting compound'),
+    },
+    async (input) => {
+      const { shapes, resultName } = input;
+
+      const code = `
+from llm_bridge.boolean_handlers import handle_make_compound
+import json
+params = json.loads('${JSON.stringify({ shapes, resultName: resultName || null })}')
+result = handle_make_compound(
+    shapes=params['shapes'],
+    result_name=params['resultName']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatShapeResult(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: validate_shape
+ *
+ * Validate a shape for integrity and defects.
+ */
+function validateShapeTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'validate_shape',
+    `Validate a shape for integrity and detect defects.
+
+Parameters:
+- shapeName (required): Name of the shape/object to validate
+
+Returns:
+- success: Whether the validation was successful
+- shapeName: Name of the validated shape
+- isValid: Whether the shape is valid
+- issues: Array of detected issues (if any)
+- issueCount: Number of issues found
+- message: Status message
+
+Use this tool to check if a shape has any geometric defects such as:
+- Free edges
+- Non-manifold edges
+- Invalid orientation
+- Self-intersections
+- Degenerate faces
+
+Example:
+- Validate a shape: { shapeName: "Pad" }`,
+    {
+      shapeName: z.string().describe('Name of the shape/object to validate'),
+    },
+    async (input) => {
+      const { shapeName } = input;
+
+      const code = `
+from llm_bridge.boolean_handlers import handle_validate_shape
+import json
+params = json.loads('${JSON.stringify({ shapeName })}')
+result = handle_validate_shape(shape_name=params['shapeName'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatShapeValidation(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: heal_shape
+ *
+ * Attempt to fix shape defects and improve shape quality.
+ */
+function healShapeTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'heal_shape',
+    `Attempt to fix shape defects and improve shape quality.
+
+Parameters:
+- shapeName (required): Name of the shape/object to heal
+- tolerance (optional): Healing tolerance value (default: 0.1mm)
+
+Returns:
+- success: Whether the healing was successful
+- shapeName: Name of the healed shape
+- issuesFixed: Number of issues that were fixed
+- remainingIssues: Number of remaining issues (if any)
+- message: Status message
+
+Use this tool to automatically fix common shape defects such as:
+- Small gaps between faces
+- Tolerance issues
+- Invalid edge connections
+- Degenerate geometry
+
+Example:
+- Heal a shape with default tolerance: { shapeName: "ImportedPart" }
+- Heal with custom tolerance: { shapeName: "ImportedPart", tolerance: "0.01mm" }`,
+    {
+      shapeName: z.string().describe('Name of the shape/object to heal'),
+      tolerance: z.union([z.string(), z.number()]).optional().describe('Healing tolerance value (default: 0.1mm)'),
+    },
+    async (input) => {
+      const { shapeName, tolerance } = input;
+
+      const code = `
+from llm_bridge.boolean_handlers import handle_heal_shape
+import json
+params = json.loads('${JSON.stringify({ shapeName, tolerance: tolerance || null })}')
+result = handle_heal_shape(
+    shape_name=params['shapeName'],
+    tolerance=params['tolerance']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatShapeResult(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: get_shape_info
+ *
+ * Get detailed information about a shape's properties and topology.
+ */
+function getShapeInfoTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'get_shape_info',
+    `Get detailed information about a shape's properties and topology.
+
+Parameters:
+- shapeName (required): Name of the shape/object to query
+
+Returns:
+- success: Whether the query was successful
+- shapeName: Name of the shape
+- shapeType: Type of shape (Solid, Shell, Compound, etc.)
+- topology: Topology counts (vertices, edges, faces, shells, solids)
+- properties: Geometric properties (volume, area, center of mass, bounding box)
+- message: Status message
+
+Use this tool to get comprehensive information about a shape including:
+- Topology counts (vertices, edges, faces)
+- Geometric properties (volume, surface area)
+- Center of mass
+- Bounding box dimensions
+
+Example:
+- Get shape info: { shapeName: "Pad" }`,
+    {
+      shapeName: z.string().describe('Name of the shape/object to query'),
+    },
+    async (input) => {
+      const { shapeName } = input;
+
+      const code = `
+from llm_bridge.boolean_handlers import handle_get_shape_info
+import json
+params = json.loads('${JSON.stringify({ shapeName })}')
+result = handle_get_shape_info(shape_name=params['shapeName'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatShapeInfo(parsed.data);
         return {
           content: [
             {
