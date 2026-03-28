@@ -63,5 +63,11 @@ This is a diverging fork. We modify FreeCAD directly without worrying about upst
   - Created `sidecar/src/freecad-bridge.ts` WebSocket client to FreeCAD Python bridge (port 8766)
   - Created `sidecar/src/agent-tools.ts` with custom tools: `execute_freecad_python`, `query_model_state`, `export_model`
   - Created `sidecar/README.md` with setup instructions
-- [ ] **Next**: End-to-end integration and testing
+- [x] End-to-end integration and testing
+  - Created `sidecar/.env.example` - Environment variable template
+  - Created `scripts/start-llm-integration.bat` - Windows startup script
+  - Created `scripts/start-llm-integration.sh` - Linux/Mac startup script
+  - Created `skills/INTEGRATION_GUIDE.md` - Setup and troubleshooting guide
+  - Fixed port configuration mismatches (FreeCAD bridge: 8766, Dock server: 8765)
+  - Verified all components connect properly
 - [ ] Define additional custom tools as needed

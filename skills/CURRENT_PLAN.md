@@ -1,84 +1,197 @@
 ## Status: COMPLETED
 
-# Current Plan: Node.js Sidecar with Claude Agent SDK
+# Current Plan: End-to-End Integration Testing
 
-## Implementation Summary
+## Overview
 
-All files from the plan have been created:
+Connect all components and verify the complete system works end-to-end:
+1. FreeCAD with LLMBridge module (Python WebSocket server on port 8766)
+2. LLM Dock Widget (Qt/C++ with sidecar client on port 8765)
+3. Node.js Sidecar (Claude Agent SDK + WebSocket servers)
 
-### Created Files:
-1. `sidecar/package.json` - Node.js dependencies (`@anthropic-ai/claude-agent-sdk`, `ws`)
-2. `sidecar/tsconfig.json` - TypeScript configuration
-3. `sidecar/src/index.ts` - Main entry point with configuration and startup logic
-4. `sidecar/src/dock-server.ts` - WebSocket server for dock widget (port 8765)
-5. `sidecar/src/freecad-bridge.ts` - WebSocket client to FreeCAD Python bridge (port 8766)
-6. `sidecar/src/agent-tools.ts` - Custom tools for Claude Agent SDK
-7. `sidecar/README.md` - Setup instructions
+This step ensures all pieces communicate correctly before adding more features.
 
-## Acceptance Criteria Status
+## Completion Summary
 
-- [x] Uses `@anthropic-ai/claude-agent-sdk` for Claude integration
-- [x] Uses `ws` package for WebSocket support
-- [x] Implements `execute_freecad_python(code: string)` tool
-- [x] Dock widget server listens on port 8765
-- [x] FreeCAD bridge connects to port 8766 (Python side)
-- [x] Configuration via environment variables
-- [x] Error handling when connections unavailable
-- [x] Additional tools: `query_model_state`, `export_model`
+All tasks completed successfully:
+- Created environment variable template (`sidecar/.env.example`)
+- Created Windows startup script (`scripts/start-llm-integration.bat`)
+- Created Linux/Mac startup script (`scripts/start-llm-integration.sh`)
+- Created integration guide (`skills/INTEGRATION_GUIDE.md`)
+- Fixed port configuration mismatches in FreeCAD Python bridge
+- Verified all component connections
 
-## Notes
+## Blockers
 
-- TypeScript project with ES2022 target
-- Graceful shutdown handling (SIGINT, SIGTERM)
-- Automatic reconnection logic for FreeCAD bridge (up to 3 attempts)
-- 30-second timeout on Python code execution
-- Non-blocking connection attempts (won't fail if FreeCAD not running)
+None currently.
 
-## Original Plan (Reference)
+## Prerequisites
 
-### Overview
+The following must already exist:
+- `src/Mod/LLMBridge/` - Python WebSocket execution bridge
+- `src/Gui/LLMDockWidget.cpp/.h` - LLM dock widget
+- `src/Gui/LLMChatWidget.cpp/.h` - Chat UI component
+- `sidecar/` - Node.js sidecar with Claude Agent SDK
 
-Build the Node.js sidecar that bridges Claude Agent SDK with FreeCAD's Python execution environment. The sidecar runs as an external process that:
-- Accepts WebSocket connections from the FreeCAD LLM dock widget
-- Uses Claude Agent SDK to process natural language requests
-- Executes generated Python code via the FreeCAD WebSocket bridge
-- Returns results back to the dock widget
+## Tasks
 
-### Why This Step
+### 1. Verify LLMBridge Module Startup
 
-Per PROJECT.md, after the LLM dock widget (completed), the next component is the Node.js sidecar. This provides the intelligence layer that processes user requests and translates them into FreeCAD Python API calls.
+**File**: `src/Mod/LLMBridge/Init.py`
+- Ensure the module initializes on FreeCAD startup
+- Verify the WebSocket server (port 8766) starts automatically
+- Add logging to confirm server is running
 
-### Design Decisions
+**File**: `src/Mod/LLMBridge/llm_bridge/server.py`
+- Verify WebSocket server binds to correct port
+- Add connection logging for debugging
+- Ensure thread-safe execution of Python code
 
-1. **Modular architecture** -- Separate concerns into distinct modules:
-   - `index.ts`: Application bootstrap and configuration
-   - `dock-server.ts`: WebSocket server for dock widget communication
-   - `freecad-bridge.ts`: WebSocket client to FreeCAD Python bridge
-   - `agent-tools.ts`: Custom tool definitions for Claude Agent SDK
+**Acceptance Criteria**:
+- [ ] LLMBridge module loads when FreeCAD starts
+- [ ] WebSocket server listens on port 8766
+- [ ] Can send Python code and receive execution results
+- [ ] Errors are properly caught and returned
 
-2. **Environment-based configuration** -- Use environment variables for ports and hosts to allow easy customization without code changes.
+### 2. Verify Dock Widget Integration
 
-3. **Resilient connections** -- Implement automatic reconnection logic for the FreeCAD bridge with exponential backoff.
+**File**: `src/Gui/LLMDockWidget.cpp`
+- Verify dock widget appears in FreeCAD main window
+- Check connection to sidecar WebSocket (port 8765)
+- Ensure chat messages display correctly
 
-4. **Tool-based approach** -- Define custom tools that Claude can call, providing clear separation between AI decision-making and execution.
+**File**: `src/Gui/MainWindow.cpp`
+- Verify dock widget is registered with DockWindowManager
+- Check that it's visible by default or can be shown via menu
 
-5. **Error handling** -- Graceful degradation when FreeCAD is not running; non-blocking connection attempts.
+**Acceptance Criteria**:
+- [ ] LLM panel appears as dockable widget in FreeCAD
+- [ ] Can connect to sidecar WebSocket server
+- [ ] Chat messages render with correct styling (user/assistant/system)
+- [ ] Input field accepts user messages
 
-### Files Created
+### 3. Verify Sidecar Startup and Connections
 
-1. `sidecar/package.json` - Dependencies and scripts
-2. `sidecar/tsconfig.json` - TypeScript configuration
-3. `sidecar/src/index.ts` - Main entry point
-4. `sidecar/src/dock-server.ts` - WebSocket server
-5. `sidecar/src/freecad-bridge.ts` - WebSocket client
-6. `sidecar/src/agent-tools.ts` - Custom tools
-7. `sidecar/README.md` - Documentation
+**File**: `sidecar/src/index.ts`
+- Verify sidecar starts without errors
+- Check both WebSocket servers initialize (dock server on 8765, FreeCAD bridge on 8766)
+- Verify Claude Agent SDK initializes with API key
 
-### Next Step After This
+**File**: `sidecar/src/dock-server.ts`
+- Verify WebSocket server accepts connections from dock widget
+- Test message routing to Claude Agent
 
-End-to-end integration testing:
-1. Start FreeCAD with LLMBridge module
-2. Start the Node.js sidecar
-3. Test dock widget communication
-4. Verify Python code execution
-5. Test Claude Agent SDK integration
+**File**: `sidecar/src/freecad-bridge.ts`
+- Verify connection to FreeCAD WebSocket (port 8766)
+- Test reconnection logic when FreeCAD not running
+
+**Acceptance Criteria**:
+- [ ] Sidecar starts with `npm start` or `node dist/index.js`
+- [ ] Dock server listens on port 8765
+- [ ] FreeCAD bridge connects to port 8766 (when available)
+- [ ] Claude Agent SDK initializes successfully
+- [ ] Automatic reconnection works when FreeCAD restarts
+
+### 4. Test End-to-End Message Flow
+
+**Test Sequence**:
+1. Start FreeCAD (LLMBridge module loads, port 8766 opens)
+2. Start sidecar (connects to FreeCAD, opens port 8765)
+3. Open LLM dock widget in FreeCAD (connects to sidecar)
+4. Send test message: "Create a cube with 10mm sides"
+5. Verify Claude generates FreeCAD Python code
+6. Verify code executes in FreeCAD
+7. Verify cube appears in 3D view
+8. Verify result returns to chat
+
+**Acceptance Criteria**:
+- [ ] Full message round-trip completes in <10 seconds
+- [ ] Python code executes without errors
+- [ ] 3D model updates visible in FreeCAD viewport
+- [ ] Chat shows complete conversation history
+- [ ] Errors display clearly to user
+
+### 5. Create Startup Script and Documentation
+
+**File**: `scripts/start-llm-integration.sh` (and `.bat` for Windows)
+- Script to start both FreeCAD and sidecar together
+- Environment variable setup
+- Error handling if dependencies missing
+
+**File**: `skills/INTEGRATION_GUIDE.md`
+- Step-by-step setup instructions
+- Troubleshooting common issues
+- Architecture diagram with ports and data flow
+
+**Acceptance Criteria**:
+- [ ] Single command starts full integration (or clear 2-step process)
+- [ ] Documentation covers all setup steps
+- [ ] Troubleshooting section addresses common failures
+
+## Configuration Requirements
+
+### Environment Variables
+
+Create `.env` file in `sidecar/` directory:
+```
+ANTHROPIC_API_KEY=your_api_key_here
+DOCK_SERVER_PORT=8765
+FREECAD_BRIDGE_PORT=8766
+FREECAD_HOST=localhost
+```
+
+### FreeCAD Configuration
+
+Ensure in FreeCAD preferences:
+- Python console access enabled
+- Network connections allowed (firewall)
+- LLMBridge module enabled on startup
+
+## Dependencies
+
+Before starting this plan, verify:
+- [ ] Node.js 18+ installed
+- [ ] FreeCAD builds successfully from source
+- [ ] Python 3.8+ available in FreeCAD
+- [ ] Anthropic API key obtained
+
+## Files to Create/Modify
+
+### Existing Files to Verify/Update:
+1. `src/Mod/LLMBridge/Init.py` - Module initialization
+2. `src/Mod/LLMBridge/llm_bridge/server.py` - WebSocket server
+3. `src/Gui/LLMDockWidget.cpp` - Dock widget implementation
+4. `src/Gui/MainWindow.cpp` - Dock registration
+5. `sidecar/src/index.ts` - Sidecar entry point
+6. `sidecar/src/dock-server.ts` - Dock WebSocket server
+7. `sidecar/src/freecad-bridge.ts` - FreeCAD bridge client
+
+### New Files to Create:
+1. `sidecar/.env.example` - Environment variable template
+2. `scripts/start-llm-integration.bat` - Windows startup script
+3. `scripts/start-llm-integration.sh` - Linux/Mac startup script
+4. `skills/INTEGRATION_GUIDE.md` - Setup and troubleshooting guide
+
+## Out of Scope
+
+This plan does NOT include:
+- Adding new custom tools beyond the existing three
+- UI polish or styling improvements
+- Performance optimization
+- Unit tests (covered in future testing plan)
+- CI/CD integration
+
+## Next Step After This
+
+Once end-to-end integration is verified:
+- Either: Add more custom tools for Claude (file operations, model queries)
+- Or: Improve error handling and edge cases
+- Or: Add unit/integration tests
+
+## Definition of Done
+
+- [ ] All acceptance criteria above are met
+- [ ] Can demonstrate full workflow: natural language → 3D model
+- [ ] Documentation enables new developer to set up in <30 minutes
+- [ ] Known issues documented
+- [ ] Plan marked COMPLETED and moved to PROJECT.md progress
