@@ -325,3 +325,33 @@ The original large commits for Boolean operation tools have been refactored into
 - **Files modified**: 8 (__init__.py, server.py, agent-tools.ts, result-formatters.ts, sidecar/README.md, CURRENT_PLAN.md, PROJECT.md, CURRENT_REVIEW.md, CYCLE_COUNT.md)
 - **Total insertions**: ~1,900 lines
 - **Total deletions**: ~350 lines
+
+---
+
+## Cycle 11 - Incremental Commits
+
+The original large commits for Assembly Constraint Tools have been refactored into 5 incremental commits.
+
+| Commit Hash | Message | Files Changed |
+|-------------|---------|---------------|
+| 0535044563 | feat(python): add assembly constraint handlers for FreeCAD | assembly_handlers.py |
+| 81bfed682c | feat(python): register assembly handlers in llm_bridge package | __init__.py |
+| 0c18907d90 | feat(sidecar): add 19 assembly constraint tools to agent-tools | agent-tools.ts |
+| 49f1657d31 | feat(sidecar): add result formatters for assembly operations | result-formatters.ts |
+| 6f8ed60a09 | docs(sidecar): document assembly constraint tools in README | README.md |
+
+### Commit Progression
+
+1. **Python assembly handlers**: Added assembly_handlers.py with 18 handlers for assembly constraint operations (create_assembly, add_component_to_assembly, remove_component_from_assembly, list_assemblies, list_assembly_components, 9 constraint types: coincident/parallel/perpendicular/angle/distance/insert/tangent/equal/symmetric, update_constraint_value, remove_constraint, list_constraints, suppress_constraint, activate_constraint); supports Assembly3, A2plus, and built-in Assembly modules
+2. **Handler registration**: Registered assembly handlers in llm_bridge/__init__.py and exported all handler functions in __all__ list for WebSocket bridge accessibility
+3. **Agent tools implementation**: Added 19 assembly tools to agent-tools.ts (5 management tools, 9 constraint creation tools, 5 constraint modification tools) with Zod schema validation and WebSocket bridge integration
+4. **Result formatters**: Added 5 assembly-specific result formatters to result-formatters.ts (formatAssemblyCreationResult, formatComponentListResult, formatConstraintCreationResult, formatConstraintListResult, formatConstraintUpdateResult)
+5. **Sidecar documentation**: Updated sidecar/README.md with comprehensive documentation for all 19 assembly tools including usage examples, constraint types reference table, subobject reference format, and assembly workflow guidance
+
+### Summary
+
+- **Total commits**: 5
+- **Files created**: 1 (assembly_handlers.py)
+- **Files modified**: 5 (__init__.py, agent-tools.ts, result-formatters.ts, sidecar/README.md)
+- **Total insertions**: ~3,500 lines
+- **Total deletions**: ~100 lines
