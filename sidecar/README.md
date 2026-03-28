@@ -74,7 +74,9 @@ npm start
 
 The sidecar provides these custom tools to Claude Agent SDK:
 
-### `execute_freecad_python(code: string)`
+### Execution Tools
+
+#### `execute_freecad_python(code: string)`
 
 Executes arbitrary Python code in FreeCAD's environment.
 
@@ -88,18 +90,131 @@ Executes arbitrary Python code in FreeCAD's environment.
 }
 ```
 
-### `query_model_state(query: string)`
+### Query Tools
 
-Queries the current state of the FreeCAD model.
+#### `query_model_state(intent: string, objectName?: string)`
+
+Queries the current state of the FreeCAD model with a specific intent.
 
 **Query types:**
-- `objects` - List all objects in the document
-- `document` - Get document information
-- `view` - Get current view settings
+- `document_overview` - List all objects with names, types, visibility
+- `object_details` - Get detailed properties of a specific object
+- `selection` - Get currently selected objects in viewport
+- `dependencies` - Get parent-child relationships
 
-### `export_model(filePath: string, format: string)`
+#### `list_objects()`
 
-Exports the current model to a file.
+Lists all objects in the active FreeCAD document.
+
+#### `get_object_properties(objectName: string)`
+
+Gets detailed properties of a specific object (placement, dimensions, color).
+
+#### `get_selection()`
+
+Gets currently selected objects in the viewport.
+
+#### `get_document_info()`
+
+Gets document metadata (name, modified status, object count, file path).
+
+### File Operation Tools
+
+#### `save_document(filePath?: string, format?: "FCStd" | "FCBak")`
+
+Save the current FreeCAD document to a file.
+
+**Parameters:**
+- `filePath` (optional): Full path to save. If omitted, saves to current document path.
+- `format` (optional): Save format - "FCStd" (default) or "FCBak"
+
+**Example:**
+```typescript
+{
+  name: "save_document",
+  arguments: {
+    filePath: "C:/Projects/part.FCStd",
+    format: "FCStd"
+  }
+}
+```
+
+#### `open_document(filePath: string)`
+
+Open an existing CAD file in FreeCAD.
+
+**Supported formats:** FCStd, FCBak, STEP, IGES, STL, OBJ, DXF, DWG
+
+**Example:**
+```typescript
+{
+  name: "open_document",
+  arguments: {
+    filePath: "C:/Projects/assembly.step"
+  }
+}
+```
+
+#### `export_to_format(filePath: string, format: "STEP" | "IGES" | "STL" | "OBJ" | "DXF" | "FCStd" | "FCBak")`
+
+Export the current model to a specific CAD format.
+
+**Format descriptions:**
+- `STEP` - Industry standard for CAD data exchange (recommended for manufacturing)
+- `IGES` - Older CAD exchange format
+- `STL` - 3D printing format (mesh)
+- `OBJ` - 3D geometry format (mesh)
+- `DXF` - 2D drawing format
+- `FCStd` - Native FreeCAD format
+- `FCBak` - FreeCAD backup format (uncompressed)
+
+**Example:**
+```typescript
+{
+  name: "export_to_format",
+  arguments: {
+    filePath: "C:/Exports/part.stl",
+    format: "STL"
+  }
+}
+```
+
+#### `list_recent_documents()`
+
+List recently opened CAD files from FreeCAD's history.
+
+**Example:**
+```typescript
+{
+  name: "list_recent_documents",
+  arguments: {}
+}
+```
+
+#### `create_new_document(name?: string, type?: "Part" | "Assembly" | "Sketch")`
+
+Create a new empty FreeCAD document.
+
+**Parameters:**
+- `name` (optional): Name for the new document
+- `type` (optional): Document type - "Part" (default), "Assembly", or "Sketch"
+
+**Example:**
+```typescript
+{
+  name: "create_new_document",
+  arguments: {
+    name: "MyPart",
+    type: "Part"
+  }
+}
+```
+
+### Export Tool (Legacy)
+
+#### `export_model(filePath: string, format: string)`
+
+Exports the current model to a file. (Use `export_to_format` for more options)
 
 **Supported formats:** STEP, STL, OBJ, DXF, FCStd
 
