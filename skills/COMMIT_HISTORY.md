@@ -95,3 +95,33 @@ The original large commit "feat(integration): add end-to-end integration testing
 - **Files modified**: 4 (server.py, sidecar_client.py, CURRENT_PLAN.md, PROJECT.md, COMMIT_HISTORY.md)
 - **Total insertions**: ~1,096 lines
 - **Total deletions**: ~75 lines
+
+---
+
+## Cycle 4 - Incremental Commits
+
+The original large commit "feat(query): add model query tools for document introspection" (b44b373a68) has been refactored into 5 incremental commits.
+
+| Commit Hash | Message | Files Changed |
+|-------------|---------|---------------|
+| b5d2a3b57c | feat(query): add Python query handlers for document introspection | query_handlers.py |
+| b01ac4c4c5 | feat(query): add result formatters for readable query output | result-formatters.ts |
+| 0683da2592 | feat(query): add model query tools to agent-tools.ts | agent-tools.ts |
+| 3b40610f29 | feat(query): integrate query handlers into LLM bridge | __init__.py, server.py |
+| 46a44452e1 | docs(skills): mark query tools cycle complete and update plan | CURRENT_PLAN.md, PROJECT.md, CURRENT_REVIEW.md, CYCLE_COUNT.md, incremental-commits.md |
+
+### Commit Progression
+
+1. **Python query handlers**: Added query_handlers.py with 7 handlers (document_overview, object_details, selection, dependencies, list_objects, get_object_properties, get_document_info) returning structured JSON
+2. **Result formatters**: Added result-formatters.ts with formatting functions for human-readable output (tables, key-value pairs, truncation)
+3. **Agent tools update**: Enhanced query_model_state with structured intents and added 4 new tools (list_objects, get_object_properties, get_selection, get_document_info)
+4. **LLM bridge integration**: Updated __init__.py to export handlers and server.py to import for WebSocket availability
+5. **Documentation updates**: Marked Enhanced Model Query Tools cycle complete in CURRENT_PLAN.md and updated PROJECT.md
+
+### Summary
+
+- **Total commits**: 5
+- **Files created**: 2 (query_handlers.py, result-formatters.ts)
+- **Files modified**: 5 (agent-tools.ts, __init__.py, server.py, CURRENT_PLAN.md, PROJECT.md, CURRENT_REVIEW.md, CYCLE_COUNT.md, incremental-commits.md)
+- **Total insertions**: ~1,154 lines
+- **Total deletions**: ~263 lines
