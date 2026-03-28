@@ -2070,6 +2070,444 @@ Remove a feature from a PartDesign body.
 
 ---
 
+### Boolean Operation Tools
+
+The Boolean operation tools allow you to perform boolean operations on shapes, validate and heal geometry, and query shape properties. These tools work with any shape objects in FreeCAD, including imported STEP/IGES files and native Part/PartDesign features.
+
+---
+
+#### `boolean_fuse(baseShape: string, toolShapes: string[], resultName?: string)`
+
+Perform a boolean union (fuse) operation on two or more shapes.
+
+**Parameters:**
+- `baseShape` (required): Name of the base shape/object
+- `toolShapes` (required): Array of shape/object names to fuse with the base
+- `resultName` (optional): Name for the resulting fused shape. If omitted, auto-generated.
+
+**Response format:**
+```json
+{
+  "success": true,
+  "resultName": "Fuse",
+  "resultLabel": "Fuse",
+  "shapeType": "Solid",
+  "volume": 15000.00,
+  "message": "Boolean fuse completed successfully"
+}
+```
+
+**Example usage:**
+```typescript
+// Fuse two shapes
+{
+  name: "boolean_fuse",
+  arguments: {
+    baseShape: "Box",
+    toolShapes: ["Cylinder"]
+  }
+}
+
+// Fuse multiple shapes with custom result name
+{
+  name: "boolean_fuse",
+  arguments: {
+    baseShape: "Box",
+    toolShapes: ["Cylinder", "Sphere"],
+    resultName: "CombinedPart"
+  }
+}
+```
+
+**Natural language examples:**
+- "Fuse the box and cylinder together"
+- "Combine these shapes into one"
+- "Union the box with the cylinder and sphere"
+
+**Notes:**
+- The result is a single unified shape
+- All shapes must overlap or touch for a meaningful result
+- The original shapes remain in the document
+
+---
+
+#### `boolean_cut(baseShape: string, toolShapes: string[], resultName?: string)`
+
+Perform a boolean cut (subtract) operation - subtract tool shapes from a base shape.
+
+**Parameters:**
+- `baseShape` (required): Name of the base shape/object to cut from
+- `toolShapes` (required): Array of shape/object names to subtract from the base
+- `resultName` (optional): Name for the resulting cut shape. If omitted, auto-generated.
+
+**Response format:**
+```json
+{
+  "success": true,
+  "resultName": "Cut",
+  "resultLabel": "Cut",
+  "shapeType": "Solid",
+  "volume": 8000.00,
+  "message": "Boolean cut completed successfully"
+}
+```
+
+**Example usage:**
+```typescript
+// Cut one shape from another
+{
+  name: "boolean_cut",
+  arguments: {
+    baseShape: "Box",
+    toolShapes: ["Cylinder"]
+  }
+}
+
+// Cut multiple shapes with custom result name
+{
+  name: "boolean_cut",
+  arguments: {
+    baseShape: "Box",
+    toolShapes: ["Cylinder", "Sphere"],
+    resultName: "CutPart"
+  }
+}
+```
+
+**Natural language examples:**
+- "Cut the cylinder from the box"
+- "Subtract the sphere from the cube"
+- "Make a hole using the cylinder"
+
+**Notes:**
+- Creates cuts, holes, or cavities in the base shape
+- Tool shapes must intersect with the base shape
+- The original shapes remain in the document
+
+---
+
+#### `boolean_common(baseShape: string, toolShapes: string[], resultName?: string)`
+
+Perform a boolean intersection (common) operation - find the shared volume between shapes.
+
+**Parameters:**
+- `baseShape` (required): Name of the base shape/object
+- `toolShapes` (required): Array of shape/object names to intersect with the base
+- `resultName` (optional): Name for the resulting intersection shape. If omitted, auto-generated.
+
+**Response format:**
+```json
+{
+  "success": true,
+  "resultName": "Common",
+  "resultLabel": "Common",
+  "shapeType": "Solid",
+  "volume": 2500.00,
+  "message": "Boolean intersection completed successfully"
+}
+```
+
+**Example usage:**
+```typescript
+// Intersect two shapes
+{
+  name: "boolean_common",
+  arguments: {
+    baseShape: "Box",
+    toolShapes: ["Cylinder"]
+  }
+}
+
+// Intersect multiple shapes with custom result name
+{
+  name: "boolean_common",
+  arguments: {
+    baseShape: "Box",
+    toolShapes: ["Cylinder", "Sphere"],
+    resultName: "CommonPart"
+  }
+}
+```
+
+**Natural language examples:**
+- "Find the intersection of the box and cylinder"
+- "Get the common volume between these shapes"
+- "Intersect all three shapes"
+
+**Notes:**
+- Returns only the overlapping/shared volume
+- Shapes must overlap for a non-empty result
+- Useful for finding fit or interference
+
+---
+
+#### `make_compound(shapes: string[], resultName?: string)`
+
+Create a compound of multiple shapes - groups shapes together without boolean fusion.
+
+**Parameters:**
+- `shapes` (required): Array of shape/object names to compound
+- `resultName` (optional): Name for the resulting compound. If omitted, auto-generated.
+
+**Response format:**
+```json
+{
+  "success": true,
+  "resultName": "Compound",
+  "resultLabel": "Compound",
+  "shapeCount": 3,
+  "message": "Created compound with 3 shapes"
+}
+```
+
+**Example usage:**
+```typescript
+// Compound two shapes
+{
+  name: "make_compound",
+  arguments: {
+    shapes: ["Box", "Cylinder"]
+  }
+}
+
+// Compound multiple shapes with custom name
+{
+  name: "make_compound",
+  arguments: {
+    shapes: ["Box", "Cylinder", "Sphere"],
+    resultName: "Assembly"
+  }
+}
+```
+
+**Natural language examples:**
+- "Group the box and cylinder together"
+- "Make a compound of all these parts"
+- "Combine these shapes into an assembly"
+
+**Notes:**
+- Unlike `boolean_fuse`, shapes remain distinct solids within the compound
+- No boolean operation is performed - shapes are just grouped
+- Useful for treating multiple parts as a single object for transformations
+- Each shape retains its individual identity
+
+---
+
+#### `validate_shape(shapeName: string)`
+
+Validate a shape for integrity and detect defects.
+
+**Parameters:**
+- `shapeName` (required): Name of the shape/object to validate
+
+**Response format:**
+```json
+{
+  "success": true,
+  "shapeName": "ImportedPart",
+  "shapeLabel": "ImportedPart",
+  "isValid": false,
+  "issues": [
+    {
+      "type": "FreeEdges",
+      "description": "Shape has 4 free edges"
+    },
+    {
+      "type": "NonManifoldEdges",
+      "description": "Shape has 2 non-manifold edges"
+    }
+  ],
+  "issueCount": 2,
+  "message": "Validation completed: 2 issues found"
+}
+```
+
+**Example usage:**
+```typescript
+// Validate a shape
+{
+  name: "validate_shape",
+  arguments: {
+    shapeName: "Pad"
+  }
+}
+
+// Validate an imported part
+{
+  name: "validate_shape",
+  arguments: {
+    shapeName: "ImportedPart"
+  }
+}
+```
+
+**Natural language examples:**
+- "Check if this shape is valid"
+- "Validate the imported STEP file"
+- "Are there any issues with this shape?"
+
+**Detected issues:**
+- `FreeEdges` - Edges not connected to faces
+- `NonManifoldEdges` - Edges shared by more than two faces
+- `InvalidOrientation` - Faces with incorrect normal orientation
+- `SelfIntersections` - Shape intersects itself
+- `DegenerateFaces` - Faces with zero or near-zero area
+
+**Notes:**
+- Use before boolean operations to ensure shape integrity
+- Recommended for imported CAD files (STEP, IGES)
+- If issues are found, consider using `heal_shape`
+
+---
+
+#### `heal_shape(shapeName: string, tolerance?: number | string)`
+
+Attempt to fix shape defects and improve shape quality.
+
+**Parameters:**
+- `shapeName` (required): Name of the shape/object to heal
+- `tolerance` (optional): Healing tolerance value. Can be:
+  - Numeric value in mm (e.g., `0.1`)
+  - String with units: `"0.1mm"`, `"0.01mm"`
+  - Default: `0.1mm`
+
+**Response format:**
+```json
+{
+  "success": true,
+  "shapeName": "ImportedPart",
+  "shapeLabel": "ImportedPart",
+  "issuesFixed": 2,
+  "remainingIssues": 0,
+  "message": "Healing completed: 2 issues fixed"
+}
+```
+
+**Example usage:**
+```typescript
+// Heal with default tolerance
+{
+  name: "heal_shape",
+  arguments: {
+    shapeName: "ImportedPart"
+  }
+}
+
+// Heal with custom tolerance
+{
+  name: "heal_shape",
+  arguments: {
+    shapeName: "ImportedPart",
+    tolerance: "0.01mm"
+  }
+}
+
+// Heal with numeric tolerance
+{
+  name: "heal_shape",
+  arguments: {
+    shapeName: "BadShape",
+    tolerance: 0.05
+  }
+}
+```
+
+**Natural language examples:**
+- "Fix the issues with this shape"
+- "Heal the imported part"
+- "Repair this geometry with 0.01mm tolerance"
+
+**Fixes applied:**
+- Small gaps between faces
+- Tolerance issues
+- Invalid edge connections
+- Degenerate geometry
+- Free edges
+- Non-manifold conditions
+
+**Notes:**
+- Use after `validate_shape` reports issues
+- Smaller tolerance = more precise but may fix fewer issues
+- Larger tolerance = more aggressive healing
+- Recommended for imported CAD files
+
+---
+
+#### `get_shape_info(shapeName: string)`
+
+Get detailed information about a shape's properties and topology.
+
+**Parameters:**
+- `shapeName` (required): Name of the shape/object to query
+
+**Response format:**
+```json
+{
+  "success": true,
+  "shapeName": "Pad",
+  "shapeLabel": "Pad",
+  "shapeType": "Solid",
+  "topology": {
+    "vertices": 8,
+    "edges": 12,
+    "faces": 6,
+    "wires": 6,
+    "shells": 1,
+    "solids": 1,
+    "compounds": 0
+  },
+  "properties": {
+    "volume": 1000.00,
+    "area": 600.00,
+    "centerOfMass": {"x": 5.00, "y": 5.00, "z": 5.00},
+    "boundingBox": {
+      "minX": 0, "minY": 0, "minZ": 0,
+      "maxX": 10, "maxY": 10, "maxZ": 10,
+      "xSize": 10, "ySize": 10, "zSize": 10
+    }
+  },
+  "message": "Shape info retrieved successfully"
+}
+```
+
+**Example usage:**
+```typescript
+// Get shape info
+{
+  name: "get_shape_info",
+  arguments: {
+    shapeName: "Pad"
+  }
+}
+
+// Query an imported part
+{
+  name: "get_shape_info",
+  arguments: {
+    shapeName: "ImportedPart"
+  }
+}
+```
+
+**Natural language examples:**
+- "Get information about this shape"
+- "What are the properties of the pad?"
+- "Tell me about the volume and dimensions"
+
+**Information returned:**
+- **Topology counts**: Vertices, edges, faces, wires, shells, solids, compounds
+- **Volume**: Total volume of the shape (in mm³)
+- **Surface Area**: Total surface area (in mm²)
+- **Center of Mass**: 3D coordinates of the center of mass
+- **Bounding Box**: Min/max coordinates and dimensions (X, Y, Z size)
+
+**Notes:**
+- Useful for understanding shape complexity
+- Volume and area useful for mass properties calculations
+- Bounding box helps with placement and fit analysis
+
+---
+
 ### Export Tool (Legacy)
 
 #### `export_model(filePath: string, format: string)`
