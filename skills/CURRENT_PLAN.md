@@ -1,12 +1,12 @@
 ## Status: COMPLETED
 
-# Current Plan: Sketcher Constraint Tools
+# Cycle 9: PartDesign Feature Tools - COMPLETED
 
 ## Overview
 
-Enable the LLM to create and modify 2D sketches with geometric constraints in FreeCAD. Users can describe sketch requirements in natural language ("draw a rectangle with equal sides", "make a circle tangent to this line", "add a horizontal constraint to this edge") and Claude will execute the appropriate FreeCAD Sketcher API calls to create sketches, add geometry, and apply constraints.
+Enable the LLM to create and modify 3D parametric features from sketches in FreeCAD. Users can describe feature requirements in natural language ("extrude this sketch 20mm", "cut a pocket 10mm deep", "revolve this profile 360 degrees") and Claude will execute the appropriate FreeCAD PartDesign API calls to create 3D features from 2D sketches.
 
-This is a critical capability for parametric CAD design - sketches are the foundation of most 3D features (pads, pockets, revolutions) in FreeCAD's PartDesign workbench.
+This is a critical capability for parametric CAD design - after creating 2D sketches, users need to convert them into 3D features using operations like Pad (extrude), Pocket (cut), Revolution (revolve), and Groove.
 
 ## Prerequisites
 
@@ -14,180 +14,204 @@ The following must already exist:
 - `sidecar/src/agent-tools.ts` - Custom tools infrastructure
 - `sidecar/src/result-formatters.ts` - Result formatting utilities
 - `src/Mod/LLMBridge/llm_bridge/property_handlers.py` - Property handlers (reference for pattern)
+- `src/Mod/LLMBridge/llm_bridge/sketcher_handlers.py` - Sketch handlers (for creating sketches to extrude)
 - `src/Mod/LLMBridge/llm_bridge/query_handlers.py` - Query handlers (reference for object lookup)
-- Parametric editing tools working (for modifying sketch-based features)
+- Sketcher constraint tools working (Cycle 8 COMPLETED)
 
 ## Tasks
 
-### 1. Sketcher Handler Module
+### 1. PartDesign Feature Handler Module
 
-**File**: `src/Mod/LLMBridge/llm_bridge/sketcher_handlers.py` (new file)
+**File**: `src/Mod/LLMBridge/llm_bridge/feature_handlers.py` (new file)
 
-Create Python handlers for sketch operations and constraint management:
+Create Python handlers for PartDesign feature operations:
 
 ```python
-# Sketch creation and management
-def create_new_sketch(doc, plane_name="XY") -> dict
-def get_sketch_geometry(sketch_obj) -> dict
-def add_sketch_geometry(sketch_obj, geo_type, params) -> dict
-def delete_sketch_geometry(sketch_obj, geo_index) -> dict
+# Feature creation
+def create_pad(sketch_name, length, direction='normal', up_to_face=None) -> dict
+def create_pocket(sketch_name, length, direction='normal', through_all=False) -> dict
+def create_revolution(sketch_name, axis='vertical', angle=360) -> dict
+def create_groove(sketch_name, axis='vertical', angle=360) -> dict
+def create_chamfer(feature_name, edges, distance) -> dict
+def create_fillet(feature_name, edges, radius) -> dict
 
-# Constraint operations
-def add_constraint(sketch_obj, constraint_type, geo_indices, params) -> dict
-def remove_constraint(sketch_obj, constraint_index) -> dict
-def get_constraints(sketch_obj) -> list
-def update_constraint_value(sketch_obj, constraint_index, value) -> dict
+# Feature modification
+def edit_feature_sketch(feature_name, new_sketch_name) -> dict
+def update_feature_length(feature_name, new_length) -> dict
+def update_feature_angle(feature_name, new_angle) -> dict
+def delete_feature(feature_name) -> dict
 
-# Constraint types supported:
-# - Geometric: Horizontal, Vertical, Parallel, Perpendicular, Tangent, Coincident, Midpoint
-# - Dimensional: Distance, Angle, Radius, Diameter
-# - Symmetry: Symmetric, Equal
+# Feature types supported:
+# - Additive: Pad, Revolution, AdditiveLoft, AdditivePipe
+# - Subtractive: Pocket, Groove, SubtractiveLoft, SubtractivePipe
+# - Modifying: Fillet, Chamfer, Thickness, Draft
 ```
 
 Key implementation details:
-- Use FreeCAD's Sketcher module (`Sketcher`, `Sketcher.Constraint`)
-- Handle sketch coordinate systems (local sketch coordinates vs global)
-- Support constraint value units (mm, degrees)
-- Return sketch geometry and constraint lists for verification
-- Handle constraint conflicts and over-constraint errors
+- Use FreeCAD's PartDesign module (`PartDesign`, `PartDesign::Pad`, `PartDesign::Pocket`, etc.)
+- Handle PartDesign Body requirements (features must be inside a Body)
+- Support reference to existing sketches or auto-create sketch on face
+- Handle feature dependencies and parent-child relationships
+- Return feature info including name, type, dimensions, and placement
+- Handle errors (no active body, invalid sketch, self-intersecting features)
 
 **Acceptance Criteria**:
-- [ ] Works with PartDesign Body sketches
-- [ ] Supports all common constraint types
-- [ ] Handles constraint conflicts gracefully
+- [ ] Works with PartDesign Body workflow
+- [ ] Supports additive features (Pad, Revolution)
+- [ ] Supports subtractive features (Pocket, Groove)
+- [ ] Supports modifying features (Fillet, Chamfer)
+- [ ] Handles missing body gracefully (creates one if needed)
 - [ ] Returns clear error messages for invalid operations
-- [ ] Supports both 2D and mapped sketches (on faces)
+- [ ] Features are parametric (editable after creation)
 
-### 2. Sketch Creation Tools
+### 2. Feature Creation Tools
 
 **File**: `sidecar/src/agent-tools.ts`
 
-Add tools for creating and managing sketches:
+Add tools for creating PartDesign features:
 
-1. **`create_sketch`** - Create a new sketch on a plane or face:
-   - Parameters: `plane` ("XY", "XZ", "YZ", or face reference), `name` (optional)
-   - Returns: `{success, sketchName, sketchId, plane}`
-   - Examples: "Create a sketch on the XY plane", "Start a new sketch on the top face"
+1. **`create_pad`** - Extrude a sketch to create a 3D feature:
+   - Parameters: `sketchName` (required), `length` (required, with units), `direction` (optional: "normal", "reverse", "twoSides"), `upToFace` (optional: face name for "up to" extrusion)
+   - Returns: `{success, featureName, featureType, length, message}`
+   - Examples: "Extrude this sketch 20mm", "Pad the sketch 50mm in both directions"
 
-2. **`add_sketch_geometry`** - Add geometry to a sketch:
-   - Parameters: `sketchName` (required), `geometryType` (line, circle, rectangle, arc, point), `params` (coordinates, radii)
-   - Returns: `{success, sketchName, geometryIndex, geometryType}`
-   - Examples: "Add a line from (0,0) to (50,0)", "Draw a circle at origin with radius 20mm"
+2. **`create_pocket`** - Cut material using a sketch:
+   - Parameters: `sketchName` (required), `depth` (required, with units), `throughAll` (optional: boolean for through-all cut)
+   - Returns: `{success, featureName, featureType, depth, message}`
+   - Examples: "Cut a pocket 10mm deep", "Make a through-all pocket using this sketch"
 
-3. **`delete_sketch_geometry`** - Remove geometry from a sketch:
-   - Parameters: `sketchName` (required), `geometryIndex` (required)
-   - Returns: `{success, sketchName, deletedIndex}`
-   - Examples: "Delete the first line in the sketch"
+3. **`create_revolution`** - Revolve a sketch around an axis:
+   - Parameters: `sketchName` (required), `axis` (optional: "vertical", "horizontal", "custom"), `angle` (optional, default 360)
+   - Returns: `{success, featureName, featureType, angle, axis, message}`
+   - Examples: "Revolve this profile 360 degrees", "Create a revolution feature around the vertical axis"
 
-4. **`get_sketch_geometry`** - List all geometry in a sketch:
-   - Parameters: `sketchName` (required)
-   - Returns: `{success, sketchName, geometry: [{type, index, points, ...}]}`
-   - Examples: "Show me what's in this sketch"
+4. **`create_groove`** - Revolved cut (subtractive revolution):
+   - Parameters: `sketchName` (required), `axis` (optional), `angle` (optional, default 360)
+   - Returns: `{success, featureName, featureType, angle, message}`
+   - Examples: "Cut a groove by revolving this sketch"
 
 **Acceptance Criteria**:
-- [ ] All sketch creation tools integrated
-- [ ] Geometry types: Line, Circle, Arc, Rectangle, Point
-- [ ] Returns geometry indices for constraint reference
-- [ ] Proper error handling for invalid operations
+- [ ] All feature creation tools integrated
+- [ ] Proper unit handling (mm, deg)
+- [ ] Auto-creates PartDesign Body if none exists
+- [ ] Returns feature names for subsequent operations
 
-### 3. Constraint Management Tools
+### 3. Feature Modification Tools
 
 **File**: `sidecar/src/agent-tools.ts` (additional tools)
 
-5. **`add_constraint`** - Add a geometric or dimensional constraint:
-   - Parameters: `sketchName` (required), `constraintType` (required), `geometryIndices` (array), `value` (optional for dimensional)
-   - Returns: `{success, sketchName, constraintIndex, constraintType}`
-   - Examples: "Make this line horizontal", "Set the distance between these points to 50mm", "Make these two lines parallel"
+5. **`create_fillet`** - Add fillets to edges:
+   - Parameters: `featureName` (required, base feature), `edges` (array of edge indices or "all"), `radius` (required)
+   - Returns: `{success, featureName, featureType, radius, edgesCount}`
+   - Examples: "Add a 3mm fillet to all edges", "Fillet the top edges with 5mm radius"
 
-6. **`remove_constraint`** - Remove a constraint from a sketch:
-   - Parameters: `sketchName` (required), `constraintIndex` (required)
-   - Returns: `{success, sketchName, removedIndex}`
-   - Examples: "Remove the first constraint"
+6. **`create_chamfer`** - Add chamfers to edges:
+   - Parameters: `featureName` (required), `edges` (array or "all"), `distance` (required)
+   - Returns: `{success, featureName, featureType, distance, edgesCount}`
+   - Examples: "Add a 2mm chamfer to the edges"
 
-7. **`list_constraints`** - List all constraints on a sketch:
-   - Parameters: `sketchName` (required)
-   - Returns: `{success, sketchName, constraints: [{index, type, geometry, value}]}`
-   - Examples: "What constraints are on this sketch?"
+7. **`update_feature_dimension`** - Modify a feature's dimensional parameter:
+   - Parameters: `featureName` (required), `dimension` (required: "length", "angle", "radius"), `value` (required)
+   - Returns: `{success, featureName, oldValue, newValue, message}`
+   - Examples: "Change the pad length to 30mm", "Update the revolution angle to 180 degrees"
 
-8. **`update_constraint`** - Update a dimensional constraint value:
-   - Parameters: `sketchName` (required), `constraintIndex` (required), `value` (required)
-   - Returns: `{success, sketchName, constraintIndex, oldValue, newValue}`
-   - Examples: "Change the distance constraint to 60mm"
+8. **`delete_feature`** - Remove a feature from the body:
+   - Parameters: `featureName` (required)
+   - Returns: `{success, deletedFeature, message}`
+   - Examples: "Delete the last fillet", "Remove the pocket feature"
 
-**Constraint Types Supported**:
-- `horizontal` - Make line horizontal
-- `vertical` - Make line vertical
-- `parallel` - Make two lines parallel
-- `perpendicular` - Make two lines perpendicular
-- `tangent` - Make curves tangent
-- `coincident` - Make points coincident
-- `midpoint` - Point at line midpoint
-- `equal` - Equal length/radius
-- `symmetric` - Points symmetric about line
-- `distance` - Distance between points/lines
-- `angle` - Angle between lines
-- `radius` - Circle/arc radius
-- `diameter` - Circle diameter
+9. **`edit_feature_sketch`** - Replace the sketch used by a feature:
+   - Parameters: `featureName` (required), `newSketchName` (required)
+   - Returns: `{success, featureName, oldSketch, newSketch, message}`
+   - Examples: "Use this new sketch for the pad feature"
 
 **Acceptance Criteria**:
-- [ ] All constraint types supported
-- [ ] Dimensional constraints accept unit values
-- [ ] Constraint conflicts detected and reported
-- [ ] Over-constrained sketches handled gracefully
+- [ ] All modification tools functional
+- [ ] Features remain parametric after modification
+- [ ] Undo stack integration works
+- [ ] Dependencies handled correctly
 
-### 4. Python Bridge Extensions
+### 4. Body Management Tools
 
-**File**: `src/Mod/LLMBridge/llm_bridge/sketcher_handlers.py` (extend)
+**File**: `sidecar/src/agent-tools.ts` (additional tools)
+
+10. **`create_body`** - Create a new PartDesign Body:
+    - Parameters: `name` (optional)
+    - Returns: `{success, bodyName, message}`
+    - Examples: "Create a new body", "Start a new PartDesign body"
+
+11. **`set_active_body`** - Set the active body for feature creation:
+    - Parameters: `bodyName` (required)
+    - Returns: `{success, activeBody, message}`
+    - Examples: "Make Body the active body"
+
+12. **`list_bodies`** - List all PartDesign bodies in the document:
+    - Parameters: none
+    - Returns: `{success, bodies: [{name, label, featureCount, isActive}]}`
+    - Examples: "Show me all bodies", "What bodies exist in this document?"
+
+**Acceptance Criteria**:
+- [ ] Body management tools complete
+- [ ] Auto-body creation when needed
+- [ ] Active body tracking works
+
+### 5. Python Bridge Extensions
+
+**File**: `src/Mod/LLMBridge/llm_bridge/feature_handlers.py` (extend)
 
 Add WebSocket-accessible functions:
 
 ```python
 # Called via execute_freecad_python
-def handle_create_sketch_request(plane="XY", name=None)
-def handle_add_geometry_request(sketch_name, geometry_type, params)
-def handle_add_constraint_request(sketch_name, constraint_type, geo_indices, value=None)
-def handle_list_constraints_request(sketch_name)
-def handle_get_sketch_geometry_request(sketch_name)
+def handle_create_pad_request(sketch_name, length, direction='normal', up_to_face=None)
+def handle_create_pocket_request(sketch_name, depth, through_all=False)
+def handle_create_revolution_request(sketch_name, axis='vertical', angle=360)
+def handle_create_fillet_request(feature_name, edges, radius)
+def handle_update_feature_dimension_request(feature_name, dimension, value)
+def handle_create_body_request(name=None)
+def handle_list_bodies_request()
 ```
 
 These wrap the core handlers and add:
 - Document locking during modifications
-- Sketch solver status checking
+- Body auto-creation if none exists
+- Feature dependency tracking
 - Undo stack integration
 - Event notifications for UI updates
 
 **Acceptance Criteria**:
 - [ ] Functions accessible via WebSocket
-- [ ] Sketch solver status reported
+- [ ] Body auto-creation works
 - [ ] Changes are undoable
-- [ ] Viewport refreshes after sketch changes
+- [ ] Viewport refreshes after feature changes
 
-### 5. Result Formatters Update
+### 6. Result Formatters Update
 
 **File**: `sidecar/src/result-formatters.ts` (extend)
 
-Add formatters for sketcher operations:
+Add formatters for PartDesign operations:
 
 ```typescript
-function formatSketchCreationResult(result: SketchCreationResult): string
-function formatGeometryResult(result: GeometryResult): string
-function formatConstraintList(result: ConstraintListResult): string
-function formatConstraintChange(result: ConstraintChangeResult): string
+function formatFeatureCreationResult(result: FeatureCreationResult): string
+function formatFeatureList(result: FeatureListResult): string
+function formatBodyList(result: BodyListResult): string
+function formatFeatureDimensionUpdate(result: FeatureDimensionUpdate): string
 ```
 
 Output should be human-readable summaries:
-- "Created sketch 'Sketch' on XY plane"
-- "Added line from (0,0) to (50,0)"
-- "Added horizontal constraint on Line1"
-- "Set distance constraint to 50mm"
-- "Sketch is fully constrained"
+- "Created Pad 'Pad' with length 20mm"
+- "Created Pocket 'Pocket' cutting 10mm deep"
+- "Added fillet with 3mm radius to 4 edges"
+- "Updated Pad length from 20mm to 30mm"
+- "Created new PartDesign Body 'Body'"
 
 **Acceptance Criteria**:
 - [ ] Results are concise but informative
-- [ ] Units displayed correctly for dimensional constraints
-- [ ] Sketch constraint status shown (under/fully/over-constrained)
+- [ ] Units displayed correctly
+- [ ] Feature type and dimensions shown
+- [ ] Body context included when relevant
 
-### 6. Sidecar README Update
+### 7. Sidecar README Update
 
 **File**: `sidecar/README.md`
 
@@ -195,105 +219,114 @@ Document the new tools:
 - Tool names and parameters
 - Example natural language commands
 - Example tool invocations
-- Supported geometry types
-- Supported constraint types with syntax
-- Common sketch creation patterns
+- Supported feature types
+- PartDesign Body workflow explanation
+- Common feature creation patterns
 
 **Acceptance Criteria**:
 - [ ] All new tools documented
 - [ ] Examples cover common use cases
-- [ ] Constraint type reference included
-- [ ] Sketch coordinate system explained
+- [ ] Feature type reference included
+- [ ] Body workflow explained
 
-### 7. Test End-to-End
+### 8. Test End-to-End
 
 **Test Scenarios**:
 
-1. **Basic Sketch Creation**:
-   - Command: "Create a sketch on the XY plane"
-   - Verify: New sketch created, visible in model tree
+1. **Basic Pad Creation**:
+   - Create a sketch with a rectangle
+   - Command: "Extrude this sketch 20mm"
+   - Verify: Pad feature created, visible in model tree, 3D solid displayed
 
-2. **Add Rectangle**:
-   - Create a sketch
-   - Command: "Add a rectangle with corners at (0,0) and (50,30)"
-   - Verify: Four lines forming rectangle in sketch
+2. **Pocket Cut**:
+   - Create a sketch on a face
+   - Command: "Cut a pocket 10mm deep using this sketch"
+   - Verify: Pocket feature created, material removed
 
-3. **Apply Constraints**:
-   - Create a sketch with two lines
-   - Command: "Make the first line horizontal"
-   - Verify: Horizontal constraint applied, line aligned
+3. **Revolution Feature**:
+   - Create a profile sketch
+   - Command: "Revolve this profile 360 degrees around the vertical axis"
+   - Verify: Revolution feature created, cylindrical shape formed
 
-4. **Dimensional Constraints**:
-   - Create a sketch with a line
-   - Command: "Set the line length to 50mm"
-   - Verify: Distance constraint applied, line measures 50mm
+4. **Fillet Addition**:
+   - Create a pad feature
+   - Command: "Add a 3mm fillet to all vertical edges"
+   - Verify: Fillet feature created, edges rounded
 
-5. **Geometric Relationships**:
-   - Create two lines
-   - Command: "Make these lines parallel and equal length"
-   - Verify: Both constraints applied correctly
+5. **Chamfer Addition**:
+   - Command: "Add a 2mm chamfer to the top edges"
+   - Verify: Chamfer feature created, edges beveled
 
-6. **Circle with Constraints**:
-   - Create a sketch
-   - Command: "Add a circle at origin with 20mm radius, make it tangent to a line"
-   - Verify: Circle created, tangent constraint applied
+6. **Dimension Update**:
+   - Create a pad with 20mm length
+   - Command: "Change the pad length to 35mm"
+   - Verify: Feature updated, model regenerates with new dimension
 
-7. **Over-Constraint Handling**:
-   - Create a fully constrained sketch
-   - Command: "Add another distance constraint"
-   - Verify: Clear error about over-constraining
+7. **Multi-Feature Part**:
+   - Command: "Create a box 50x30x10mm, then add a 5mm hole in the center"
+   - Verify: Multiple features created in body, proper feature tree
 
-8. **Constraint Modification**:
-   - Create a dimensioned sketch
-   - Command: "Change the width to 60mm"
-   - Verify: Constraint value updated, sketch regenerates
+8. **Body Management**:
+   - Command: "Create a new body", "List all bodies"
+   - Verify: Body created and listed correctly
+
+9. **Error Handling**:
+   - Command: "Extrude this sketch" (with no sketch selected)
+   - Verify: Clear error message about missing sketch
+
+10. **Through-All Pocket**:
+    - Command: "Make a through-all pocket using this circle"
+    - Verify: Pocket cuts through entire body
 
 **Acceptance Criteria**:
 - [ ] All scenarios pass
-- [ ] Sketch solver reports correct status
+- [ ] Features are parametric and editable
+- [ ] Model regenerates correctly after changes
 - [ ] Error messages are actionable
-- [ ] Viewport updates after each change
+- [ ] Viewport updates after each operation
 
 ## Files to Create/Modify
 
 ### New Files:
-1. `src/Mod/LLMBridge/llm_bridge/sketcher_handlers.py` - Sketch and constraint handlers
+1. `src/Mod/LLMBridge/llm_bridge/feature_handlers.py` - PartDesign feature handlers
 
 ### Modified Files:
-1. `sidecar/src/agent-tools.ts` - Add 8 sketcher tools
-2. `sidecar/src/result-formatters.ts` - Add formatters for sketcher results
-3. `sidecar/README.md` - Document sketcher tools
+1. `sidecar/src/agent-tools.ts` - Add 12 PartDesign tools (4 creation, 5 modification, 3 body management)
+2. `sidecar/src/result-formatters.ts` - Add formatters for feature results
+3. `sidecar/README.md` - Document PartDesign tools
 4. `src/Mod/LLMBridge/llm_bridge/__init__.py` - Register new handlers if needed
 
 ## Dependencies
 
-- FreeCAD Sketcher module (`Sketcher`, `Sketcher.Constraint`)
-- FreeCAD PartDesign module (for body sketches)
+- FreeCAD PartDesign module (`PartDesign`, `PartDesign::Body`, `PartDesign::Pad`, etc.)
 - Existing WebSocket bridge infrastructure
-- Existing query handlers (for sketch object lookup)
+- Existing query handlers (for feature object lookup)
+- Sketcher handlers (for creating sketches to extrude)
 
 ## Out of Scope
 
 This plan does NOT include:
-- Sketcher external geometry references (complex edge cases)
-- Constraint migration between sketches
-- Sketch mirroring/pattern operations
-- Advanced sketcher tools (conics, ellipses, B-splines)
-- Sketch validation and repair tools
+- Advanced PartDesign features (AdditiveLoft, SubtractivePipe, MultiSections)
+- Pattern operations (LinearPattern, CircularPattern)
+- Transformation features (Mirrored, Scaled)
+- Datum features (Planes, Lines, Points)
+- Assembly constraints (for multi-part designs)
+- Boolean operations with Part workbench
 
 ## Definition of Done
 
-- [ ] Sketcher handler module complete with all geometry and constraint operations
-- [ ] All 8 sketcher tools implemented and working
+- [ ] Feature handler module complete with all PartDesign operations
+- [ ] All 12 PartDesign tools implemented and working
+- [ ] Body management tools functional
 - [ ] Results formatted clearly for users
-- [ ] Constraint status reporting functional
+- [ ] Feature parameter editing works
 - [ ] End-to-end tests pass for all scenarios
 - [ ] Documentation updated in sidecar README
 - [ ] Plan marked COMPLETED and moved to PROJECT.md progress
 
 ## Next Step After This
 
-Once sketcher constraint tools are complete:
-- Add boolean operation tools (union, cut, intersect)
-- Or: Add PartDesign feature tools (Pad, Pocket, Revolution, Groove)
+Once PartDesign feature tools are complete:
+- Add boolean operation tools (union, cut, intersect with Part workbench)
 - Or: Add assembly constraint tools (for multi-part designs)
+- Or: Add advanced PartDesign features (patterns, transformations)
