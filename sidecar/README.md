@@ -701,13 +701,14 @@ The sketcher tools allow you to create and edit 2D sketches with geometric and d
 
 ---
 
-#### `create_sketch(plane?: string, faceName?: string)`
+#### `create_sketch(support?: string, mapMode?: string, name?: string)`
 
-Create a new sketch on a specified plane or face.
+Create a new sketch on a plane or face.
 
 **Parameters:**
-- `plane` (optional): Plane to create sketch on. Options: `"XY"`, `"XZ"`, `"YZ"`, or custom plane object name. Default: `"XY"`
-- `faceName` (optional): Name of a face to attach the sketch to. If provided, `plane` is ignored.
+- `support` (optional): Support specification for sketch placement, e.g., `"Body001.Face4"` or `"(Body001, ['Face4'])"`. If omitted, creates sketch on default XY plane.
+- `mapMode` (optional): Map mode for sketch placement. Options: `"Deactivated"`, `"FlatFace"`, `"Plane"`, `"ThreePoints"`, `"ThreePlanes"`, `"Curved"`, `"Axis"`, `"Concentric"`, `"RefPlane"`. Default: `"FlatFace"`
+- `name` (optional): Name for the sketch. If omitted, auto-generated (e.g., "Sketch", "Sketch001").
 
 **Response format:**
 ```json
@@ -715,9 +716,10 @@ Create a new sketch on a specified plane or face.
   "success": true,
   "sketchName": "Sketch",
   "sketchLabel": "Sketch",
-  "plane": "XY",
-  "faceName": null,
-  "message": "Created sketch on XY plane"
+  "documentName": "UnnamedDocument",
+  "support": "(none)",
+  "mapMode": "FlatFace",
+  "message": "Created sketch 'Sketch' on FlatFace plane"
 }
 ```
 
@@ -729,48 +731,108 @@ Create a new sketch on a specified plane or face.
   arguments: {}
 }
 
-// Create sketch on XZ plane
-{
-  name: "create_sketch",
-  arguments: {
-    plane: "XZ"
-  }
-}
-
 // Create sketch on a specific face
 {
   name: "create_sketch",
   arguments: {
-    faceName: "Box.Face1"
+    support: "Body.Face4",
+    mapMode: "FlatFace"
+  }
+}
+
+// Create named sketch on XY plane
+{
+  name: "create_sketch",
+  arguments: {
+    name: "ProfileSketch"
+  }
+}
+
+// Create sketch on XZ base plane (using RefPlane map mode)
+{
+  name: "create_sketch",
+  arguments: {
+    mapMode: "RefPlane"
+  }
+}
+
+// Create sketch with specific name on a face
+{
+  name: "create_sketch",
+  arguments: {
+    support: "Body001.Face1",
+    mapMode: "FlatFace",
+    name: "BaseSketch"
   }
 }
 ```
 
+**Base plane examples:**
+
+FreeCAD supports creating sketches on the three standard base planes:
+
+```typescript
+// XY plane (default) - horizontal plane
+{
+  name: "create_sketch",
+  arguments: {
+    mapMode: "FlatFace"
+  }
+}
+
+// XZ plane - vertical plane (front/back)
+{
+  name: "create_sketch",
+  arguments: {
+    mapMode: "Plane"
+  }
+}
+
+// YZ plane - vertical plane (side)
+{
+  name: "create_sketch",
+  arguments: {
+    support: "YZ_Plane",  // If you have a reference plane object
+    mapMode: "RefPlane"
+  }
+}
+```
+
+For standard base planes without support, use `mapMode: "Plane"` which allows sketch placement on any plane orientation.
+
 ---
 
-#### `add_geometry(type: string, points: Array<{x: number, y: number}>, radius?: number, center?: {x: number, y: number})`
+#### `add_geometry(sketchName: string, geometryType: string, params: object)`
 
-Add geometric elements to a sketch.
+Add geometry elements to a sketch.
 
 **Parameters:**
-- `type` (required): Geometry type - `"line"`, `"circle"`, `"arc"`, `"rectangle"`, `"point"`
-- `points` (required): Array of points defining the geometry:
-  - For `line`: `[{x, y}, {x, y}]` (start and end points)
-  - For `rectangle`: `[{x, y}, {x, y}]` (opposite corners)
-  - For `circle`: `[{x, y}]` (single point on circumference, use with `center` and `radius`)
-  - For `arc`: `[{x, y}, {x, y}, {x, y}]` (start, end, and a point on arc)
-  - For `point`: `[{x, y}]` (single point)
-- `radius` (optional): Radius for circles and arcs
-- `center` (optional): Center point `{x, y}` for circles and arcs
+- `sketchName` (required): Name of the sketch to add geometry to
+- `geometryType` (required): Type of geometry - `"line"`, `"circle"`, `"arc"`, `"rectangle"`, `"point"`
+- `params` (required): Geometry parameters based on type:
+  - `line`: `{ start: {x, y}, end: {x, y} }`
+  - `circle`: `{ center: {x, y}, radius: number }`
+  - `arc`: `{ center: {x, y}, radius: number, startAngle: number, endAngle: number }` (angles in degrees)
+  - `rectangle`: `{ corner1: {x, y}, corner2: {x, y} }` - automatically adds coincident constraints at corners
+  - `point`: `{ x: number, y: number }`
 
 **Response format:**
 ```json
 {
   "success": true,
-  "geometryType": "line",
-  "geometryId": 0,
-  "points": [{"x": 0, "y": 0}, {"x": 50, "y": 0}],
-  "message": "Added line geometry (ID: 0)"
+  "sketchName": "Sketch",
+  "sketchLabel": "Sketch",
+  "geometryAdded": true,
+  "geometryCount": 1,
+  "geometry": [
+    {
+      "index": 0,
+      "type": "LineSegment",
+      "startPoint": {"x": 0, "y": 0},
+      "endPoint": {"x": 50, "y": 0}
+    }
+  ],
+  "message": "Added 1 geometry element(s) to sketch"
 }
 ```
 
@@ -780,8 +842,9 @@ Add geometric elements to a sketch.
 {
   name: "add_geometry",
   arguments: {
-    type: "line",
-    points: [{"x": 0, "y": 0}, {"x": 50, "y": 0}]
+    sketchName: "Sketch",
+    geometryType: "line",
+    params: { start: {x: 0, y: 0}, end: {x: 50, y: 0} }
   }
 }
 
@@ -789,70 +852,79 @@ Add geometric elements to a sketch.
 {
   name: "add_geometry",
   arguments: {
-    type: "circle",
-    center: {"x": 25, "y": 25},
-    radius: 10,
-    points: [{"x": 35, "y": 25}]
+    sketchName: "Sketch",
+    geometryType: "circle",
+    params: { center: {x: 25, y: 25}, radius: 10 }
   }
 }
 
-// Add a rectangle with corners at (0, 0) and (40, 30)
+// Add a rectangle with corners at (0, 0) and (50, 30)
+// Note: Rectangle automatically adds 4 lines with coincident constraints at corners
 {
   name: "add_geometry",
   arguments: {
-    type: "rectangle",
-    points: [{"x": 0, "y": 0}, {"x": 40, "y": 30}]
+    sketchName: "Sketch",
+    geometryType: "rectangle",
+    params: { corner1: {x: 0, y: 0}, corner2: {x: 50, y: 30} }
   }
 }
 
-// Add an arc from (0, 0) to (30, 0) passing through (15, 15)
+// Add an arc centered at (25, 25) with radius 10, from 0 to 90 degrees
 {
   name: "add_geometry",
   arguments: {
-    type: "arc",
-    points: [{"x": 0, "y": 0}, {"x": 30, "y": 0}, {"x": 15, "y": 15}]
+    sketchName: "Sketch",
+    geometryType: "arc",
+    params: { center: {x: 25, y: 25}, radius: 10, startAngle: 0, endAngle: 90 }
   }
 }
 
-// Add a construction point
+// Add a construction point at (20, 20)
 {
   name: "add_geometry",
   arguments: {
-    type: "point",
-    points: [{"x": 20, "y": 20}]
+    sketchName: "Sketch",
+    geometryType: "point",
+    params: { x: 20, y: 20 }
   }
 }
 ```
 
 ---
 
-#### `add_geometric_constraint(type: string, geometryIds: number[], value?: number | string)`
+#### `add_geometric_constraint(sketchName: string, constraintType: string, geoIndex1: number, pointPos1?: number, geoIndex2?: number, pointPos2?: number)`
 
 Add a geometric constraint between sketch elements.
 
 **Parameters:**
-- `type` (required): Constraint type:
-  - `"coincident"` - Two points coincide (2 geometry IDs: point1, point2)
-  - `"horizontal"` - Line is horizontal (1 geometry ID: line)
-  - `"vertical"` - Line is vertical (1 geometry ID: line)
-  - `"parallel"` - Two lines are parallel (2 geometry IDs: line1, line2)
-  - `"perpendicular"` - Two lines are perpendicular (2 geometry IDs: line1, line2)
-  - `"tangent"` - Curve tangent to line/curve (2 geometry IDs)
-  - `"equal"` - Two lines equal length or two circles/arcs equal radius (2 geometry IDs)
-  - `"symmetric"` - Two points symmetric about a line/axis (3 geometry IDs: point1, point2, line/axis)
-  - `"concentric"` - Two circles/arcs share same center (2 geometry IDs)
-  - `"midpoint"` - Point is midpoint of a line (2 geometry IDs: point, line)
-- `geometryIds` (required): Array of geometry element IDs the constraint applies to
-- `value` (optional): Additional value for certain constraints (rarely used)
+- `sketchName` (required): Name of the sketch
+- `constraintType` (required): Constraint type:
+  - `"coincident"` - Two points coincide (requires geoIndex1, geoIndex2)
+  - `"horizontal"` - Line is horizontal (requires geoIndex1)
+  - `"vertical"` - Line is vertical (requires geoIndex1)
+  - `"parallel"` - Two lines are parallel (requires geoIndex1, geoIndex2)
+  - `"perpendicular"` - Two lines are perpendicular (requires geoIndex1, geoIndex2)
+  - `"tangent"` - Curve tangent to line/curve (requires geoIndex1, geoIndex2)
+  - `"equal"` - Two lines equal length or two circles/arcs equal radius (requires geoIndex1, geoIndex2)
+  - `"symmetric"` - Two points symmetric about a line/axis (requires geoIndex1, geoIndex2)
+  - `"concentric"` - Two circles/arcs share same center (requires geoIndex1, geoIndex2)
+  - `"midpoint"` - Point is midpoint of a line (requires geoIndex1, geoIndex2)
+- `geoIndex1` (required): Index of first geometry element (0-based)
+- `pointPos1` (optional): Point position on first element (1=start, 2=end, 3=center)
+- `geoIndex2` (optional): Index of second geometry element (required for two-element constraints)
+- `pointPos2` (optional): Point position on second element
 
 **Response format:**
 ```json
 {
   "success": true,
+  "sketchName": "Sketch",
+  "sketchLabel": "Sketch",
+  "constraintAdded": true,
+  "constraintCount": 1,
+  "constraintIndex": 0,
   "constraintType": "perpendicular",
-  "constraintId": 0,
-  "geometryIds": [0, 1],
-  "message": "Added perpendicular constraint (ID: 0)"
+  "message": "Added perpendicular constraint to sketch"
 }
 ```
 
@@ -862,8 +934,9 @@ Add a geometric constraint between sketch elements.
 {
   name: "add_geometric_constraint",
   arguments: {
-    type: "horizontal",
-    geometryIds: [0]
+    sketchName: "Sketch",
+    constraintType: "horizontal",
+    geoIndex1: 0
   }
 }
 
@@ -871,8 +944,10 @@ Add a geometric constraint between sketch elements.
 {
   name: "add_geometric_constraint",
   arguments: {
-    type: "perpendicular",
-    geometryIds: [0, 1]
+    sketchName: "Sketch",
+    constraintType: "perpendicular",
+    geoIndex1: 0,
+    geoIndex2: 1
   }
 }
 
@@ -880,8 +955,10 @@ Add a geometric constraint between sketch elements.
 {
   name: "add_geometric_constraint",
   arguments: {
-    type: "parallel",
-    geometryIds: [1, 2]
+    sketchName: "Sketch",
+    constraintType: "parallel",
+    geoIndex1: 1,
+    geoIndex2: 2
   }
 }
 
@@ -889,8 +966,10 @@ Add a geometric constraint between sketch elements.
 {
   name: "add_geometric_constraint",
   arguments: {
-    type: "concentric",
-    geometryIds: [0, 1]
+    sketchName: "Sketch",
+    constraintType: "concentric",
+    geoIndex1: 0,
+    geoIndex2: 1
   }
 }
 
@@ -898,8 +977,45 @@ Add a geometric constraint between sketch elements.
 {
   name: "add_geometric_constraint",
   arguments: {
-    type: "equal",
-    geometryIds: [0, 1]
+    sketchName: "Sketch",
+    constraintType: "equal",
+    geoIndex1: 0,
+    geoIndex2: 1
+  }
+}
+
+// Make two points symmetric about a line
+{
+  name: "add_geometric_constraint",
+  arguments: {
+    sketchName: "Sketch",
+    constraintType: "symmetric",
+    geoIndex1: 0,
+    geoIndex2: 1
+  }
+}
+
+// Make a point the midpoint of a line
+{
+  name: "add_geometric_constraint",
+  arguments: {
+    sketchName: "Sketch",
+    constraintType: "midpoint",
+    geoIndex1: 0,
+    geoIndex2: 1
+  }
+}
+
+// Make two points coincident (end of line 0 with start of line 1)
+{
+  name: "add_geometric_constraint",
+  arguments: {
+    sketchName: "Sketch",
+    constraintType: "coincident",
+    geoIndex1: 0,
+    pointPos1: 2,
+    geoIndex2: 1,
+    pointPos2: 1
   }
 }
 ```
@@ -912,9 +1028,9 @@ Add a dimensional constraint (distance, angle, radius, or diameter) to sketch el
 
 **Parameters:**
 - `type` (required): Dimension type:
-  - `"distance"` - Distance between two points or point to line (2+ geometry IDs)
-  - `"horizontal_distance"` - Horizontal distance between points (2 geometry IDs)
-  - `"vertical_distance"` - Vertical distance between points (2 geometry IDs)
+  - `"distance_x"` - Horizontal distance (DistanceX constraint)
+  - `"distance_y"` - Vertical distance (DistanceY constraint)
+  - `"distance"` - Distance between two points or length of a line (2+ geometry IDs)
   - `"angle"` - Angle between two lines (2 geometry IDs)
   - `"radius"` - Radius of circle/arc (1 geometry ID)
   - `"diameter"` - Diameter of circle (1 geometry ID)
@@ -947,13 +1063,23 @@ Add a dimensional constraint (distance, angle, radius, or diameter) to sketch el
   }
 }
 
-// Set horizontal distance between points
+// Set horizontal distance between points (distance_x)
 {
   name: "add_dimensional_constraint",
   arguments: {
-    type: "horizontal_distance",
+    type: "distance_x",
     geometryIds: [0, 1],
     value: "30mm"
+  }
+}
+
+// Set vertical distance between points (distance_y)
+{
+  name: "add_dimensional_constraint",
+  arguments: {
+    type: "distance_y",
+    geometryIds: [0, 1],
+    value: "20mm"
   }
 }
 
@@ -1192,6 +1318,757 @@ Query all geometry elements in a sketch.
   }
 }
 ```
+
+### PartDesign Feature Tools
+
+The PartDesign feature tools allow you to create and modify parametric 3D features from sketches. PartDesign is FreeCAD's feature-based modeling workbench where 3D objects are built from a series of additive and subtractive operations applied to sketches. These tools support the complete PartDesign workflow including body management, feature creation (pads, pockets, revolutions, grooves), and feature modification (fillets, chamfers, updates, deletions).
+
+**PartDesign Workflow Overview:**
+
+1. **Create or select a Body** - All PartDesign features must belong to a Body
+2. **Create a Sketch** - Draw a 2D profile on a plane or face
+3. **Create a Feature** - Extrude (Pad), cut (Pocket), revolve, or groove the sketch
+4. **Modify Features** - Add fillets, chamfers, or update dimensions
+5. **Repeat** - Add more sketches and features to build complex geometry
+
+---
+
+#### `create_body(name?: string)`
+
+Create a new PartDesign Body container for feature-based modeling.
+
+**Parameters:**
+- `name` (optional): Name for the new body. If omitted, auto-generated (e.g., "Body", "Body001").
+
+**Response format:**
+```json
+{
+  "success": true,
+  "bodyName": "Body",
+  "bodyLabel": "Body",
+  "documentName": "UnnamedDocument",
+  "message": "Created PartDesign Body 'Body'"
+}
+```
+
+**Example usage:**
+```typescript
+// Create a new body with auto-generated name
+{
+  name: "create_body",
+  arguments: {}
+}
+
+// Create a named body
+{
+  name: "create_body",
+  arguments: {
+    name: "MainBody"
+  }
+}
+```
+
+**Notes:**
+- A Body is required before creating PartDesign features (Pad, Pocket, etc.)
+- If no body exists when creating a feature, one will be auto-created
+- Multiple bodies can exist in a document for multi-part designs
+
+---
+
+#### `set_active_body(bodyName: string)`
+
+Set the active body for subsequent PartDesign operations.
+
+**Parameters:**
+- `bodyName` (required): Name of the body to activate
+
+**Response format:**
+```json
+{
+  "success": true,
+  "activeBody": "Body",
+  "activeBodyLabel": "Body",
+  "previousBody": "Body001",
+  "message": "Set active body to 'Body'"
+}
+```
+
+**Example usage:**
+```typescript
+// Set Body as the active body
+{
+  name: "set_active_body",
+  arguments: {
+    bodyName: "Body"
+  }
+}
+
+// Switch to a different body
+{
+  name: "set_active_body",
+  arguments: {
+    bodyName: "MainBody"
+  }
+}
+```
+
+**Notes:**
+- Only one body can be active at a time
+- New features are automatically added to the active body
+- Use `list_bodies` to see available bodies
+
+---
+
+#### `list_bodies()`
+
+List all PartDesign bodies in the current document.
+
+**Parameters:** None
+
+**Response format:**
+```json
+{
+  "success": true,
+  "bodies": [
+    {
+      "name": "Body",
+      "label": "Body",
+      "featureCount": 5,
+      "isActive": true
+    },
+    {
+      "name": "Body001",
+      "label": "SecondaryBody",
+      "featureCount": 2,
+      "isActive": false
+    }
+  ],
+  "bodyCount": 2,
+  "message": "Found 2 body(s)"
+}
+```
+
+**Example usage:**
+```typescript
+// List all bodies in the document
+{
+  name: "list_bodies",
+  arguments: {}
+}
+```
+
+**Notes:**
+- Returns body name, label, feature count, and active status
+- Useful for understanding document structure before operations
+
+---
+
+#### `create_pad(sketchName: string, length: number | string, direction?: "normal" | "reverse" | "twoSides", upToFace?: string)`
+
+Create a Pad feature by extruding a sketch to add material.
+
+**Parameters:**
+- `sketchName` (required): Name of the sketch to extrude
+- `length` (required): Extrusion length. Can be:
+  - Numeric value in mm (e.g., `20`)
+  - String with units: `"20mm"`, `"2cm"`, `"1in"`
+- `direction` (optional): Extrusion direction - `"normal"` (default), `"reverse"`, or `"twoSides"`
+- `upToFace` (optional): Face name for "up to" extrusion (e.g., "Body.Face5"). If provided, `length` is ignored.
+
+**Response format:**
+```json
+{
+  "success": true,
+  "featureName": "Pad",
+  "featureLabel": "Pad",
+  "bodyName": "Body",
+  "sketchName": "Sketch",
+  "length": "20.00mm",
+  "direction": "normal",
+  "message": "Created Pad 'Pad' with length 20.00mm"
+}
+```
+
+**Example usage:**
+```typescript
+// Extrude a sketch 20mm in the normal direction
+{
+  name: "create_pad",
+  arguments: {
+    sketchName: "Sketch",
+    length: "20mm"
+  }
+}
+
+// Extrude 50mm in both directions (twoSides)
+{
+  name: "create_pad",
+  arguments: {
+    sketchName: "Sketch",
+    length: 50,
+    direction: "twoSides"
+  }
+}
+
+// Extrude in reverse direction
+{
+  name: "create_pad",
+  arguments: {
+    sketchName: "Sketch",
+    length: "30mm",
+    direction: "reverse"
+  }
+}
+
+// Extrude up to a specific face
+{
+  name: "create_pad",
+  arguments: {
+    sketchName: "Sketch",
+    length: "100mm",
+    upToFace: "Body001.Face5"
+  }
+}
+```
+
+**Natural language examples:**
+- "Extrude this sketch 20mm"
+- "Pad the sketch 50mm in both directions"
+- "Create a pad feature with length 30mm"
+- "Extrude the sketch up to the top face"
+
+**Notes:**
+- The sketch must already exist (use `create_sketch` first)
+- If no active body exists, one will be auto-created
+- Pad is an additive feature (adds material)
+
+---
+
+#### `create_pocket(sketchName: string, depth: number | string, throughAll?: boolean)`
+
+Create a Pocket feature by extruding a sketch to remove material (cut).
+
+**Parameters:**
+- `sketchName` (required): Name of the sketch to use for the cut
+- `depth` (required): Pocket depth. Can be:
+  - Numeric value in mm (e.g., `10`)
+  - String with units: `"10mm"`, `"1cm"`, `"0.5in"`
+- `throughAll` (optional): If `true`, cuts through all material (default: `false`)
+
+**Response format:**
+```json
+{
+  "success": true,
+  "featureName": "Pocket",
+  "featureLabel": "Pocket",
+  "bodyName": "Body",
+  "sketchName": "Sketch",
+  "depth": "10.00mm",
+  "throughAll": false,
+  "message": "Created Pocket 'Pocket' with depth 10.00mm"
+}
+```
+
+**Example usage:**
+```typescript
+// Cut a pocket 10mm deep
+{
+  name: "create_pocket",
+  arguments: {
+    sketchName: "Sketch",
+    depth: "10mm"
+  }
+}
+
+// Create a through-all pocket (cuts through entire body)
+{
+  name: "create_pocket",
+  arguments: {
+    sketchName: "Sketch",
+    depth: "50mm",
+    throughAll: true
+  }
+}
+
+// Cut a pocket 5mm deep
+{
+  name: "create_pocket",
+  arguments: {
+    sketchName: "Sketch001",
+    depth: 5
+  }
+}
+```
+
+**Natural language examples:**
+- "Cut a pocket 10mm deep using this sketch"
+- "Make a through-all pocket with this circle"
+- "Create a pocket feature 5mm deep"
+- "Cut through the entire body using this sketch"
+
+**Notes:**
+- Pocket is a subtractive feature (removes material)
+- Requires an existing solid body to cut from
+- `throughAll: true` ignores the `depth` parameter
+
+---
+
+#### `create_revolution(sketchName: string, axis?: "vertical" | "horizontal" | "custom", angle?: number | string)`
+
+Create a Revolution feature by revolving a sketch around an axis.
+
+**Parameters:**
+- `sketchName` (required): Name of the sketch to revolve
+- `axis` (optional): Revolution axis - `"vertical"` (default, Z-axis), `"horizontal"` (X-axis), or `"custom"`
+- `angle` (optional): Revolution angle. Can be:
+  - Numeric value in degrees (e.g., `360`)
+  - String with units: `"360deg"`, `"180deg"`, `"1.5rad"`
+  - Default: `360` (full revolution)
+
+**Response format:**
+```json
+{
+  "success": true,
+  "featureName": "Revolution",
+  "featureLabel": "Revolution",
+  "bodyName": "Body",
+  "sketchName": "Sketch",
+  "axis": "vertical",
+  "angle": "360.00deg",
+  "message": "Created Revolution 'Revolution' with angle 360.00deg around vertical axis"
+}
+```
+
+**Example usage:**
+```typescript
+// Revolve a profile 360 degrees around the vertical axis
+{
+  name: "create_revolution",
+  arguments: {
+    sketchName: "Sketch",
+    axis: "vertical",
+    angle: 360
+  }
+}
+
+// Revolve 180 degrees around horizontal axis
+{
+  name: "create_revolution",
+  arguments: {
+    sketchName: "Sketch",
+    axis: "horizontal",
+    angle: "180deg"
+  }
+}
+
+// Full revolution (default angle is 360)
+{
+  name: "create_revolution",
+  arguments: {
+    sketchName: "Sketch",
+    axis: "vertical"
+  }
+}
+
+// Partial revolution with radians
+{
+  name: "create_revolution",
+  arguments: {
+    sketchName: "Sketch",
+    angle: "1.5rad"
+  }
+}
+```
+
+**Natural language examples:**
+- "Revolve this profile 360 degrees"
+- "Create a revolution feature around the vertical axis"
+- "Revolve the sketch 180 degrees around the horizontal axis"
+- "Make a half-revolution of this profile"
+
+**Notes:**
+- Revolution is an additive feature (adds material)
+- Commonly used for creating cylindrical or rotationally symmetric parts
+- The sketch should typically be a half-profile for full revolutions
+
+---
+
+#### `create_groove(sketchName: string, axis?: "vertical" | "horizontal" | "custom", angle?: number | string)`
+
+Create a Groove feature (revolved cut) by revolving a sketch to remove material.
+
+**Parameters:**
+- `sketchName` (required): Name of the sketch to revolve for the cut
+- `axis` (optional): Revolution axis - `"vertical"` (default), `"horizontal"`, or `"custom"`
+- `angle` (optional): Revolution angle (default: `360`). Same format as `create_revolution`.
+
+**Response format:**
+```json
+{
+  "success": true,
+  "featureName": "Groove",
+  "featureLabel": "Groove",
+  "bodyName": "Body",
+  "sketchName": "Sketch",
+  "axis": "vertical",
+  "angle": "360.00deg",
+  "message": "Created Groove 'Groove' with angle 360.00deg around vertical axis"
+}
+```
+
+**Example usage:**
+```typescript
+// Cut a groove by revolving 360 degrees
+{
+  name: "create_groove",
+  arguments: {
+    sketchName: "Sketch",
+    axis: "vertical",
+    angle: 360
+  }
+}
+
+// Create a partial groove (180 degrees)
+{
+  name: "create_groove",
+  arguments: {
+    sketchName: "Sketch",
+    angle: "180deg"
+  }
+}
+```
+
+**Natural language examples:**
+- "Cut a groove by revolving this sketch"
+- "Create a grooved cut 360 degrees around the axis"
+- "Make a partial groove 90 degrees"
+
+**Notes:**
+- Groove is a subtractive feature (removes material)
+- Similar to Revolution but cuts instead of adds
+- Useful for creating threads, O-ring grooves, or decorative cuts
+
+---
+
+#### `create_fillet(featureName: string, edges: number[] | "all", radius: number | string)`
+
+Add a Fillet feature to round edges of a solid.
+
+**Parameters:**
+- `featureName` (required): Name of the base feature to fillet (e.g., "Pad", "Body" for entire body)
+- `edges` (required): Edges to fillet:
+  - Array of edge indices (0-based): `[0, 1, 2]`
+  - String `"all"` to fillet all accessible edges
+- `radius` (required): Fillet radius. Can be:
+  - Numeric value in mm (e.g., `3`)
+  - String with units: `"3mm"`, `"0.5cm"`, `"1/8in"`
+
+**Response format:**
+```json
+{
+  "success": true,
+  "featureName": "Fillet",
+  "featureLabel": "Fillet",
+  "bodyName": "Body",
+  "baseFeature": "Pad",
+  "radius": "3.00mm",
+  "edgesCount": 4,
+  "message": "Created Fillet 'Fillet' with radius 3.00mm on 4 edge(s)"
+}
+```
+
+**Example usage:**
+```typescript
+// Fillet all edges with 3mm radius
+{
+  name: "create_fillet",
+  arguments: {
+    featureName: "Pad",
+    edges: "all",
+    radius: "3mm"
+  }
+}
+
+// Fillet specific edges (indices 0, 1, 2)
+{
+  name: "create_fillet",
+  arguments: {
+    featureName: "Body",
+    edges: [0, 1, 2],
+    radius: 5
+  }
+}
+
+// Fillet vertical edges of a pad
+{
+  name: "create_fillet",
+  arguments: {
+    featureName: "Pad",
+    edges: [0, 2, 4, 6],
+    radius: "2mm"
+  }
+}
+```
+
+**Natural language examples:**
+- "Add a 3mm fillet to all edges"
+- "Fillet the top edges with 5mm radius"
+- "Round the corners with a 2mm fillet"
+
+**Notes:**
+- Fillet is an additive feature (adds material to round edges)
+- Edge indices are 0-based and depend on the feature's geometry
+- Use `"all"` for convenience when filleting many edges
+- Multiple fillet features can be added to the same body
+
+---
+
+#### `create_chamfer(featureName: string, edges: number[] | "all", distance: number | string)`
+
+Add a Chamfer feature to bevel edges of a solid.
+
+**Parameters:**
+- `featureName` (required): Name of the base feature to chamfer
+- `edges` (required): Edges to chamfer (same format as `create_fillet`)
+- `distance` (required): Chamfer distance (size of the bevel). Can be:
+  - Numeric value in mm (e.g., `2`)
+  - String with units: `"2mm"`, `"1/16in"`
+
+**Response format:**
+```json
+{
+  "success": true,
+  "featureName": "Chamfer",
+  "featureLabel": "Chamfer",
+  "bodyName": "Body",
+  "baseFeature": "Pad",
+  "distance": "2.00mm",
+  "edgesCount": 4,
+  "message": "Created Chamfer 'Chamfer' with distance 2.00mm on 4 edge(s)"
+}
+```
+
+**Example usage:**
+```typescript
+// Chamfer all edges with 2mm distance
+{
+  name: "create_chamfer",
+  arguments: {
+    featureName: "Pad",
+    edges: "all",
+    distance: "2mm"
+  }
+}
+
+// Chamfer specific edges
+{
+  name: "create_chamfer",
+  arguments: {
+    featureName: "Body",
+    edges: [0, 1],
+    distance: 1.5
+  }
+}
+```
+
+**Natural language examples:**
+- "Add a 2mm chamfer to all edges"
+- "Bevel the top edges with 1.5mm chamfer"
+- "Chamfer the edges of the pad"
+
+**Notes:**
+- Chamfer removes material to create a beveled edge (typically 45 degrees)
+- Alternative to fillet for a different edge treatment
+- Distance is measured perpendicular to the original edge
+
+---
+
+#### `update_feature(featureName: string, dimension: string, value: number | string)`
+
+Update a dimensional parameter of an existing feature.
+
+**Parameters:**
+- `featureName` (required): Name of the feature to update (e.g., "Pad", "Pocket001")
+- `dimension` (required): Dimension to update:
+  - `"length"` - For Pad, Pocket (extrusion length/depth)
+  - `"angle"` - For Revolution, Groove (revolution angle)
+  - `"radius"` - For Fillet (fillet radius)
+  - `"distance"` - For Chamfer (chamfer distance)
+- `value` (required): New value. Can be:
+  - Numeric value (mm for length/distance/radius, degrees for angle)
+  - String with units: `"50mm"`, `"180deg"`, `"5mm"`
+
+**Response format:**
+```json
+{
+  "success": true,
+  "featureName": "Pad",
+  "featureLabel": "Pad",
+  "dimension": "length",
+  "beforeValue": "20.00mm",
+  "afterValue": "50.00mm",
+  "message": "Updated Pad length from 20.00mm to 50.00mm"
+}
+```
+
+**Example usage:**
+```typescript
+// Change pad length to 50mm
+{
+  name: "update_feature",
+  arguments: {
+    featureName: "Pad",
+    dimension: "length",
+    value: "50mm"
+  }
+}
+
+// Update revolution angle to 180 degrees
+{
+  name: "update_feature",
+  arguments: {
+    featureName: "Revolution",
+    dimension: "angle",
+    value: 180
+  }
+}
+
+// Change fillet radius to 5mm
+{
+  name: "update_feature",
+  arguments: {
+    featureName: "Fillet",
+    dimension: "radius",
+    value: "5mm"
+  }
+}
+
+// Update pocket depth to 15mm
+{
+  name: "update_feature",
+  arguments: {
+    featureName: "Pocket",
+    dimension: "length",
+    value: "15mm"
+  }
+}
+```
+
+**Natural language examples:**
+- "Change the pad length to 30mm"
+- "Update the revolution angle to 180 degrees"
+- "Make the fillet radius 5mm"
+- "Increase the pocket depth to 20mm"
+
+**Notes:**
+- Features are parametric - dimensions can be changed after creation
+- The model automatically regenerates with the new dimension
+- Use `list_bodies` or query tools to find feature names
+
+---
+
+#### `replace_sketch(featureName: string, newSketchName: string)`
+
+Replace the sketch used by an existing feature with a different sketch.
+
+**Parameters:**
+- `featureName` (required): Name of the feature to modify (e.g., "Pad", "Pocket")
+- `newSketchName` (required): Name of the new sketch to use
+
+**Response format:**
+```json
+{
+  "success": true,
+  "featureName": "Pad",
+  "featureLabel": "Pad",
+  "oldSketch": "Sketch",
+  "newSketch": "Sketch001",
+  "message": "Replaced sketch for Pad from 'Sketch' to 'Sketch001'"
+}
+```
+
+**Example usage:**
+```typescript
+// Replace the sketch used by a pad feature
+{
+  name: "replace_sketch",
+  arguments: {
+    featureName: "Pad",
+    newSketchName: "Sketch001"
+  }
+}
+
+// Update a pocket to use a different sketch
+{
+  name: "replace_sketch",
+  arguments: {
+    featureName: "Pocket",
+    newSketchName: "UpdatedSketch"
+  }
+}
+```
+
+**Natural language examples:**
+- "Use this new sketch for the pad feature"
+- "Replace the sketch used by the pocket"
+- "Update the feature to use the updated sketch"
+
+**Notes:**
+- The feature geometry updates to match the new sketch
+- Useful for iterating on designs without recreating features
+- The new sketch must be compatible with the feature type
+
+---
+
+#### `delete_feature(featureName: string)`
+
+Remove a feature from a PartDesign body.
+
+**Parameters:**
+- `featureName` (required): Name of the feature to delete (e.g., "Fillet", "Pocket001")
+
+**Response format:**
+```json
+{
+  "success": true,
+  "deletedFeature": "Fillet",
+  "deletedFeatureLabel": "Fillet",
+  "bodyName": "Body",
+  "message": "Deleted feature 'Fillet' from Body"
+}
+```
+
+**Example usage:**
+```typescript
+// Delete a fillet feature
+{
+  name: "delete_feature",
+  arguments: {
+    featureName: "Fillet"
+  }
+}
+
+// Remove a pocket from the body
+{
+  name: "delete_feature",
+  arguments: {
+    featureName: "Pocket001"
+  }
+}
+```
+
+**Natural language examples:**
+- "Delete the last fillet"
+- "Remove the pocket feature"
+- "Delete the chamfer from the body"
+
+**Notes:**
+- Deleting a feature removes it from the feature tree
+- Dependent features (children) may also be affected
+- The operation is undoable via FreeCAD's undo stack
+- Use `list_bodies` to see the current feature tree
+
+---
 
 ### Export Tool (Legacy)
 
