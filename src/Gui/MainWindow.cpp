@@ -1171,7 +1171,12 @@ bool MainWindow::event(QEvent* e)
                 return true;
             }
             else {
-                Application::Instance->commandManager().runCommandByName(commandName.c_str());
+                Command* cmd = Application::Instance->commandManager().getCommandByName(
+                    commandName.c_str()
+                );
+                if (cmd) {
+                    cmd->invoke(1);
+                }
             }
         }
         else {
