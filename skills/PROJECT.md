@@ -48,8 +48,8 @@ This is a diverging fork. We modify FreeCAD directly without worrying about upst
 - [x] Explored codebase structure and identified key integration points
 - [x] Defined architecture and component breakdown
 - [x] Created skill-based development workflow (plan → implement → review cycle)
-- [ ] **Next**: Build the Python WebSocket execution bridge inside FreeCAD
-- [ ] Build the LLM dock widget (Qt/C++)
+- [x] Build the Python WebSocket execution bridge inside FreeCAD (`src/Mod/LLMBridge/`)
+- [ ] **Next**: Build the LLM dock widget (Qt/C++)
 - [ ] Build the Node.js sidecar with Claude Agent SDK
 - [ ] Define custom tool interface
 - [ ] End-to-end integration and testing
