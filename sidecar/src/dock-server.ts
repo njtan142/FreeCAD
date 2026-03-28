@@ -6,20 +6,33 @@
  */
 
 import WebSocket, { WebSocketServer } from 'ws';
-import { query } from '@anthropic-ai/claude-agent-sdk';
+import { query, createSdkMcpServer } from '@anthropic-ai/claude-agent-sdk';
 import { FreeCADBridge } from './freecad-bridge';
-import { createAgentTools } from './agent-tools';
+import { createAgentTools, setCurrentSessionId, getCurrentSessionId } from './agent-tools';
+import { createSession, loadSession, addMessage } from './session-manager';
+import { getContextInjectionPrompt, createContextMessage, shouldInjectContext } from './context-injector';
+import { ChatMessage } from './types';
+
+import { ContextInjectionConfig } from './types';
 
 export interface DockServerConfig {
   port: number;
   freeCADBridge: FreeCADBridge;
-  claudeApiKey?: string;
+  contextInjection?: ContextInjectionConfig;
 }
 
 export interface DockMessage {
-  type: 'chat' | 'response' | 'error' | 'status';
+  type: 'chat' | 'response' | 'error' | 'status' | 'restore' | 'session_update';
   content: string;
   timestamp?: number;
+  sessionId?: string;
+  messages?: ChatMessage[];
+}
+
+// Conversation history for context injection
+interface ConversationState {
+  messages: ChatMessage[];
+  sessionId: string | null;
 }
 
 export class DockServer {
@@ -27,11 +40,19 @@ export class DockServer {
   private clients: Set<WebSocket> = new Set();
   private config: DockServerConfig;
   private tools: ReturnType<typeof createAgentTools>;
+  private mcpServer: ReturnType<typeof createSdkMcpServer>;
+  private conversationState: ConversationState = { messages: [], sessionId: null };
 
   constructor(config: DockServerConfig) {
     this.config = config;
     // Create agent tools with FreeCAD bridge integration
     this.tools = createAgentTools(config.freeCADBridge);
+    // Create MCP server with the tools
+    this.mcpServer = createSdkMcpServer({
+      name: 'freecad-tools',
+      version: '1.0.0',
+      tools: this.tools,
+    });
   }
 
   async start(): Promise<void> {
@@ -94,7 +115,12 @@ export class DockServer {
 
       switch (message.type) {
         case 'chat':
-          this.handleChatMessage(client, message.content);
+          // Check for slash commands
+          if (message.content.startsWith('/')) {
+            this.handleSlashCommand(client, message.content);
+          } else {
+            this.handleChatMessage(client, message.content);
+          }
           break;
         default:
           console.warn(`[DockServer] Unknown message type: ${message.type}`);
@@ -108,8 +134,135 @@ export class DockServer {
     }
   }
 
+  /**
+   * Handle slash commands from the dock widget
+   */
+  private async handleSlashCommand(client: WebSocket, command: string): Promise<void> {
+    const parts = command.split(' ');
+    const cmd = parts[0].toLowerCase();
+    const args = parts.slice(1).join(' ').trim();
+
+    console.log(`[DockServer] Processing slash command: ${cmd}`);
+
+    try {
+      switch (cmd) {
+        case '/save_session': {
+          // Create a new session if none exists, or update existing
+          let sessionId = this.conversationState.sessionId;
+          
+          if (!sessionId) {
+            const session = createSession(args || 'Untitled Session');
+            sessionId = session.id;
+            this.conversationState.sessionId = sessionId;
+            setCurrentSessionId(sessionId);
+            
+            // Send session update to client
+            this.sendToClient(client, {
+              type: 'session_update',
+              content: `Session created: ${session.name}`,
+              sessionId: session.id,
+              timestamp: Date.now(),
+            });
+          } else {
+            // Update session name if provided
+            const session = loadSession(sessionId);
+            if (session && args) {
+              session.name = args;
+              // Note: saveSession is called in addMessage, session name update would need separate handling
+            }
+            this.sendToClient(client, {
+              type: 'session_update',
+              content: `Session saved: ${session?.name || 'Untitled'}`,
+              sessionId: sessionId,
+              timestamp: Date.now(),
+            });
+          }
+          
+          console.log(`[DockServer] Session saved: ${sessionId}`);
+          break;
+        }
+
+        case '/load_session': {
+          if (!args) {
+            this.sendToClient(client, {
+              type: 'error',
+              content: 'Session ID required for load command',
+              timestamp: Date.now(),
+            });
+            return;
+          }
+
+          const session = loadSession(args);
+          if (!session) {
+            this.sendToClient(client, {
+              type: 'error',
+              content: `Session not found: ${args}`,
+              timestamp: Date.now(),
+            });
+            return;
+          }
+
+          // Update current session
+          this.conversationState.sessionId = session.id;
+          this.conversationState.messages = session.messages;
+          setCurrentSessionId(session.id);
+
+          // Send restore message with conversation history
+          this.sendToClient(client, {
+            type: 'restore',
+            content: `Loaded session: ${session.name}`,
+            sessionId: session.id,
+            messages: session.messages,
+            timestamp: Date.now(),
+          });
+
+          console.log(`[DockServer] Session loaded: ${session.id} with ${session.messages.length} messages`);
+          break;
+        }
+
+        default:
+          console.warn(`[DockServer] Unknown slash command: ${cmd}`);
+          this.sendToClient(client, {
+            type: 'error',
+            content: `Unknown command: ${cmd}`,
+            timestamp: Date.now(),
+          });
+      }
+    } catch (error) {
+      console.error(`[DockServer] Error processing slash command ${cmd}:`, error);
+      this.sendToClient(client, {
+        type: 'error',
+        content: `Command failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        timestamp: Date.now(),
+      });
+    }
+  }
+
   private async handleChatMessage(client: WebSocket, content: string): Promise<void> {
     console.log('[DockServer] Processing chat message via Claude Agent SDK...');
+
+    // Ensure we have a session
+    if (!this.conversationState.sessionId) {
+      const session = createSession('Untitled Session');
+      this.conversationState.sessionId = session.id;
+      setCurrentSessionId(session.id);
+      console.log(`[DockServer] Created new session: ${session.id}`);
+    }
+
+    const sessionId = this.conversationState.sessionId!;
+
+    // Persist user message
+    const userMessage: ChatMessage = {
+      role: 'user',
+      content: content,
+      timestamp: Date.now(),
+    };
+    
+    // Add message to conversation state and persist asynchronously
+    this.conversationState.messages.push(userMessage);
+    addMessage(sessionId, userMessage).catch((err) => {
+      console.error('[DockServer] Failed to persist user message:', err);
+    });
 
     // Send acknowledgment
     this.sendToClient(client, {
@@ -125,29 +278,39 @@ export class DockServer {
         await this.config.freeCADBridge.connect();
       }
 
-      // Check if API key is configured
-      if (!this.config.claudeApiKey) {
-        this.sendToClient(client, {
-          type: 'error',
-          content: 'Claude API key not configured. Please set ANTHROPIC_API_KEY environment variable.',
-          timestamp: Date.now(),
-        });
-        return;
+      // Build context injection prompt if enabled and appropriate
+      let contextPrompt = '';
+      const lastMessage = this.conversationState.messages.length > 0
+        ? this.conversationState.messages[this.conversationState.messages.length - 1]
+        : undefined;
+
+      if (shouldInjectContext(lastMessage)) {
+        contextPrompt = await getContextInjectionPrompt(
+          this.config.freeCADBridge,
+          this.config.contextInjection
+        );
+
+        // Warn if bridge not connected but context was requested
+        if (!this.config.freeCADBridge.isConnected() && contextPrompt === '') {
+          console.warn('[DockServer] FreeCAD bridge not connected, context injection skipped');
+        }
       }
+
+      // Build the full prompt with context
+      const fullPrompt = contextPrompt
+        ? `${createContextMessage(contextPrompt)}\n\nUser: ${content}`
+        : content;
 
       // Use Claude Agent SDK to process the message
       // Claude will decide which tool to call based on the user's request
       let fullResponse = '';
-      
+
+      // Note: API key must be set via ANTHROPIC_API_KEY environment variable
       for await (const message of query({
-        prompt: content,
+        prompt: fullPrompt,
         options: {
-          apiKey: this.config.claudeApiKey,
           mcpServers: {
-            'freecad-tools': {
-              // Use inline tools definition
-              tools: this.tools,
-            },
+            'freecad-tools': this.mcpServer,
           },
           allowedTools: [
             'mcp__freecad-tools__execute_freecad_python',
@@ -159,11 +322,20 @@ export class DockServer {
       })) {
         if (message.type === 'result' && message.subtype === 'success') {
           fullResponse += message.result;
-        } else if (message.type === 'message') {
-          // Stream intermediate messages (thoughts, tool calls, etc.)
-          console.log('[Claude Agent]', message.content);
         }
       }
+
+      // Persist assistant response
+      const assistantMessage: ChatMessage = {
+        role: 'assistant',
+        content: fullResponse || 'Request processed successfully',
+        timestamp: Date.now(),
+      };
+      
+      this.conversationState.messages.push(assistantMessage);
+      addMessage(sessionId, assistantMessage).catch((err) => {
+        console.error('[DockServer] Failed to persist assistant message:', err);
+      });
 
       // Send final response
       this.sendToClient(client, {
@@ -173,6 +345,19 @@ export class DockServer {
       });
     } catch (error) {
       console.error('[DockServer] Error processing via Claude Agent:', error);
+      
+      // Persist error message
+      const errorMessage: ChatMessage = {
+        role: 'assistant',
+        content: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        timestamp: Date.now(),
+      };
+      
+      this.conversationState.messages.push(errorMessage);
+      addMessage(sessionId, errorMessage).catch((err) => {
+        console.error('[DockServer] Failed to persist error message:', err);
+      });
+
       this.sendToClient(client, {
         type: 'error',
         content: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
