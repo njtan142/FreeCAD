@@ -2508,6 +2508,873 @@ Get detailed information about a shape's properties and topology.
 
 ---
 
+### Assembly Constraint Tools
+
+The assembly constraint tools allow you to create and manage assemblies with parametric constraints between multiple parts. After creating individual parts using Part or PartDesign workbenches, you can assemble them together using constraints like Coincident, Parallel, Perpendicular, Angle, Distance, and more to define their spatial relationships.
+
+**Assembly Workflow Overview:**
+
+1. **Create Parts** - Build individual components using Part/PartDesign tools
+2. **Create Assembly** - Create an assembly container to hold parts
+3. **Add Components** - Add parts to the assembly
+4. **Apply Constraints** - Define spatial relationships between parts
+5. **Modify/Remove** - Adjust or remove constraints as needed
+6. **Solve** - Assembly solver positions parts according to constraints
+
+---
+
+#### Assembly Management Tools
+
+##### `create_assembly(name?: string)`
+
+Create a new empty assembly container.
+
+**Parameters:**
+- `name` (optional): Name for the new assembly. If omitted, auto-generated.
+
+**Response format:**
+```json
+{
+  "success": true,
+  "assemblyName": "Assembly",
+  "assemblyLabel": "Assembly",
+  "documentName": "UnnamedDocument",
+  "componentCount": 0,
+  "constraintCount": 0,
+  "message": "Created assembly 'Assembly'"
+}
+```
+
+**Example usage:**
+```typescript
+// Create a new assembly with auto-generated name
+{
+  name: "create_assembly",
+  arguments: {}
+}
+
+// Create a named assembly
+{
+  name: "create_assembly",
+  arguments: {
+    name: "EngineAssembly"
+  }
+}
+```
+
+**Natural language examples:**
+- "Create a new assembly"
+- "Start an assembly named 'EngineAssembly'"
+- "Create an empty assembly to hold the parts"
+
+---
+
+##### `add_component_to_assembly(objectName: string, assemblyName: string)`
+
+Add an existing part or body to an assembly.
+
+**Parameters:**
+- `objectName` (required): Name of the part/body to add
+- `assemblyName` (required): Name of the target assembly
+
+**Response format:**
+```json
+{
+  "success": true,
+  "componentName": "Piston",
+  "assemblyName": "EngineAssembly",
+  "message": "Added 'Piston' to assembly 'EngineAssembly'"
+}
+```
+
+**Example usage:**
+```typescript
+// Add a part to an assembly
+{
+  name: "add_component_to_assembly",
+  arguments: {
+    objectName: "Piston",
+    assemblyName: "EngineAssembly"
+  }
+}
+
+// Add a body to an assembly
+{
+  name: "add_component_to_assembly",
+  arguments: {
+    objectName: "Body",
+    assemblyName: "Assembly"
+  }
+}
+```
+
+**Natural language examples:**
+- "Add the piston to the engine assembly"
+- "Include the cylinder in this assembly"
+- "Put the bracket part into the main assembly"
+
+---
+
+##### `remove_component_from_assembly(componentName: string, assemblyName: string)`
+
+Remove a part from an assembly.
+
+**Parameters:**
+- `componentName` (required): Name of the component to remove
+- `assemblyName` (required): Name of the source assembly
+
+**Response format:**
+```json
+{
+  "success": true,
+  "removedComponent": "Bolt",
+  "assemblyName": "EngineAssembly",
+  "message": "Removed 'Bolt' from assembly 'EngineAssembly'"
+}
+```
+
+**Example usage:**
+```typescript
+{
+  name: "remove_component_from_assembly",
+  arguments: {
+    componentName: "Bolt",
+    assemblyName: "EngineAssembly"
+  }
+}
+```
+
+**Natural language examples:**
+- "Remove the bolt from this assembly"
+- "Take the gasket out of the assembly"
+- "Ungroup the part from the assembly"
+
+---
+
+##### `list_assemblies()`
+
+List all assemblies in the current document.
+
+**Parameters:** None
+
+**Response format:**
+```json
+{
+  "success": true,
+  "assemblies": [
+    {
+      "name": "Assembly",
+      "label": "Assembly",
+      "componentCount": 4,
+      "constraintCount": 6
+    },
+    {
+      "name": "SubAssembly",
+      "label": "SubAssembly",
+      "componentCount": 2,
+      "constraintCount": 3
+    }
+  ],
+  "assemblyCount": 2,
+  "message": "Found 2 assembly(ies)"
+}
+```
+
+**Example usage:**
+```typescript
+{
+  name: "list_assemblies",
+  arguments: {}
+}
+```
+
+**Natural language examples:**
+- "Show me all assemblies"
+- "What assemblies exist in this document?"
+- "List all assembly containers"
+
+---
+
+##### `list_assembly_components(assemblyName: string)`
+
+List all components in a specific assembly.
+
+**Parameters:**
+- `assemblyName` (required): Name of the assembly to query
+
+**Response format:**
+```json
+{
+  "success": true,
+  "assemblyName": "EngineAssembly",
+  "components": [
+    {
+      "name": "Cylinder",
+      "label": "Cylinder",
+      "position": {"x": 0, "y": 0, "z": 0}
+    },
+    {
+      "name": "Piston",
+      "label": "Piston",
+      "position": {"x": 0, "y": 0, "z": 25}
+    }
+  ],
+  "componentCount": 2,
+  "message": "Found 2 component(s) in 'EngineAssembly'"
+}
+```
+
+**Example usage:**
+```typescript
+{
+  name: "list_assembly_components",
+  arguments: {
+    assemblyName: "EngineAssembly"
+  }
+}
+```
+
+**Natural language examples:**
+- "What parts are in the engine assembly?"
+- "Show me components of this assembly"
+- "List all parts in the main assembly"
+
+---
+
+#### Constraint Creation Tools
+
+The constraint creation tools define spatial relationships between subobjects (faces, edges, vertices) of assembly components. All constraint tools share these common parameters:
+
+**Common Parameters:**
+- `object1` (required): Name of first component
+- `subobject1` (required): Subobject reference for first component (e.g., "Face1", "Edge2", "Vertex3")
+- `object2` (required): Name of second component
+- `subobject2` (required): Subobject reference for second component
+- `name` (optional): Custom name for the constraint
+
+**Subobject Reference Format:**
+- `FaceN` - Nth face (e.g., "Face1", "Face4")
+- `EdgeN` - Nth edge (e.g., "Edge1", "Edge3")
+- `VertexN` - Nth vertex (e.g., "Vertex1", "Vertex2")
+
+**Response format (all constraint tools):**
+```json
+{
+  "success": true,
+  "constraintName": "Coincident1",
+  "constraintType": "Coincident",
+  "objects": ["Cylinder:Face1", "Box:Face6"],
+  "message": "Added Coincident constraint 'Coincident1'"
+}
+```
+
+---
+
+##### `add_coincident_constraint(object1: string, subobject1: string, object2: string, subobject2: string, name?: string)`
+
+Make two subobjects coincident (touching, sharing the same geometry).
+
+**Applies to:** Face-Face, Edge-Edge, Vertex-Vertex
+
+**Example usage:**
+```typescript
+{
+  name: "add_coincident_constraint",
+  arguments: {
+    object1: "Cylinder",
+    subobject1: "Face1",
+    object2: "Box",
+    subobject2: "Face6"
+  }
+}
+```
+
+**Natural language examples:**
+- "Make these two faces coincident"
+- "Align the bottom of the cylinder with the top of the box"
+- "Attach the face of the bracket to the face of the plate"
+
+---
+
+##### `add_parallel_constraint(object1: string, subobject1: string, object2: string, subobject2: string, name?: string)`
+
+Make two linear subobjects parallel (facing the same direction).
+
+**Applies to:** Face-Face (planar), Edge-Edge (linear)
+
+**Example usage:**
+```typescript
+{
+  name: "add_parallel_constraint",
+  arguments: {
+    object1: "Plate",
+    subobject1: "Edge1",
+    object2: "Rail",
+    subobject2: "Edge3"
+  }
+}
+```
+
+**Natural language examples:**
+- "Make these edges parallel"
+- "Align the axes to be parallel"
+- "Make the slot parallel to the rail"
+
+---
+
+##### `add_perpendicular_constraint(object1: string, subobject1: string, object2: string, subobject2: string, name?: string)`
+
+Make two subobjects perpendicular (at 90 degrees to each other).
+
+**Applies to:** Face-Face, Edge-Edge
+
+**Example usage:**
+```typescript
+{
+  name: "add_perpendicular_constraint",
+  arguments: {
+    object1: "Box",
+    subobject1: "Face1",
+    object2: "Rod",
+    subobject2: "Face2"
+  }
+}
+```
+
+**Natural language examples:**
+- "Make this face perpendicular to that face"
+- "Set these edges at 90 degrees"
+- "Make the mounting plate perpendicular to the base"
+
+---
+
+##### `add_angle_constraint(object1: string, subobject1: string, object2: string, subobject2: string, angle: number | string, name?: string)`
+
+Set a specific angle between two subobjects.
+
+**Parameters:**
+- `angle` (required): Angle value. Can be:
+  - Numeric value in degrees (e.g., `45`)
+  - String with units: `"45deg"`, `"30deg"`, `"1.57rad"`
+
+**Applies to:** Face-Face, Edge-Edge
+
+**Example usage:**
+```typescript
+// Set 45 degree angle between faces
+{
+  name: "add_angle_constraint",
+  arguments: {
+    object1: "Plate",
+    subobject1: "Face1",
+    object2: "Mount",
+    subobject2: "Face2",
+    angle: 45
+  }
+}
+
+// Set 30 degree angle with units
+{
+  name: "add_angle_constraint",
+  arguments: {
+    object1: "Arm",
+    subobject1: "Edge1",
+    object2: "Base",
+    subobject2: "Edge2",
+    angle: "30deg"
+  }
+}
+```
+
+**Natural language examples:**
+- "Set a 45 degree angle between these faces"
+- "Add a 30 degree angle constraint"
+- "Angle the bracket at 60 degrees to the plate"
+
+---
+
+##### `add_distance_constraint(object1: string, subobject1: string, object2: string, subobject2: string, distance: number | string, name?: string)`
+
+Set a distance between two subobjects.
+
+**Parameters:**
+- `distance` (required): Distance value. Can be:
+  - Numeric value in mm (e.g., `10`)
+  - String with units: `"10mm"`, `"1cm"`, `"0.5in"`
+
+**Applies to:** Face-Face, Edge-Edge, Vertex-Vertex
+
+**Example usage:**
+```typescript
+// Set 10mm distance between faces
+{
+  name: "add_distance_constraint",
+  arguments: {
+    object1: "Box",
+    subobject1: "Face1",
+    object2: "Plate",
+    subobject2: "Face3",
+    distance: 10
+  }
+}
+
+// Set 5mm gap with units
+{
+  name: "add_distance_constraint",
+  arguments: {
+    object1: "Gear",
+    subobject1: "Face2",
+    object2: "Bearing",
+    subobject2: "Face1",
+    distance: "5mm"
+  }
+}
+```
+
+**Natural language examples:**
+- "Set a 10mm gap between these faces"
+- "Add a 5mm offset constraint"
+- "Position the plate 20mm from the bracket"
+
+---
+
+##### `add_insert_constraint(object1: string, subobject1: string, object2: string, subobject2: string, name?: string)`
+
+Insert one cylindrical subobject into another (axial fit constraint).
+
+**Applies to:** Cylindrical Face-Cylindrical Face (shaft into hole)
+
+**Example usage:**
+```typescript
+{
+  name: "add_insert_constraint",
+  arguments: {
+    object1: "Shaft",
+    subobject1: "Face1",
+    object2: "Bearing",
+    subobject2: "Face2"
+  }
+}
+```
+
+**Natural language examples:**
+- "Insert the pin into the hole"
+- "Make the shaft fit into the bearing"
+- "Put the axle into the bushing"
+
+---
+
+##### `add_tangent_constraint(object1: string, subobject1: string, object2: string, subobject2: string, name?: string)`
+
+Make two subobjects tangent (touching at exactly one point/line, no intersection).
+
+**Applies to:** Face-Face, Edge-Curve, Curve-Edge
+
+**Example usage:**
+```typescript
+{
+  name: "add_tangent_constraint",
+  arguments: {
+    object1: "Cylinder",
+    subobject1: "Face1",
+    object2: "Plane",
+    subobject2: "Face1"
+  }
+}
+```
+
+**Natural language examples:**
+- "Make this cylinder tangent to the plane"
+- "Add a tangent constraint between the wheel and ground"
+- "Set the gear tangent to the rack"
+
+---
+
+##### `add_equal_constraint(object1: string, subobject1: string, object2: string, subobject2: string, name?: string)`
+
+Make two subobjects equal (same length, radius, or size).
+
+**Applies to:** Edge-Edge (length), Circle-Arc (radius)
+
+**Example usage:**
+```typescript
+{
+  name: "add_equal_constraint",
+  arguments: {
+    object1: "Pin1",
+    subobject1: "Edge1",
+    object2: "Pin2",
+    subobject2: "Edge1"
+  }
+}
+```
+
+**Natural language examples:**
+- "Make these two circles equal radius"
+- "Make these edges equal length"
+- "Set the bore holes to equal diameter"
+
+---
+
+##### `add_symmetric_constraint(object1: string, subobject1: string, object2: string, subobject2: string, symmetryPlane: string, name?: string)`
+
+Make two subobjects symmetric about a plane.
+
+**Parameters:**
+- `symmetryPlane` (required): Reference plane for symmetry (e.g., "XY_Plane", "Face3")
+
+**Applies to:** Vertex-Vertex, Edge-Edge, Face-Face
+
+**Example usage:**
+```typescript
+{
+  name: "add_symmetric_constraint",
+  arguments: {
+    object1: "Hole1",
+    subobject1: "Vertex1",
+    object2: "Hole2",
+    subobject2: "Vertex1",
+    symmetryPlane: "YZ_Plane"
+  }
+}
+```
+
+**Natural language examples:**
+- "Make these features symmetric about the XY plane"
+- "Center the holes symmetrically about the plate center"
+- "Set the mounting holes symmetric about the centerline"
+
+---
+
+#### Constraint Modification Tools
+
+##### `update_constraint_value(constraintName: string, newValue: number | string)`
+
+Modify the value of an angle or distance constraint.
+
+**Parameters:**
+- `constraintName` (required): Name of the constraint to update
+- `newValue` (required): New value. Can be:
+  - Numeric value (degrees for angle, mm for distance)
+  - String with units: `"60deg"`, `"15mm"`
+
+**Response format:**
+```json
+{
+  "success": true,
+  "constraintName": "Angle1",
+  "constraintType": "Angle",
+  "oldValue": "45.00deg",
+  "newValue": "60.00deg",
+  "message": "Updated 'Angle1' from 45.00deg to 60.00deg"
+}
+```
+
+**Example usage:**
+```typescript
+// Change angle constraint
+{
+  name: "update_constraint_value",
+  arguments: {
+    constraintName: "Angle1",
+    newValue: 60
+  }
+}
+
+// Change distance constraint with units
+{
+  name: "update_constraint_value",
+  arguments: {
+    constraintName: "Gap1",
+    newValue: "15mm"
+  }
+}
+```
+
+**Natural language examples:**
+- "Change the angle to 60 degrees"
+- "Update the gap to 15mm"
+- "Set the distance between parts to 20mm"
+
+---
+
+##### `remove_constraint(constraintName: string)`
+
+Delete a constraint from an assembly.
+
+**Response format:**
+```json
+{
+  "success": true,
+  "removedConstraint": "Coincident1",
+  "constraintType": "Coincident",
+  "message": "Removed constraint 'Coincident1'"
+}
+```
+
+**Example usage:**
+```typescript
+{
+  name: "remove_constraint",
+  arguments: {
+    constraintName: "Coincident1"
+  }
+}
+```
+
+**Natural language examples:**
+- "Remove the coincident constraint"
+- "Delete the last constraint added"
+- "Unconstrain the angle between these parts"
+
+---
+
+##### `list_constraints(assemblyName?: string)`
+
+List all constraints in an assembly.
+
+**Parameters:**
+- `assemblyName` (optional): Name of the assembly. If omitted, lists from active assembly.
+
+**Response format:**
+```json
+{
+  "success": true,
+  "assemblyName": "EngineAssembly",
+  "constraints": [
+    {
+      "name": "Coincident1",
+      "type": "Coincident",
+      "objects": ["Cylinder:Face1", "Box:Face6"],
+      "value": null,
+      "status": "active"
+    },
+    {
+      "name": "Distance1",
+      "type": "Distance",
+      "objects": ["Gear:Face2", "Bearing:Face1"],
+      "value": "5.00mm",
+      "status": "active"
+    }
+  ],
+  "constraintCount": 2,
+  "message": "Found 2 constraint(s) in 'EngineAssembly'"
+}
+```
+
+**Example usage:**
+```typescript
+// List all constraints in active assembly
+{
+  name: "list_constraints",
+  arguments: {}
+}
+
+// List constraints in specific assembly
+{
+  name: "list_constraints",
+  arguments: {
+    assemblyName: "EngineAssembly"
+  }
+}
+```
+
+**Natural language examples:**
+- "Show me all constraints"
+- "What constraints are in this assembly?"
+- "List all constraints in the engine assembly"
+
+---
+
+##### `suppress_constraint(constraintName: string)`
+
+Temporarily disable a constraint without deleting it.
+
+**Response format:**
+```json
+{
+  "success": true,
+  "constraintName": "Distance1",
+  "previousStatus": "active",
+  "newStatus": "suppressed",
+  "message": "Suppressed constraint 'Distance1'"
+}
+```
+
+**Example usage:**
+```typescript
+{
+  name: "suppress_constraint",
+  arguments: {
+    constraintName: "Distance1"
+  }
+}
+```
+
+**Natural language examples:**
+- "Temporarily disable this constraint"
+- "Suppress the distance constraint"
+- "Turn off the angle constraint temporarily"
+
+**Notes:**
+- Suppressed constraints are excluded from the assembly solver
+- Parts will move freely until the constraint is reactivated
+- Use `activate_constraint` to re-enable
+
+---
+
+##### `activate_constraint(constraintName: string)`
+
+Re-enable a previously suppressed constraint.
+
+**Response format:**
+```json
+{
+  "success": true,
+  "constraintName": "Distance1",
+  "previousStatus": "suppressed",
+  "newStatus": "active",
+  "message": "Activated constraint 'Distance1'"
+}
+```
+
+**Example usage:**
+```typescript
+{
+  name: "activate_constraint",
+  arguments: {
+    constraintName: "Distance1"
+  }
+}
+```
+
+**Natural language examples:**
+- "Re-enable the suppressed constraint"
+- "Activate the angle constraint"
+- "Turn the distance constraint back on"
+
+---
+
+#### Constraint Types Reference
+
+| Constraint Type | Description | Applies To | Parameters |
+|-----------------|-------------|------------|------------|
+| `Coincident` | Two subobjects share the same geometry | Face-Face, Edge-Edge, Vertex-Vertex | - |
+| `Parallel` | Two subobjects face the same direction | Face-Face, Edge-Edge | - |
+| `Perpendicular` | Two subobjects are at 90 degrees | Face-Face, Edge-Edge | - |
+| `Angle` | Set specific angle between subobjects | Face-Face, Edge-Edge | `angle` (degrees) |
+| `Distance` | Set distance between subobjects | Face-Face, Edge-Edge, Vertex-Vertex | `distance` (mm) |
+| `Insert` | Cylindrical insertion (shaft into hole) | Cylinder-Cylinder | - |
+| `Tangent` | Subobjects touch at exactly one point/line | Face-Face, Edge-Curve | - |
+| `Equal` | Subobjects have equal size | Edge-Edge, Circle-Arc | - |
+| `Symmetric` | Subobjects symmetric about a plane | Vertex-Vertex, Edge-Edge, Face-Face | `symmetryPlane` |
+
+---
+
+#### Subobject Reference Format
+
+Subobjects are referenced using the format `ObjectName.SubobjectTypeN`:
+
+| Format | Example | Description |
+|--------|---------|-------------|
+| `FaceN` | `Box.Face1` | Nth face of an object |
+| `EdgeN` | `Cylinder.Edge3` | Nth edge of an object |
+| `VertexN` | `Part.Vertex1` | Nth vertex of an object |
+
+**Finding Subobject Indices:**
+
+1. **Query the model** - Use `query_model_state` with `object_details` intent
+2. **Select in viewport** - Click on a subobject in FreeCAD to see its reference
+3. **Use natural language** - Describe the subobject (e.g., "top face", "bottom edge")
+
+**Examples:**
+- `Body.Face1` - First face of "Body"
+- `Cylinder.Face2` - Second face (cylindrical surface) of "Cylinder"
+- `Box.Edge1` - First edge of "Box"
+- `Assembly.Vertex3` - Third vertex of "Assembly"
+
+---
+
+#### Assembly Workflow Guidance
+
+**Basic Assembly Workflow:**
+
+1. **Prepare Parts** - Create or import all individual components
+2. **Create Assembly** - `create_assembly` to make a container
+3. **Add Components** - `add_component_to_assembly` for each part
+4. **Ground First Part** - Add a coincident constraint to fix one part in place
+5. **Add Mating Constraints** - Use coincident, parallel, etc. to define relationships
+6. **Solve and Verify** - Assembly solver positions all parts
+7. **Adjust as Needed** - Use `update_constraint_value` to modify
+
+**Common Assembly Patterns:**
+
+**Pattern 1: Simple Stack**
+```
+1. Create assembly "StackAssembly"
+2. Add BasePlate and TopPlate
+3. Coincident: BasePlate.Face6 with TopPlate.Face1
+```
+Result: Plates stacked directly on each other
+
+**Pattern 2: Parallel Parts**
+```
+1. Create assembly "SlideAssembly"
+2. Add Slider and Guide
+3. Parallel: Slider.Face1 with Guide.Face1
+4. Distance: Slider.Face3 to Guide.Face3 = 5mm
+```
+Result: Parts slide parallel with 5mm gap
+
+**Pattern 3: Shaft Assembly**
+```
+1. Create assembly "BearingAssembly"
+2. Add Shaft, Bearing, and Housing
+3. Insert: Shaft.Face1 with Bearing.Face1
+4. Insert: Bearing.Face2 with Housing.Face1
+```
+Result: Bearing sandwiched between shaft and housing
+
+**Pattern 4: Angle Bracket**
+```
+1. Create assembly "CornerAssembly"
+2. Add VerticalPlate and HorizontalPlate
+3. Coincident: VerticalPlate.Face4 with HorizontalPlate.Face4 (shared edge)
+4. Angle: VerticalPlate.Face1 to HorizontalPlate.Face1 = 90deg
+```
+Result: Plates at right angles forming a corner
+
+---
+
+#### Common Constraint Patterns and Best Practices
+
+**Do's:**
+
+- **Ground one part first** - Always fix one component with a coincident constraint to ground before adding other constraints
+- **Use descriptive names** - Name constraints meaningfully (e.g., "BasePlateToGround" instead of "Constraint1")
+- **Start simple** - Begin with basic coincident constraints before adding complex angle/distance constraints
+- **Verify solvability** - Check that constraints don't conflict (over-constrained) or leave parts floating (under-constrained)
+- **Use suppress for iteration** - Use `suppress_constraint` when testing different configurations
+
+**Don'ts:**
+
+- **Don't over-constrain** - Too many constraints can make the assembly unsolvable
+- **Don't conflicting constraints** - Avoid setting contradictory constraints (e.g., distance=5mm AND coincident on same faces)
+- **Don't use wrong subobject types** - Ensure constraint types match subobject geometry (e.g., Insert constraint requires cylindrical faces)
+- **Don't forget units** - Always specify units when setting angle or distance values
+
+**Troubleshooting:**
+
+| Problem | Cause | Solution |
+|---------|-------|----------|
+| Parts don't move | Assembly is over-constrained | Remove some constraints |
+| Parts fly apart | Under-constrained | Add more constraints |
+| Constraint fails | Invalid subobject reference | Verify Face/Edge/Vertex indices |
+| Can't solve | Conflicting constraints | Check for contradictory values |
+| Unexpected position | Wrong constraint direction | Try different face combinations |
+
+---
+
 ### Export Tool (Legacy)
 
 #### `export_model(filePath: string, format: string)`
