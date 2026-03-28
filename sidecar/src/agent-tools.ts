@@ -17,6 +17,11 @@ import {
   formatDependencies,
   formatDocumentInfo,
 } from './result-formatters';
+import {
+  validateFilePath,
+  getSupportedFormats,
+  sanitizeFileName,
+} from './file-utils';
 
 /**
  * Creates custom tools for the Claude Agent SDK
@@ -30,6 +35,11 @@ export function createAgentTools(freeCADBridge: FreeCADBridge) {
     createGetObjectPropertiesTool(freeCADBridge),
     createGetSelectionTool(freeCADBridge),
     createGetDocumentInfoTool(freeCADBridge),
+    createSaveDocumentTool(freeCADBridge),
+    createOpenDocumentTool(freeCADBridge),
+    createExportToFormatTool(freeCADBridge),
+    createListRecentDocumentsTool(freeCADBridge),
+    createNewDocumentTool(freeCADBridge),
   ];
 }
 
@@ -583,6 +593,457 @@ print(json.dumps(result))
             },
           ],
         };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: save_document
+ *
+ * Save the current FreeCAD document.
+ */
+function createSaveDocumentTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'save_document',
+    `Save the current FreeCAD document to a file.
+
+Parameters:
+- filePath (optional): Full path to save the document. If omitted, saves to current document path.
+- format (optional): Save format - "FCStd" (default, compressed) or "FCBak" (uncompressed backup)
+
+Returns:
+- success: Whether the save was successful
+- filePath: Path where the document was saved
+- message: Status message
+
+Use this tool when the user wants to save their work. Always confirm the file path with the user if not specified.
+
+Example:
+- Save to specific location: { filePath: "C:/Users/John/Desktop/part.FCStd" }
+- Save with backup format: { filePath: "C:/backup.FCBAK", format: "FCBak" }`,
+    {
+      filePath: z.string().optional().describe('Full path to save the document'),
+      format: z.enum(['FCStd', 'FCBak']).optional().describe('Save format (default: FCStd)'),
+    },
+    async (input) => {
+      const filePath = input.filePath;
+      const format = input.format || 'FCStd';
+
+      // Validate file path if provided
+      if (filePath) {
+        const validation = validateFilePath(filePath);
+        if (!validation.isValid) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error: ${validation.error}`,
+              },
+            ],
+          };
+        }
+      }
+
+      // Generate Python code with parameters passed safely
+      const code = `
+from llm_bridge.file_handlers import handle_save_document
+import json
+filePath = r"${filePath ? filePath.replace(/"/g, '\\"') : ''}" if r"${filePath ? 'true' : 'false'}" == 'true' else None
+result = handle_save_document(file_path=filePath, format='${format}')
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        
+        if (parsed.success) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Saved: ${parsed.filePath}\n${parsed.message}`,
+              },
+            ],
+          };
+        } else {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Save failed: ${parsed.error}`,
+              },
+            ],
+          };
+        }
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: open_document
+ *
+ * Open an existing CAD file in FreeCAD.
+ */
+function createOpenDocumentTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'open_document',
+    `Open an existing CAD file in FreeCAD.
+
+Parameters:
+- filePath (required): Full path to the file to open
+
+Supported formats:
+- FCStd, FCBak (FreeCAD native)
+- STEP, STP (Industry standard)
+- IGES, IGS (CAD exchange)
+- STL (3D printing)
+- OBJ (3D geometry)
+- DXF, DWG (2D drawings)
+
+Returns:
+- success: Whether the open was successful
+- documentName: Internal name of the opened document
+- documentLabel: User-friendly label
+- objectCount: Number of objects in the document
+- message: Status message
+
+Use this tool when the user wants to open an existing CAD file. Always verify the file exists and has a supported format.
+
+Example:
+- Open a Part file: { filePath: "C:/Projects/part.FCStd" }
+- Open a STEP file: { filePath: "C:/Imports/assembly.step" }`,
+    {
+      filePath: z.string().describe('Full path to the CAD file to open'),
+    },
+    async (input) => {
+      const filePath = input.filePath;
+
+      // Validate file path
+      const validation = validateFilePath(filePath);
+      if (!validation.isValid) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Error: ${validation.error}`,
+            },
+          ],
+        };
+      }
+
+      const code = `
+from llm_bridge.file_handlers import handle_open_document
+import json
+result = handle_open_document(r"${filePath.replace(/"/g, '\\"')}")
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        
+        if (parsed.success) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Opened: ${parsed.documentLabel} (${parsed.documentName})\nObjects: ${parsed.objectCount}\n${parsed.message}`,
+              },
+            ],
+          };
+        } else {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Open failed: ${parsed.error}`,
+              },
+            ],
+          };
+        }
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: export_to_format
+ *
+ * Export the current model to a specific CAD format.
+ */
+function createExportToFormatTool(freeCADBridge: FreeCADBridge) {
+  const formats = getSupportedFormats();
+  const exportFormats = formats.filter(f => f.canExport);
+  const formatList = exportFormats.map(f => f.format).join(', ');
+
+  return tool(
+    'export_to_format',
+    `Export the current FreeCAD model to a specific CAD format.
+
+Parameters:
+- filePath (required): Full path to export the file to
+- format (required): Export format - ${formatList}
+
+Format descriptions:
+- STEP: Industry standard for CAD data exchange (recommended for manufacturing)
+- IGES: Older CAD exchange format
+- STL: 3D printing format (mesh)
+- OBJ: 3D geometry format (mesh)
+- DXF: 2D drawing format
+- FCStd: Native FreeCAD format
+- FCBak: FreeCAD backup format (uncompressed)
+
+Returns:
+- success: Whether the export was successful
+- filePath: Path where the file was exported
+- format: The export format used
+- message: Status message
+
+Use this tool when the user wants to export their model for sharing, manufacturing, or 3D printing.
+
+Example:
+- Export for 3D printing: { filePath: "C:/Exports/part.stl", format: "STL" }
+- Export for manufacturing: { filePath: "C:/Exports/part.step", format: "STEP" }`,
+    {
+      filePath: z.string().describe('Full path to export the file to'),
+      format: z.enum(['STEP', 'IGES', 'STL', 'OBJ', 'DXF', 'FCStd', 'FCBak']).describe('Export format'),
+    },
+    async (input) => {
+      const filePath = input.filePath;
+      const format = input.format;
+
+      // Validate file path
+      const validation = validateFilePath(filePath);
+      if (!validation.isValid) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Error: ${validation.error}`,
+            },
+          ],
+        };
+      }
+
+      const code = `
+from llm_bridge.file_handlers import handle_export_to_format
+import json
+result = handle_export_to_format(r"${filePath.replace(/"/g, '\\"')}", '${format}')
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        
+        if (parsed.success) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Exported as ${parsed.format}: ${parsed.filePath}\n${parsed.message}`,
+              },
+            ],
+          };
+        } else {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Export failed: ${parsed.error}`,
+              },
+            ],
+          };
+        }
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: list_recent_documents
+ *
+ * List recently opened CAD files.
+ */
+function createListRecentDocumentsTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'list_recent_documents',
+    `List recently opened CAD files from FreeCAD's history.
+
+Parameters: None
+
+Returns:
+- count: Number of recent files found
+- files: Array of file objects with path, name, and index
+- message: Status message
+
+Use this tool when the user wants to see their recently opened files or find a file they worked on previously.
+
+Example:
+- List recent files: {}`,
+    {
+      // No parameters needed
+    },
+    async () => {
+      const code = `
+from llm_bridge.file_handlers import handle_list_recent_documents
+import json
+result = handle_list_recent_documents()
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        
+        if (parsed.success) {
+          let output = `Recent Documents: ${parsed.count}\n\n`;
+          if (parsed.files && parsed.files.length > 0) {
+            for (const file of parsed.files) {
+              output += `${file.index + 1}. ${file.name}\n   ${file.path}\n`;
+            }
+          } else {
+            output += '(No recent documents found)';
+          }
+          return {
+            content: [
+              {
+                type: 'text',
+                text: output,
+              },
+            ],
+          };
+        } else {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Failed to list recent documents: ${parsed.error}`,
+              },
+            ],
+          };
+        }
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: create_new_document
+ *
+ * Create a new empty FreeCAD document.
+ */
+function createNewDocumentTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_new_document',
+    `Create a new empty FreeCAD document.
+
+Parameters:
+- name (optional): Name for the new document. If omitted, FreeCAD will auto-generate a name.
+- type (optional): Document type - "Part" (default), "Assembly", or "Sketch"
+
+Returns:
+- success: Whether the document was created
+- documentName: Internal name of the new document
+- documentLabel: User-friendly label
+- message: Status message
+
+Use this tool when the user wants to start a new design or clear the current workspace.
+
+Example:
+- Create default Part document: {}
+- Create named document: { name: "MyPart", type: "Part" }
+- Create Assembly document: { name: "Assembly1", type: "Assembly" }`,
+    {
+      name: z.string().optional().describe('Name for the new document'),
+      type: z.enum(['Part', 'Assembly', 'Sketch']).optional().describe('Document type (default: Part)'),
+    },
+    async (input) => {
+      const name = input.name;
+      const type = input.type || 'Part';
+
+      // Sanitize document name if provided
+      const sanitizedName = name ? sanitizeFileName(name) : undefined;
+
+      const code = `
+from llm_bridge.file_handlers import handle_create_new_document
+import json
+name = r"${sanitizedName ? sanitizedName.replace(/"/g, '\\"') : ''}" if r"${sanitizedName ? 'true' : 'false'}" == 'true' else None
+result = handle_create_new_document(name=name, doc_type='${type}')
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        
+        if (parsed.success) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Created: ${parsed.documentLabel} (${parsed.documentName})\n${parsed.message}`,
+              },
+            ],
+          };
+        } else {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Failed to create document: ${parsed.error}`,
+              },
+            ],
+          };
+        }
       } catch (error) {
         return {
           content: [

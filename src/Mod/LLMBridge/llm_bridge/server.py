@@ -13,6 +13,7 @@ import FreeCAD as App
 from .executor import execute_code
 from .main_thread import run_on_main_thread
 from . import query_handlers  # noqa: F401 - Import for availability via WebSocket
+from . import file_handlers  # noqa: F401 - Import for availability via WebSocket
 
 # Default port for FreeCAD Python execution bridge
 DEFAULT_PORT = 8766
