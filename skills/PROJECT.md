@@ -100,4 +100,10 @@ This is a diverging fork. We modify FreeCAD directly without worrying about upst
   - Extended `sidecar/src/result-formatters.ts` with formatters for property change results
   - Implemented undo stack integration for LLM changes
   - All end-to-end test scenarios passed (single property edit, multi-dimension update, movement, rotation, scale, expressions, error handling, undo)
+- [x] **Cycle 8: Sketcher Constraint Tools** (COMPLETED)
+  - Created `src/Mod/LLMBridge/llm_bridge/sketcher_handlers.py` - Sketch and constraint handlers
+  - Added 8 sketcher tools: `create_sketch`, `add_sketch_geometry`, `delete_sketch_geometry`, `get_sketch_geometry`, `add_constraint`, `remove_constraint`, `list_constraints`, `update_constraint`
+  - Extended `sidecar/src/result-formatters.ts` with formatters for sketcher results
+  - Implemented sketch solver status checking and constraint conflict handling
+  - All end-to-end test scenarios passed (basic sketch creation, rectangle, constraints, dimensional constraints, geometric relationships, circle with constraints, over-constraint handling, constraint modification)
 - [ ] Define additional custom tools as needed
