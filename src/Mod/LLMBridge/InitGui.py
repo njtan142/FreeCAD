@@ -47,6 +47,25 @@ def stop_llm_bridge():
             )
 
 
+def initialize_panel_bridge():
+    """Initialize the LLM panel bridge for the dock widget."""
+    try:
+        # Import to trigger auto-initialization
+        from llm_bridge import llm_panel_bridge  # noqa: F401
+        
+        App.Console.PrintMessage("LLMBridge: Panel bridge initialized\n")
+    except ImportError as e:
+        App.Console.PrintError(
+            "LLMBridge: Panel bridge initialization failed - {}. "
+            "The LLM dock widget may not function properly.\n".format(e)
+        )
+    except Exception as e:
+        App.Console.PrintError("LLMBridge: Panel bridge error - {}\n".format(e))
+
+
 # Start the bridge server
 start_llm_bridge()
 atexit.register(stop_llm_bridge)
+
+# Initialize the panel bridge for the dock widget
+initialize_panel_bridge()
