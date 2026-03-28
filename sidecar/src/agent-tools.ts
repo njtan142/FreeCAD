@@ -31,6 +31,11 @@ import {
   formatShapeResult,
   formatShapeInfo,
   formatShapeValidation,
+  formatAssemblyCreationResult,
+  formatComponentList,
+  formatConstraintCreationResult,
+  formatConstraintList,
+  formatConstraintUpdate,
 } from './result-formatters';
 import {
   validateFilePath,
@@ -123,6 +128,28 @@ export function createAgentTools(freeCADBridge: FreeCADBridge) {
     validateShapeTool(freeCADBridge),
     healShapeTool(freeCADBridge),
     getShapeInfoTool(freeCADBridge),
+    // Assembly management tools
+    createAssemblyTool(freeCADBridge),
+    addComponentToAssemblyTool(freeCADBridge),
+    removeComponentFromAssemblyTool(freeCADBridge),
+    listAssembliesTool(freeCADBridge),
+    listAssemblyComponentsTool(freeCADBridge),
+    // Assembly constraint creation tools
+    addCoincidentConstraintTool(freeCADBridge),
+    addParallelConstraintTool(freeCADBridge),
+    addPerpendicularConstraintTool(freeCADBridge),
+    addAngleConstraintTool(freeCADBridge),
+    addDistanceConstraintTool(freeCADBridge),
+    addInsertConstraintTool(freeCADBridge),
+    addTangentConstraintTool(freeCADBridge),
+    addEqualConstraintTool(freeCADBridge),
+    addSymmetricConstraintTool(freeCADBridge),
+    // Assembly constraint modification tools
+    updateConstraintValueTool(freeCADBridge),
+    removeConstraintTool(freeCADBridge),
+    listConstraintsTool(freeCADBridge),
+    suppressConstraintTool(freeCADBridge),
+    activateConstraintTool(freeCADBridge),
     // Session management tools
     createSaveChatSessionTool(),
     createLoadChatSessionTool(),
@@ -3851,6 +3878,1418 @@ print(json.dumps(result))
             },
           ],
         };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+// ============================================================================
+// Assembly Management Tools
+// ============================================================================
+
+/**
+ * Tool: create_assembly
+ *
+ * Create a new assembly container.
+ */
+function createAssemblyTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_assembly',
+    `Create a new assembly container to hold multiple parts.
+
+Parameters:
+- name (optional): Name for the new assembly. If omitted, auto-generated.
+
+Returns:
+- success: Whether the assembly was created
+- assemblyName: Internal name of the assembly
+- assemblyLabel: User-friendly label
+- componentCount: Number of components (initially 0)
+- message: Status message
+
+Use this tool to create a new assembly container for organizing multiple parts.
+
+Example:
+- Create assembly: {}
+- Create named assembly: { name: "EngineAssembly" }`,
+    {
+      name: z.string().optional().describe('Name for the new assembly'),
+    },
+    async (input) => {
+      const { name } = input;
+
+      const code = `
+from llm_bridge.assembly_handlers import handle_create_assembly
+import json
+params = json.loads('${JSON.stringify({ name: name || null })}')
+result = handle_create_assembly(name=params['name'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatAssemblyCreationResult(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: add_component_to_assembly
+ *
+ * Add a part to an assembly.
+ */
+function addComponentToAssemblyTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'add_component_to_assembly',
+    `Add a part or component to an existing assembly.
+
+Parameters:
+- objectName (required): Name of the part to add to the assembly
+- assemblyName (required): Name of the target assembly
+
+Returns:
+- success: Whether the component was added
+- componentName: Name of the added component
+- assemblyName: Name of the assembly
+- message: Status message
+
+Use this tool to include parts in an assembly for constraint-based positioning.
+
+Example:
+- Add part to assembly: { objectName: "Piston", assemblyName: "EngineAssembly" }`,
+    {
+      objectName: z.string().describe('Name of the part to add to the assembly'),
+      assemblyName: z.string().describe('Name of the target assembly'),
+    },
+    async (input) => {
+      const { objectName, assemblyName } = input;
+
+      const code = `
+from llm_bridge.assembly_handlers import handle_add_component_to_assembly
+import json
+params = json.loads('${JSON.stringify({ objectName, assemblyName })}')
+result = handle_add_component_to_assembly(
+    object_name=params['objectName'],
+    assembly_name=params['assemblyName']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatAssemblyCreationResult(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: remove_component_from_assembly
+ *
+ * Remove a part from an assembly.
+ */
+function removeComponentFromAssemblyTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'remove_component_from_assembly',
+    `Remove a part or component from an assembly.
+
+Parameters:
+- componentName (required): Name of the component to remove
+- assemblyName (required): Name of the source assembly
+
+Returns:
+- success: Whether the component was removed
+- removedComponent: Name of the removed component
+- message: Status message
+
+Use this tool to remove a component from an assembly.
+
+Example:
+- Remove component: { componentName: "Piston", assemblyName: "EngineAssembly" }`,
+    {
+      componentName: z.string().describe('Name of the component to remove'),
+      assemblyName: z.string().describe('Name of the source assembly'),
+    },
+    async (input) => {
+      const { componentName, assemblyName } = input;
+
+      const code = `
+from llm_bridge.assembly_handlers import handle_remove_component_from_assembly
+import json
+params = json.loads('${JSON.stringify({ componentName, assemblyName })}')
+result = handle_remove_component_from_assembly(
+    component_name=params['componentName'],
+    assembly_name=params['assemblyName']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatAssemblyCreationResult(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: list_assemblies
+ *
+ * List all assemblies in the document.
+ */
+function listAssembliesTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'list_assemblies',
+    `List all assemblies in the active FreeCAD document.
+
+Returns:
+- success: Whether the query was successful
+- assemblies: Array of assembly objects with name, label, componentCount
+- message: Status message
+
+Use this tool to see all available assemblies in the current document.
+
+Example:
+- List assemblies: {}`,
+    {
+      // No parameters needed
+    },
+    async () => {
+      const code = `
+from llm_bridge.assembly_handlers import handle_list_assemblies
+import json
+result = handle_list_assemblies()
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+
+        if (parsed.success) {
+          let output = `Assemblies: ${parsed.assemblyCount || 0}\n\n`;
+          if (parsed.assemblies && parsed.assemblies.length > 0) {
+            for (const asm of parsed.assemblies) {
+              output += `- ${asm.label || asm.name} (${asm.name})\n`;
+              output += `  Components: ${asm.componentCount || 0}\n`;
+            }
+          } else {
+            output += '(No assemblies found)';
+          }
+          return {
+            content: [
+              {
+                type: 'text',
+                text: output,
+              },
+            ],
+          };
+        } else {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error: ${parsed.error}`,
+              },
+            ],
+          };
+        }
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: list_assembly_components
+ *
+ * List components in a specific assembly.
+ */
+function listAssemblyComponentsTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'list_assembly_components',
+    `List all components in a specific assembly.
+
+Parameters:
+- assemblyName (required): Name of the assembly to query
+
+Returns:
+- success: Whether the query was successful
+- assemblyName: Name of the assembly
+- components: Array of component objects with name, label, constraintCount
+- message: Status message
+
+Use this tool to see what parts are contained in an assembly.
+
+Example:
+- List components: { assemblyName: "EngineAssembly" }`,
+    {
+      assemblyName: z.string().describe('Name of the assembly to query'),
+    },
+    async (input) => {
+      const { assemblyName } = input;
+
+      const code = `
+from llm_bridge.assembly_handlers import handle_list_assembly_components
+import json
+params = json.loads('${JSON.stringify({ assemblyName })}')
+result = handle_list_assembly_components(assembly_name=params['assemblyName'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatComponentList(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+// ============================================================================
+// Assembly Constraint Creation Tools
+// ============================================================================
+
+/**
+ * Tool: add_coincident_constraint
+ *
+ * Add a coincident constraint between two subobjects.
+ */
+function addCoincidentConstraintTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'add_coincident_constraint',
+    `Add a coincident constraint between two subobjects (faces, edges, or vertices).
+
+Parameters:
+- object1 (required): Name of the first object
+- subobject1 (required): Subobject reference for first object (e.g., "Face1", "Edge2", "Vertex3")
+- object2 (required): Name of the second object
+- subobject2 (required): Subobject reference for second object
+- name (optional): Name for the constraint. If omitted, auto-generated.
+
+Returns:
+- success: Whether the constraint was added
+- constraintName: Name of the created constraint
+- constraintType: Type of constraint ("Coincident")
+- objects: Array of the constrained objects
+- message: Status message
+
+Use this tool to make two subobjects coincident (touching at the same point).
+
+Example:
+- Make faces coincident: { object1: "Box", subobject1: "Face1", object2: "Cylinder", subobject2: "Face2" }
+- Make edges coincident: { object1: "Part", subobject1: "Edge1", object2: "Part2", subobject2: "Edge3" }`,
+    {
+      object1: z.string().describe('Name of the first object'),
+      subobject1: z.string().describe('Subobject reference (e.g., "Face1", "Edge2", "Vertex3")'),
+      object2: z.string().describe('Name of the second object'),
+      subobject2: z.string().describe('Subobject reference for second object'),
+      name: z.string().optional().describe('Name for the constraint'),
+    },
+    async (input) => {
+      const { object1, subobject1, object2, subobject2, name } = input;
+
+      const code = `
+from llm_bridge.assembly_handlers import handle_add_coincident_constraint
+import json
+params = json.loads('${JSON.stringify({ object1, subobject1, object2, subobject2, name: name || null })}')
+result = handle_add_coincident_constraint(
+    object1=params['object1'],
+    subobject1=params['subobject1'],
+    object2=params['object2'],
+    subobject2=params['subobject2'],
+    name=params['name']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatConstraintCreationResult(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: add_parallel_constraint
+ *
+ * Add a parallel constraint between two linear subobjects.
+ */
+function addParallelConstraintTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'add_parallel_constraint',
+    `Add a parallel constraint between two linear subobjects (edges or axes).
+
+Parameters:
+- object1 (required): Name of the first object
+- subobject1 (required): Subobject reference for first object (e.g., "Edge1", "Axis")
+- object2 (required): Name of the second object
+- subobject2 (required): Subobject reference for second object
+- name (optional): Name for the constraint. If omitted, auto-generated.
+
+Returns:
+- success: Whether the constraint was added
+- constraintName: Name of the created constraint
+- constraintType: Type of constraint ("Parallel")
+- message: Status message
+
+Use this tool to make two linear subobjects parallel (facing the same direction).
+
+Example:
+- Make edges parallel: { object1: "Box", subobject1: "Edge1", object2: "Cylinder", subobject2: "Axis" }`,
+    {
+      object1: z.string().describe('Name of the first object'),
+      subobject1: z.string().describe('Subobject reference (e.g., "Edge1", "Axis")'),
+      object2: z.string().describe('Name of the second object'),
+      subobject2: z.string().describe('Subobject reference for second object'),
+      name: z.string().optional().describe('Name for the constraint'),
+    },
+    async (input) => {
+      const { object1, subobject1, object2, subobject2, name } = input;
+
+      const code = `
+from llm_bridge.assembly_handlers import handle_add_parallel_constraint
+import json
+params = json.loads('${JSON.stringify({ object1, subobject1, object2, subobject2, name: name || null })}')
+result = handle_add_parallel_constraint(
+    object1=params['object1'],
+    subobject1=params['subobject1'],
+    object2=params['object2'],
+    subobject2=params['subobject2'],
+    name=params['name']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatConstraintCreationResult(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: add_perpendicular_constraint
+ *
+ * Add a perpendicular constraint between two subobjects.
+ */
+function addPerpendicularConstraintTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'add_perpendicular_constraint',
+    `Add a perpendicular constraint between two subobjects.
+
+Parameters:
+- object1 (required): Name of the first object
+- subobject1 (required): Subobject reference for first object (e.g., "Edge1", "Face1")
+- object2 (required): Name of the second object
+- subobject2 (required): Subobject reference for second object
+- name (optional): Name for the constraint. If omitted, auto-generated.
+
+Returns:
+- success: Whether the constraint was added
+- constraintName: Name of the created constraint
+- constraintType: Type of constraint ("Perpendicular")
+- message: Status message
+
+Use this tool to make two subobjects perpendicular (at 90 degrees).
+
+Example:
+- Make faces perpendicular: { object1: "Box", subobject1: "Face1", object2: "Part", subobject2: "Face2" }`,
+    {
+      object1: z.string().describe('Name of the first object'),
+      subobject1: z.string().describe('Subobject reference (e.g., "Edge1", "Face1")'),
+      object2: z.string().describe('Name of the second object'),
+      subobject2: z.string().describe('Subobject reference for second object'),
+      name: z.string().optional().describe('Name for the constraint'),
+    },
+    async (input) => {
+      const { object1, subobject1, object2, subobject2, name } = input;
+
+      const code = `
+from llm_bridge.assembly_handlers import handle_add_perpendicular_constraint
+import json
+params = json.loads('${JSON.stringify({ object1, subobject1, object2, subobject2, name: name || null })}')
+result = handle_add_perpendicular_constraint(
+    object1=params['object1'],
+    subobject1=params['subobject1'],
+    object2=params['object2'],
+    subobject2=params['subobject2'],
+    name=params['name']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatConstraintCreationResult(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: add_angle_constraint
+ *
+ * Add an angle constraint between two subobjects.
+ */
+function addAngleConstraintTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'add_angle_constraint',
+    `Add an angle constraint between two subobjects at a specific angle.
+
+Parameters:
+- object1 (required): Name of the first object
+- subobject1 (required): Subobject reference for first object (e.g., "Edge1", "Face1")
+- object2 (required): Name of the second object
+- subobject2 (required): Subobject reference for second object
+- angle (required): Angle value in degrees (e.g., 45 for 45 degrees)
+- name (optional): Name for the constraint. If omitted, auto-generated.
+
+Returns:
+- success: Whether the constraint was added
+- constraintName: Name of the created constraint
+- constraintType: Type of constraint ("Angle")
+- angle: The constrained angle in degrees
+- message: Status message
+
+Use this tool to set a specific angle between two subobjects.
+
+Example:
+- Set 45 degree angle: { object1: "Part", subobject1: "Face1", object2: "Part2", subobject2: "Face2", angle: 45 }`,
+    {
+      object1: z.string().describe('Name of the first object'),
+      subobject1: z.string().describe('Subobject reference (e.g., "Edge1", "Face1")'),
+      object2: z.string().describe('Name of the second object'),
+      subobject2: z.string().describe('Subobject reference for second object'),
+      angle: z.number().describe('Angle value in degrees'),
+      name: z.string().optional().describe('Name for the constraint'),
+    },
+    async (input) => {
+      const { object1, subobject1, object2, subobject2, angle, name } = input;
+
+      const code = `
+from llm_bridge.assembly_handlers import handle_add_angle_constraint
+import json
+params = json.loads('${JSON.stringify({ object1, subobject1, object2, subobject2, angle, name: name || null })}')
+result = handle_add_angle_constraint(
+    object1=params['object1'],
+    subobject1=params['subobject1'],
+    object2=params['object2'],
+    subobject2=params['subobject2'],
+    angle=params['angle'],
+    name=params['name']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatConstraintCreationResult(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: add_distance_constraint
+ *
+ * Add a distance constraint between two subobjects.
+ */
+function addDistanceConstraintTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'add_distance_constraint',
+    `Add a distance constraint between two subobjects.
+
+Parameters:
+- object1 (required): Name of the first object
+- subobject1 (required): Subobject reference for first object (e.g., "Face1", "Edge1")
+- object2 (required): Name of the second object
+- subobject2 (required): Subobject reference for second object
+- distance (required): Distance value in millimeters
+- name (optional): Name for the constraint. If omitted, auto-generated.
+
+Returns:
+- success: Whether the constraint was added
+- constraintName: Name of the created constraint
+- constraintType: Type of constraint ("Distance")
+- distance: The constrained distance in mm
+- message: Status message
+
+Use this tool to set a specific distance between two subobjects.
+
+Example:
+- Set 10mm gap: { object1: "Box", subobject1: "Face1", object2: "Cylinder", subobject2: "Face2", distance: 10 }`,
+    {
+      object1: z.string().describe('Name of the first object'),
+      subobject1: z.string().describe('Subobject reference (e.g., "Face1", "Edge1")'),
+      object2: z.string().describe('Name of the second object'),
+      subobject2: z.string().describe('Subobject reference for second object'),
+      distance: z.number().describe('Distance value in millimeters'),
+      name: z.string().optional().describe('Name for the constraint'),
+    },
+    async (input) => {
+      const { object1, subobject1, object2, subobject2, distance, name } = input;
+
+      const code = `
+from llm_bridge.assembly_handlers import handle_add_distance_constraint
+import json
+params = json.loads('${JSON.stringify({ object1, subobject1, object2, subobject2, distance, name: name || null })}')
+result = handle_add_distance_constraint(
+    object1=params['object1'],
+    subobject1=params['subobject1'],
+    object2=params['object2'],
+    subobject2=params['subobject2'],
+    distance=params['distance'],
+    name=params['name']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatConstraintCreationResult(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: add_insert_constraint
+ *
+ * Add an insert (cylindrical fit) constraint.
+ */
+function addInsertConstraintTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'add_insert_constraint',
+    `Add an insert constraint - mates a cylindrical subobject into another (shaft into hole).
+
+Parameters:
+- object1 (required): Name of the first object (the inserted part)
+- subobject1 (required): Subobject reference (e.g., "Cylinder", "Face1")
+- object2 (required): Name of the second object (the receiving part)
+- subobject2 (required): Subobject reference for the receiving part (e.g., "Face2")
+- name (optional): Name for the constraint. If omitted, auto-generated.
+
+Returns:
+- success: Whether the constraint was added
+- constraintName: Name of the created constraint
+- constraintType: Type of constraint ("Insert")
+- message: Status message
+
+Use this tool to insert one cylindrical subobject into another (e.g., pin into hole).
+
+Example:
+- Insert pin into hole: { object1: "Pin", subobject1: "Cylinder", object2: "Plate", subobject2: "Cylinder" }`,
+    {
+      object1: z.string().describe('Name of the first object (inserted part)'),
+      subobject1: z.string().describe('Subobject reference (e.g., "Cylinder", "Face1")'),
+      object2: z.string().describe('Name of the second object (receiving part)'),
+      subobject2: z.string().describe('Subobject reference for receiving part'),
+      name: z.string().optional().describe('Name for the constraint'),
+    },
+    async (input) => {
+      const { object1, subobject1, object2, subobject2, name } = input;
+
+      const code = `
+from llm_bridge.assembly_handlers import handle_add_insert_constraint
+import json
+params = json.loads('${JSON.stringify({ object1, subobject1, object2, subobject2, name: name || null })}')
+result = handle_add_insert_constraint(
+    object1=params['object1'],
+    subobject1=params['subobject1'],
+    object2=params['object2'],
+    subobject2=params['subobject2'],
+    name=params['name']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatConstraintCreationResult(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: add_tangent_constraint
+ *
+ * Add a tangent constraint between two subobjects.
+ */
+function addTangentConstraintTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'add_tangent_constraint',
+    `Add a tangent constraint between two subobjects.
+
+Parameters:
+- object1 (required): Name of the first object
+- subobject1 (required): Subobject reference for first object (e.g., "Face1", "Edge1")
+- object2 (required): Name of the second object
+- subobject2 (required): Subobject reference for second object
+- name (optional): Name for the constraint. If omitted, auto-generated.
+
+Returns:
+- success: Whether the constraint was added
+- constraintName: Name of the created constraint
+- constraintType: Type of constraint ("Tangent")
+- message: Status message
+
+Use this tool to make two subobjects tangent (touching at a single point without intersecting).
+
+Example:
+- Make tangent: { object1: "Sphere", subobject1: "Face1", object2: "Plane", subobject2: "Face1" }`,
+    {
+      object1: z.string().describe('Name of the first object'),
+      subobject1: z.string().describe('Subobject reference (e.g., "Face1", "Edge1")'),
+      object2: z.string().describe('Name of the second object'),
+      subobject2: z.string().describe('Subobject reference for second object'),
+      name: z.string().optional().describe('Name for the constraint'),
+    },
+    async (input) => {
+      const { object1, subobject1, object2, subobject2, name } = input;
+
+      const code = `
+from llm_bridge.assembly_handlers import handle_add_tangent_constraint
+import json
+params = json.loads('${JSON.stringify({ object1, subobject1, object2, subobject2, name: name || null })}')
+result = handle_add_tangent_constraint(
+    object1=params['object1'],
+    subobject1=params['subobject1'],
+    object2=params['object2'],
+    subobject2=params['subobject2'],
+    name=params['name']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatConstraintCreationResult(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: add_equal_constraint
+ *
+ * Add an equal constraint (equal length, radius, etc.) between two subobjects.
+ */
+function addEqualConstraintTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'add_equal_constraint',
+    `Add an equal constraint between two subobjects - makes them equal in size.
+
+Parameters:
+- object1 (required): Name of the first object
+- subobject1 (required): Subobject reference for first object (e.g., "Edge1", "Cylinder")
+- object2 (required): Name of the second object
+- subobject2 (required): Subobject reference for second object
+- name (optional): Name for the constraint. If omitted, auto-generated.
+
+Returns:
+- success: Whether the constraint was added
+- constraintName: Name of the created constraint
+- constraintType: Type of constraint ("Equal")
+- message: Status message
+
+Use this tool to make two subobjects equal (same length, radius, etc.).
+
+Example:
+- Equal radius: { object1: "Cylinder1", subobject1: "Cylinder", object2: "Cylinder2", subobject2: "Cylinder" }`,
+    {
+      object1: z.string().describe('Name of the first object'),
+      subobject1: z.string().describe('Subobject reference (e.g., "Edge1", "Cylinder")'),
+      object2: z.string().describe('Name of the second object'),
+      subobject2: z.string().describe('Subobject reference for second object'),
+      name: z.string().optional().describe('Name for the constraint'),
+    },
+    async (input) => {
+      const { object1, subobject1, object2, subobject2, name } = input;
+
+      const code = `
+from llm_bridge.assembly_handlers import handle_add_equal_constraint
+import json
+params = json.loads('${JSON.stringify({ object1, subobject1, object2, subobject2, name: name || null })}')
+result = handle_add_equal_constraint(
+    object1=params['object1'],
+    subobject1=params['subobject1'],
+    object2=params['object2'],
+    subobject2=params['subobject2'],
+    name=params['name']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatConstraintCreationResult(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: add_symmetric_constraint
+ *
+ * Add a symmetric constraint between two subobjects about a plane.
+ */
+function addSymmetricConstraintTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'add_symmetric_constraint',
+    `Add a symmetric constraint between two subobjects about a plane.
+
+Parameters:
+- object1 (required): Name of the first object
+- subobject1 (required): Subobject reference for first object (e.g., "Face1", "Edge1")
+- object2 (required): Name of the second object
+- subobject2 (required): Subobject reference for second object
+- symmetryPlane (required): Reference to the symmetry plane (e.g., "XY_Plane", "Face3")
+- name (optional): Name for the constraint. If omitted, auto-generated.
+
+Returns:
+- success: Whether the constraint was added
+- constraintName: Name of the created constraint
+- constraintType: Type of constraint ("Symmetric")
+- message: Status message
+
+Use this tool to make two subobjects symmetric about a plane (e.g., mirror each other).
+
+Example:
+- Symmetric about XY plane: { object1: "LeftPart", subobject1: "Face1", object2: "RightPart", subobject2: "Face1", symmetryPlane: "XY_Plane" }`,
+    {
+      object1: z.string().describe('Name of the first object'),
+      subobject1: z.string().describe('Subobject reference (e.g., "Face1", "Edge1")'),
+      object2: z.string().describe('Name of the second object'),
+      subobject2: z.string().describe('Subobject reference for second object'),
+      symmetryPlane: z.string().describe('Reference to the symmetry plane'),
+      name: z.string().optional().describe('Name for the constraint'),
+    },
+    async (input) => {
+      const { object1, subobject1, object2, subobject2, symmetryPlane, name } = input;
+
+      const code = `
+from llm_bridge.assembly_handlers import handle_add_symmetric_constraint
+import json
+params = json.loads('${JSON.stringify({ object1, subobject1, object2, subobject2, symmetryPlane, name: name || null })}')
+result = handle_add_symmetric_constraint(
+    object1=params['object1'],
+    subobject1=params['subobject1'],
+    object2=params['object2'],
+    subobject2=params['subobject2'],
+    symmetry_plane=params['symmetryPlane'],
+    name=params['name']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatConstraintCreationResult(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+// ============================================================================
+// Assembly Constraint Modification Tools
+// ============================================================================
+
+/**
+ * Tool: update_constraint_value
+ *
+ * Update the value of an existing constraint.
+ */
+function updateConstraintValueTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'update_constraint_value',
+    `Update the value of an existing constraint (angle or distance).
+
+Parameters:
+- constraintName (required): Name of the constraint to update
+- newValue (required): New value for the constraint (number in degrees for angle, mm for distance)
+
+Returns:
+- success: Whether the constraint was updated
+- constraintName: Name of the updated constraint
+- oldValue: Previous value
+- newValue: New value
+- solverStatus: Status of the assembly solver
+- message: Status message
+
+Use this tool to modify constraint values parametrically.
+
+Example:
+- Change angle: { constraintName: "Angle1", newValue: 60 }
+- Change distance: { constraintName: "Distance1", newValue: 15 }`,
+    {
+      constraintName: z.string().describe('Name of the constraint to update'),
+      newValue: z.number().describe('New value for the constraint (degrees for angle, mm for distance)'),
+    },
+    async (input) => {
+      const { constraintName, newValue } = input;
+
+      const code = `
+from llm_bridge.assembly_handlers import handle_update_constraint_value
+import json
+params = json.loads('${JSON.stringify({ constraintName, newValue })}')
+result = handle_update_constraint_value(
+    constraint_name=params['constraintName'],
+    new_value=params['newValue']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatConstraintUpdate(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: remove_constraint
+ *
+ * Remove a constraint from an assembly.
+ */
+function removeConstraintTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'remove_constraint',
+    `Remove a constraint from an assembly.
+
+Parameters:
+- constraintName (required): Name of the constraint to remove
+
+Returns:
+- success: Whether the constraint was removed
+- removedConstraint: Name of the removed constraint
+- message: Status message
+
+Use this tool to delete unwanted constraints from an assembly.
+
+Example:
+- Remove constraint: { constraintName: "Coincident1" }`,
+    {
+      constraintName: z.string().describe('Name of the constraint to remove'),
+    },
+    async (input) => {
+      const { constraintName } = input;
+
+      const code = `
+from llm_bridge.assembly_handlers import handle_remove_constraint
+import json
+params = json.loads('${JSON.stringify({ constraintName })}')
+result = handle_remove_constraint(constraint_name=params['constraintName'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+
+        if (parsed.success) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Removed constraint: ${constraintName}\n${parsed.message || ''}`,
+              },
+            ],
+          };
+        } else {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error: ${parsed.error}`,
+              },
+            ],
+          };
+        }
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: list_constraints
+ *
+ * List all constraints in an assembly.
+ */
+function listConstraintsTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'list_constraints',
+    `List all constraints in an assembly.
+
+Parameters:
+- assemblyName (optional): Name of the assembly to query. If omitted, uses the active assembly.
+
+Returns:
+- success: Whether the query was successful
+- assemblyName: Name of the assembly
+- constraints: Array of constraint objects with name, type, objects, value, status
+- constraintCount: Number of constraints
+- message: Status message
+
+Use this tool to see all constraints in an assembly.
+
+Example:
+- List all constraints: {}
+- List in specific assembly: { assemblyName: "EngineAssembly" }`,
+    {
+      assemblyName: z.string().optional().describe('Name of the assembly to query'),
+    },
+    async (input) => {
+      const { assemblyName } = input;
+
+      const code = `
+from llm_bridge.assembly_handlers import handle_list_constraints
+import json
+params = json.loads('${JSON.stringify({ assemblyName: assemblyName || null })}')
+result = handle_list_constraints(assembly_name=params['assemblyName'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatConstraintList(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: suppress_constraint
+ *
+ * Temporarily disable a constraint.
+ */
+function suppressConstraintTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'suppress_constraint',
+    `Temporarily disable (suppress) a constraint in an assembly.
+
+Parameters:
+- constraintName (required): Name of the constraint to suppress
+
+Returns:
+- success: Whether the constraint was suppressed
+- constraintName: Name of the suppressed constraint
+- message: Status message
+
+Use this tool to temporarily disable a constraint without deleting it. The assembly will ignore this constraint until it is activated again.
+
+Example:
+- Suppress constraint: { constraintName: "Distance1" }`,
+    {
+      constraintName: z.string().describe('Name of the constraint to suppress'),
+    },
+    async (input) => {
+      const { constraintName } = input;
+
+      const code = `
+from llm_bridge.assembly_handlers import handle_suppress_constraint
+import json
+params = json.loads('${JSON.stringify({ constraintName })}')
+result = handle_suppress_constraint(constraint_name=params['constraintName'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+
+        if (parsed.success) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Suppressed constraint: ${constraintName}\n${parsed.message || ''}`,
+              },
+            ],
+          };
+        } else {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error: ${parsed.error}`,
+              },
+            ],
+          };
+        }
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: activate_constraint
+ *
+ * Re-enable a suppressed constraint.
+ */
+function activateConstraintTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'activate_constraint',
+    `Re-enable (activate) a previously suppressed constraint.
+
+Parameters:
+- constraintName (required): Name of the constraint to activate
+
+Returns:
+- success: Whether the constraint was activated
+- constraintName: Name of the activated constraint
+- message: Status message
+
+Use this tool to re-enable a constraint that was previously suppressed.
+
+Example:
+- Activate constraint: { constraintName: "Distance1" }`,
+    {
+      constraintName: z.string().describe('Name of the constraint to activate'),
+    },
+    async (input) => {
+      const { constraintName } = input;
+
+      const code = `
+from llm_bridge.assembly_handlers import handle_activate_constraint
+import json
+params = json.loads('${JSON.stringify({ constraintName })}')
+result = handle_activate_constraint(constraint_name=params['constraintName'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+
+        if (parsed.success) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Activated constraint: ${constraintName}\n${parsed.message || ''}`,
+              },
+            ],
+          };
+        } else {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error: ${parsed.error}`,
+              },
+            ],
+          };
+        }
       } catch (error) {
         return {
           content: [
