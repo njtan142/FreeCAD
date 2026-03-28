@@ -24,6 +24,10 @@ import {
   formatGeometryResult,
   formatConstraintResult,
   formatSketchGeometry,
+  formatFeatureResult,
+  formatBodyResult,
+  formatBodyList,
+  formatFeatureUpdate,
 } from './result-formatters';
 import {
   validateFilePath,
@@ -95,6 +99,19 @@ export function createAgentTools(freeCADBridge: FreeCADBridge) {
     listSketchConstraintsTool(freeCADBridge),
     deleteConstraintTool(freeCADBridge),
     getSketchGeometryTool(freeCADBridge),
+    // PartDesign feature tools
+    createBodyTool(freeCADBridge),
+    setActiveBodyTool(freeCADBridge),
+    listBodiesTool(freeCADBridge),
+    createPadTool(freeCADBridge),
+    createPocketTool(freeCADBridge),
+    createRevolutionTool(freeCADBridge),
+    createGrooveTool(freeCADBridge),
+    createFilletTool(freeCADBridge),
+    createChamferTool(freeCADBridge),
+    updateFeatureTool(freeCADBridge),
+    replaceSketchTool(freeCADBridge),
+    deleteFeatureTool(freeCADBridge),
     // Session management tools
     createSaveChatSessionTool(),
     createLoadChatSessionTool(),
@@ -2049,6 +2066,9 @@ Parameters:
   - "perpendicular" - Make two lines perpendicular
   - "tangent" - Make two curves tangent
   - "equal" - Make two elements equal (lengths, radii)
+  - "symmetric" - Make two points symmetric about a line or axis
+  - "concentric" - Make two circles/arcs share the same center
+  - "midpoint" - Make a point the midpoint of a line
 - geoIndex1 (required): Index of first geometry element (0-based)
 - pointPos1 (optional): Point position on first element (1=start, 2=end, 3=center)
 - geoIndex2 (optional): Index of second geometry element (for constraints involving two elements)
@@ -2066,10 +2086,13 @@ Use this tool to add geometric relationships between sketch elements.
 Example:
 - Make line horizontal: { sketchName: "Sketch", constraintType: "horizontal", geoIndex1: 0 }
 - Make two points coincident: { sketchName: "Sketch", constraintType: "coincident", geoIndex1: 0, pointPos1: 2, geoIndex2: 1, pointPos2: 1 }
-- Make lines perpendicular: { sketchName: "Sketch", constraintType: "perpendicular", geoIndex1: 0, geoIndex2: 1 }`,
+- Make lines perpendicular: { sketchName: "Sketch", constraintType: "perpendicular", geoIndex1: 0, geoIndex2: 1 }
+- Make two circles concentric: { sketchName: "Sketch", constraintType: "concentric", geoIndex1: 0, geoIndex2: 1 }
+- Make points symmetric about a line: { sketchName: "Sketch", constraintType: "symmetric", geoIndex1: 0, geoIndex2: 1 }
+- Make point midpoint of line: { sketchName: "Sketch", constraintType: "midpoint", geoIndex1: 0, geoIndex2: 1 }`,
     {
       sketchName: z.string().describe('Name of the sketch'),
-      constraintType: z.enum(['coincident', 'horizontal', 'vertical', 'parallel', 'perpendicular', 'tangent', 'equal']).describe('Type of geometric constraint'),
+      constraintType: z.enum(['coincident', 'horizontal', 'vertical', 'parallel', 'perpendicular', 'tangent', 'equal', 'symmetric', 'concentric', 'midpoint']).describe('Type of geometric constraint'),
       geoIndex1: z.number().describe('Index of first geometry element (0-based)'),
       pointPos1: z.number().optional().describe('Point position on first element (1=start, 2=end, 3=center)'),
       geoIndex2: z.number().optional().describe('Index of second geometry element'),
@@ -2466,6 +2489,843 @@ print(json.dumps(result))
         const result = await freeCADBridge.executePython(code);
         const parsed = JSON.parse(result.output || '{}');
         const formatted = formatSketchGeometry(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+// ============================================================================
+// PartDesign Feature Tools
+// ============================================================================
+
+/**
+ * Tool: create_body
+ *
+ * Create a new PartDesign Body.
+ */
+function createBodyTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_body',
+    `Create a new PartDesign Body.
+
+Parameters:
+- name (optional): Name for the new body. If omitted, auto-generated.
+
+Returns:
+- success: Whether the body was created
+- bodyName: Internal name of the body
+- bodyLabel: User-friendly label
+- message: Status message
+
+Use this tool when you want to create a new PartDesign Body to contain parametric features.
+
+Example:
+- Create body: {}
+- Create named body: { name: "MainBody" }`,
+    {
+      name: z.string().optional().describe('Name for the new body'),
+    },
+    async (input) => {
+      const { name } = input;
+
+      const code = `
+from llm_bridge.feature_handlers import handle_create_body
+import json
+params = json.loads('${JSON.stringify({ name: name || null })}')
+result = handle_create_body(name=params['name'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatBodyResult(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: set_active_body
+ *
+ * Set the active PartDesign Body for subsequent feature operations.
+ */
+function setActiveBodyTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'set_active_body',
+    `Set the active PartDesign Body for subsequent feature operations.
+
+Parameters:
+- bodyName (required): Name of the body to set as active
+
+Returns:
+- success: Whether the body was set as active
+- bodyName: Name of the active body
+- previousBody: Name of the previously active body (if any)
+- message: Status message
+
+Use this tool before creating PartDesign features to specify which body they should be added to.
+
+Example:
+- Set active body: { bodyName: "Body" }`,
+    {
+      bodyName: z.string().describe('Name of the body to set as active'),
+    },
+    async (input) => {
+      const { bodyName } = input;
+
+      const code = `
+from llm_bridge.feature_handlers import handle_set_active_body
+import json
+params = json.loads('${JSON.stringify({ bodyName })}')
+result = handle_set_active_body(body_name=params['bodyName'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatBodyResult(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: list_bodies
+ *
+ * List all PartDesign Bodies in the active document.
+ */
+function listBodiesTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'list_bodies',
+    `List all PartDesign Bodies in the active document.
+
+Returns:
+- success: Whether the query was successful
+- bodyCount: Number of bodies found
+- bodies: Array of body objects with name, label, feature count, and active status
+- message: Status message
+
+Use this tool to see all available bodies before creating or modifying features.
+
+Example:
+- List bodies: {}`,
+    {
+      // No parameters needed
+    },
+    async () => {
+      const code = `
+from llm_bridge.feature_handlers import handle_list_bodies
+import json
+result = handle_list_bodies()
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatBodyList(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: create_pad
+ *
+ * Create a PartDesign Pad (extrusion) feature.
+ */
+function createPadTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_pad',
+    `Create a PartDesign Pad (extrusion) feature from a sketch.
+
+Parameters:
+- sketchName (required): Name of the sketch to pad
+- length (required): Length of the pad (number or string with units like "10mm")
+
+Returns:
+- success: Whether the pad was created
+- featureName: Internal name of the pad feature
+- featureLabel: User-friendly label
+- bodyName: Name of the body containing the feature
+- length: Length of the pad
+- message: Status message
+
+Use this tool to create additive extrusions from sketches in PartDesign.
+
+Example:
+- Create pad: { sketchName: "Sketch", length: "10mm" }`,
+    {
+      sketchName: z.string().describe('Name of the sketch to pad'),
+      length: z.union([z.string(), z.number()]).describe('Length of the pad (number or string with units)'),
+    },
+    async (input) => {
+      const { sketchName, length } = input;
+
+      const code = `
+from llm_bridge.feature_handlers import handle_create_pad
+import json
+params = json.loads('${JSON.stringify({ sketchName, length })}')
+result = handle_create_pad(
+    sketch_name=params['sketchName'],
+    length=params['length']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatFeatureResult(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: create_pocket
+ *
+ * Create a PartDesign Pocket (cut/extrude remove) feature.
+ */
+function createPocketTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_pocket',
+    `Create a PartDesign Pocket (cut/extrude remove) feature from a sketch.
+
+Parameters:
+- sketchName (required): Name of the sketch to pocket
+- depth (required): Depth of the pocket (number or string with units like "5mm")
+
+Returns:
+- success: Whether the pocket was created
+- featureName: Internal name of the pocket feature
+- featureLabel: User-friendly label
+- bodyName: Name of the body containing the feature
+- depth: Depth of the pocket
+- message: Status message
+
+Use this tool to create subtractive extrusions (cuts) from sketches in PartDesign.
+
+Example:
+- Create pocket: { sketchName: "Sketch001", depth: "5mm" }`,
+    {
+      sketchName: z.string().describe('Name of the sketch to pocket'),
+      depth: z.union([z.string(), z.number()]).describe('Depth of the pocket (number or string with units)'),
+    },
+    async (input) => {
+      const { sketchName, depth } = input;
+
+      const code = `
+from llm_bridge.feature_handlers import handle_create_pocket
+import json
+params = json.loads('${JSON.stringify({ sketchName, depth })}')
+result = handle_create_pocket(
+    sketch_name=params['sketchName'],
+    length=params['depth']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatFeatureResult(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: create_revolution
+ *
+ * Create a PartDesign Revolution (revolve) feature.
+ */
+function createRevolutionTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_revolution',
+    `Create a PartDesign Revolution (revolve) feature from a sketch.
+
+Parameters:
+- sketchName (required): Name of the sketch to revolve
+- angle (required): Revolution angle (number in radians or string with units like "360deg")
+- axis (optional): Axis of revolution - "Horizontal", "Vertical", "Custom" (default: "Vertical")
+
+Returns:
+- success: Whether the revolution was created
+- featureName: Internal name of the revolution feature
+- featureLabel: User-friendly label
+- bodyName: Name of the body containing the feature
+- angle: Revolution angle
+- axis: Axis of revolution
+- message: Status message
+
+Use this tool to create revolved features from sketches in PartDesign.
+
+Example:
+- Full revolution: { sketchName: "Sketch", angle: "360deg" }`,
+    {
+      sketchName: z.string().describe('Name of the sketch to revolve'),
+      angle: z.union([z.string(), z.number()]).describe('Revolution angle (number in radians or string with units)'),
+      axis: z.enum(['Horizontal', 'Vertical', 'Custom']).optional().describe('Axis of revolution'),
+    },
+    async (input) => {
+      const { sketchName, angle, axis } = input;
+
+      const code = `
+from llm_bridge.feature_handlers import handle_create_revolution
+import json
+params = json.loads('${JSON.stringify({ sketchName, angle, axis: axis || 'Vertical' })}')
+result = handle_create_revolution(
+    sketch_name=params['sketchName'],
+    angle=params['angle'],
+    axis=params['axis']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatFeatureResult(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: create_groove
+ *
+ * Create a PartDesign Groove (revolved cut) feature.
+ */
+function createGrooveTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_groove',
+    `Create a PartDesign Groove (revolved cut) feature from a sketch.
+
+Parameters:
+- sketchName (required): Name of the sketch to groove
+- angle (required): Revolution angle (number in radians or string with units like "360deg")
+- axis (optional): Axis of revolution - "Horizontal", "Vertical", "Custom" (default: "Vertical")
+
+Returns:
+- success: Whether the groove was created
+- featureName: Internal name of the groove feature
+- featureLabel: User-friendly label
+- bodyName: Name of the body containing the feature
+- angle: Revolution angle
+- axis: Axis of revolution
+- message: Status message
+
+Use this tool to create revolved cuts (subtractive revolutions) from sketches in PartDesign.
+
+Example:
+- Full groove: { sketchName: "Sketch", angle: "360deg" }
+- Partial groove: { sketchName: "Sketch", angle: "180deg" }`,
+    {
+      sketchName: z.string().describe('Name of the sketch to groove'),
+      angle: z.union([z.string(), z.number()]).describe('Revolution angle (number in radians or string with units)'),
+      axis: z.enum(['Horizontal', 'Vertical', 'Custom']).optional().describe('Axis of revolution'),
+    },
+    async (input) => {
+      const { sketchName, angle, axis } = input;
+
+      const code = `
+from llm_bridge.feature_handlers import handle_create_groove
+import json
+params = json.loads('${JSON.stringify({ sketchName, angle, axis: axis || 'Vertical' })}')
+result = handle_create_groove(
+    sketch_name=params['sketchName'],
+    angle=params['angle'],
+    axis=params['axis']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatFeatureResult(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: create_fillet
+ *
+ * Create a PartDesign Fillet (rounded edge) feature.
+ */
+function createFilletTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_fillet',
+    `Create a PartDesign Fillet (rounded edge) feature.
+
+Parameters:
+- featureName (required): Name of the base feature to fillet
+- edges (required): Array of edge indices to fillet (0-based)
+- radius (required): Fillet radius (number or string with units like "2mm")
+
+Returns:
+- success: Whether the fillet was created
+- featureName: Internal name of the fillet feature
+- featureLabel: User-friendly label
+- baseFeature: Name of the base feature
+- radius: Fillet radius
+- edgesCount: Number of edges filleted
+- message: Status message
+
+Use this tool to add rounded edges to PartDesign bodies.
+
+Example:
+- Fillet single edge: { featureName: "Pad", edges: [0], radius: "2mm" }
+- Fillet multiple edges: { featureName: "Pad", edges: [0, 1, 2], radius: "3mm" }`,
+    {
+      featureName: z.string().describe('Name of the base feature to fillet'),
+      edges: z.array(z.number()).describe('Array of edge indices to fillet (0-based)'),
+      radius: z.union([z.string(), z.number()]).describe('Fillet radius (number or string with units)'),
+    },
+    async (input) => {
+      const { featureName, edges, radius } = input;
+
+      const code = `
+from llm_bridge.feature_handlers import handle_create_fillet
+import json
+params = json.loads('${JSON.stringify({ featureName, edges, radius })}')
+result = handle_create_fillet(
+    feature_name=params['featureName'],
+    edges=params['edges'],
+    radius=params['radius']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatFeatureResult(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: create_chamfer
+ *
+ * Create a PartDesign Chamfer (beveled edge) feature.
+ */
+function createChamferTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_chamfer',
+    `Create a PartDesign Chamfer (beveled edge) feature.
+
+Parameters:
+- featureName (required): Name of the base feature to chamfer
+- edges (required): Array of edge indices to chamfer (0-based)
+- size (required): Chamfer size (number or string with units like "2mm")
+
+Returns:
+- success: Whether the chamfer was created
+- featureName: Internal name of the chamfer feature
+- featureLabel: User-friendly label
+- baseFeature: Name of the base feature
+- size: Chamfer size
+- edgesCount: Number of edges chamfered
+- message: Status message
+
+Use this tool to add beveled edges to PartDesign bodies.
+
+Example:
+- Chamfer single edge: { featureName: "Pad", edges: [0], size: "2mm" }
+- Chamfer multiple edges: { featureName: "Pad", edges: [0, 1, 2], size: "3mm" }`,
+    {
+      featureName: z.string().describe('Name of the base feature to chamfer'),
+      edges: z.array(z.number()).describe('Array of edge indices to chamfer (0-based)'),
+      size: z.union([z.string(), z.number()]).describe('Chamfer size (number or string with units)'),
+    },
+    async (input) => {
+      const { featureName, edges, size } = input;
+
+      const code = `
+from llm_bridge.feature_handlers import handle_create_chamfer
+import json
+params = json.loads('${JSON.stringify({ featureName, edges, size })}')
+result = handle_create_chamfer(
+    feature_name=params['featureName'],
+    edges=params['edges'],
+    size=params['size']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatFeatureResult(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: update_feature
+ *
+ * Update a dimension of a PartDesign feature.
+ */
+function updateFeatureTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'update_feature',
+    `Update a dimension of a PartDesign feature.
+
+Parameters:
+- featureName (required): Name of the feature to update
+- dimension (required): Dimension to update - "length", "depth", "angle", "radius"
+- value (required): New value (number or string with units like "15mm", "90deg")
+
+Returns:
+- success: Whether the feature was updated
+- featureName: Name of the updated feature
+- dimension: Dimension that was changed
+- beforeValue: Previous value
+- afterValue: New value
+- message: Status message
+
+Use this tool to parametrically modify PartDesign feature dimensions.
+
+Example:
+- Update pad length: { featureName: "Pad", dimension: "length", value: "20mm" }
+- Update pocket depth: { featureName: "Pocket", dimension: "depth", value: "10mm" }
+- Update revolution angle: { featureName: "Revolution", dimension: "angle", value: "270deg" }`,
+    {
+      featureName: z.string().describe('Name of the feature to update'),
+      dimension: z.enum(['length', 'depth', 'angle', 'radius']).describe('Dimension to update'),
+      value: z.union([z.string(), z.number()]).describe('New value (number or string with units)'),
+    },
+    async (input) => {
+      const { featureName, dimension, value } = input;
+
+      const code = `
+from llm_bridge.feature_handlers import handle_update_feature
+import json
+params = json.loads('${JSON.stringify({ featureName, dimension, value })}')
+result = handle_update_feature(
+    feature_name=params['featureName'],
+    dimension=params['dimension'],
+    value=params['value']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatFeatureUpdate(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: replace_sketch
+ *
+ * Replace the sketch of a PartDesign feature with a different sketch.
+ */
+function replaceSketchTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'replace_sketch',
+    `Replace the sketch of a PartDesign feature with a different sketch.
+
+Parameters:
+- featureName (required): Name of the feature to update
+- sketchName (required): Name of the new sketch to use
+
+Returns:
+- success: Whether the sketch was replaced
+- featureName: Name of the updated feature
+- featureLabel: User-friendly label
+- oldSketchName: Name of the previous sketch
+- newSketchName: Name of the new sketch
+- message: Status message
+
+Use this tool to change the profile sketch of an existing PartDesign feature.
+
+Example:
+- Replace sketch: { featureName: "Pad", sketchName: "Sketch001" }`,
+    {
+      featureName: z.string().describe('Name of the feature to update'),
+      sketchName: z.string().describe('Name of the new sketch to use'),
+    },
+    async (input) => {
+      const { featureName, sketchName } = input;
+
+      const code = `
+from llm_bridge.feature_handlers import handle_replace_sketch
+import json
+params = json.loads('${JSON.stringify({ featureName, sketchName })}')
+result = handle_replace_sketch(
+    feature_name=params['featureName'],
+    sketch_name=params['sketchName']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatFeatureResult(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: delete_feature
+ *
+ * Delete a PartDesign feature from a body.
+ */
+function deleteFeatureTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'delete_feature',
+    `Delete a PartDesign feature from a body.
+
+Parameters:
+- featureName (required): Name of the feature to delete
+
+Returns:
+- success: Whether the feature was deleted
+- featureName: Name of the deleted feature
+- featureType: Type of the deleted feature
+- message: Status message
+
+Use this tool to remove unwanted PartDesign features. Note: Deleting a feature may affect dependent features.
+
+Example:
+- Delete feature: { featureName: "Fillet1" }`,
+    {
+      featureName: z.string().describe('Name of the feature to delete'),
+    },
+    async (input) => {
+      const { featureName } = input;
+
+      const code = `
+from llm_bridge.feature_handlers import handle_delete_feature
+import json
+params = json.loads('${JSON.stringify({ featureName })}')
+result = handle_delete_feature(
+    feature_name=params['featureName']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatFeatureResult(parsed.data);
         return {
           content: [
             {
