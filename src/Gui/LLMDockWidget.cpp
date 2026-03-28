@@ -30,6 +30,8 @@
 #include <QLabel>
 #include <QKeyEvent>
 #include <QMessageBox>
+#include <QMenu>
+#include <QInputDialog>
 
 #include <App/Application.h>
 #include <Base/Interpreter.h>
@@ -97,13 +99,17 @@ LLMDockWidget::LLMDockWidget(QWidget* parent)
     , m_mainWidget(nullptr)
     , m_pythonBridgeInitialized(false)
     , m_sidecarConnected(false)
+    , m_currentSessionName(tr("New Session"))
+    , m_sessionLabel(nullptr)
+    , m_sessionButton(nullptr)
 {
     setWindowTitle(tr("LLM Assistant"));
     setObjectName(QStringLiteral("LLMDockWidget"));
-    
+
     setupUI();
+    setupSessionUI();
     setupPythonBridge();
-    
+
     // Add welcome message
     addSystemMessage(tr("LLM Assistant initialized. Type your request below."));
 }
@@ -330,11 +336,206 @@ void LLMDockWidget::addAssistantMessage(const QString& message)
 void LLMDockWidget::addSystemMessage(const QString& message)
 {
     m_chatWidget->appendSystemMessage(message);
-    
+
     Message msg;
     msg.role = Message::System;
     msg.content = message;
     m_conversationHistory.append(msg);
+}
+
+QString LLMDockWidget::getSessionName() const
+{
+    return m_currentSessionName;
+}
+
+void LLMDockWidget::setSessionName(const QString& name)
+{
+    m_currentSessionName = name;
+    updateSessionDisplay(name);
+}
+
+void LLMDockWidget::onSaveSession()
+{
+    // Prompt user for session name
+    bool ok = false;
+    QString name = QInputDialog::getText(
+        this,
+        tr("Save Session"),
+        tr("Enter a name for this session:"),
+        QLineEdit::Normal,
+        m_currentSessionName,
+        &ok
+    );
+
+    if (!ok || name.trimmed().isEmpty()) {
+        return;
+    }
+
+    // Send save command via Python bridge
+    if (m_pythonBridgeInitialized && m_sidecarConnected) {
+        try {
+            Base::PyGILStateLocker lock;
+            PyObject* module = PyImport_ImportModule("llm_bridge.llm_panel_bridge");
+            if (module) {
+                PyObject* func = PyObject_GetAttrString(module, "send_message");
+                if (func && PyCallable_Check(func)) {
+                    QString command = QString("/save_session %1").arg(name);
+                    PyObject* args = Py_BuildValue("(s)", command.toUtf8().constData());
+                    PyObject* result = PyObject_CallObject(func, args);
+
+                    Py_XDECREF(result);
+                    Py_XDECREF(args);
+                    Py_XDECREF(func);
+                    Py_DECREF(module);
+
+                    addSystemMessage(tr("Session save requested: '%1'").arg(name));
+                }
+                else {
+                    Py_XDECREF(func);
+                    Py_DECREF(module);
+                    addSystemMessage(tr("Error: Could not send save command."));
+                }
+            }
+            else {
+                addSystemMessage(tr("Error: Could not import Python bridge module."));
+            }
+        }
+        catch (const Base::Exception& e) {
+            addSystemMessage(tr("Error saving session: %1").arg(QString::fromUtf8(e.what())));
+        }
+    }
+    else {
+        addSystemMessage(tr("Cannot save session: Sidecar not connected."));
+    }
+}
+
+void LLMDockWidget::onLoadSession()
+{
+    // Prompt user for session ID
+    bool ok = false;
+    QString sessionId = QInputDialog::getText(
+        this,
+        tr("Load Session"),
+        tr("Enter the session ID to load:"),
+        QLineEdit::Normal,
+        QString(),
+        &ok
+    );
+
+    if (!ok || sessionId.trimmed().isEmpty()) {
+        return;
+    }
+
+    // Send load command via Python bridge
+    if (m_pythonBridgeInitialized && m_sidecarConnected) {
+        try {
+            Base::PyGILStateLocker lock;
+            PyObject* module = PyImport_ImportModule("llm_bridge.llm_panel_bridge");
+            if (module) {
+                PyObject* func = PyObject_GetAttrString(module, "send_message");
+                if (func && PyCallable_Check(func)) {
+                    QString command = QString("/load_session %1").arg(sessionId);
+                    PyObject* args = Py_BuildValue("(s)", command.toUtf8().constData());
+                    PyObject* result = PyObject_CallObject(func, args);
+
+                    Py_XDECREF(result);
+                    Py_XDECREF(args);
+                    Py_XDECREF(func);
+                    Py_DECREF(module);
+
+                    addSystemMessage(tr("Session load requested: '%1'").arg(sessionId));
+                }
+                else {
+                    Py_XDECREF(func);
+                    Py_DECREF(module);
+                    addSystemMessage(tr("Error: Could not send load command."));
+                }
+            }
+            else {
+                addSystemMessage(tr("Error: Could not import Python bridge module."));
+            }
+        }
+        catch (const Base::Exception& e) {
+            addSystemMessage(tr("Error loading session: %1").arg(QString::fromUtf8(e.what())));
+        }
+    }
+    else {
+        addSystemMessage(tr("Cannot load session: Sidecar not connected."));
+    }
+}
+
+void LLMDockWidget::updateSessionDisplay(const QString& sessionName)
+{
+    m_currentSessionName = sessionName;
+    if (m_sessionLabel) {
+        m_sessionLabel->setText(tr("Session: %1").arg(sessionName));
+    }
+
+    // Update window title to include session name
+    setWindowTitle(tr("LLM Assistant - %1").arg(sessionName));
+}
+
+void LLMDockWidget::setupSessionUI()
+{
+    // Create session info bar above input field
+    auto* sessionLayout = new QHBoxLayout();
+    sessionLayout->setSpacing(8);
+
+    // Session name label
+    m_sessionLabel = new QLabel(tr("Session: %1").arg(m_currentSessionName), this);
+    m_sessionLabel->setStyleSheet(QStringLiteral("QLabel { color: #666; font-size: 11px; }"));
+    sessionLayout->addWidget(m_sessionLabel, 1);  // Stretch factor 1
+
+    // Session actions button
+    m_sessionButton = new QPushButton(tr("Session"), this);
+    m_sessionButton->setMaximumWidth(80);
+    m_sessionButton->setToolTip(tr("Session management options"));
+
+    // Create context menu
+    QMenu* sessionMenu = new QMenu(this);
+    sessionMenu->addAction(tr("Save Session..."), this, &LLMDockWidget::onSaveSession);
+    sessionMenu->addAction(tr("Load Session..."), this, &LLMDockWidget::onLoadSession);
+    sessionMenu->addSeparator();
+    sessionMenu->addAction(tr("New Session"), [this]() {
+        setSessionName(tr("New Session"));
+        clearConversation();
+        addSystemMessage(tr("Started new session."));
+    });
+
+    m_sessionButton->setMenu(sessionMenu);
+    sessionLayout->addWidget(m_sessionButton);
+
+    // Insert session layout above input field in main layout
+    // Find the main layout and insert before input layout
+    auto* mainLayout = qobject_cast<QVBoxLayout*>(m_mainWidget->layout());
+    if (mainLayout) {
+        // Find the input layout position
+        int inputLayoutIdx = -1;
+        for (int i = 0; i < mainLayout->count(); ++i) {
+            if (mainLayout->itemAt(i)->layout() != nullptr) {
+                auto* layout = mainLayout->itemAt(i)->layout();
+                if (qobject_cast<QHBoxLayout*>(layout)) {
+                    // Check if this is the input layout (has QLineEdit)
+                    for (int j = 0; j < layout->count(); ++j) {
+                        if (qobject_cast<QLineEdit*>(layout->itemAt(j)->widget())) {
+                            inputLayoutIdx = i;
+                            break;
+                        }
+                    }
+                }
+            }
+            if (inputLayoutIdx != -1) break;
+        }
+
+        // Insert session layout before input layout
+        if (inputLayoutIdx != -1) {
+            mainLayout->insertLayout(inputLayoutIdx, sessionLayout);
+        }
+        else {
+            // Fallback: add at position 1 (after chat widget)
+            mainLayout->insertLayout(1, sessionLayout);
+        }
+    }
 }
 
 #include "moc_LLMDockWidget.cpp"
