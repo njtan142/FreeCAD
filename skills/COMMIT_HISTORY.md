@@ -65,3 +65,33 @@ The original large commits "feat(sidecar): add Node.js sidecar with Claude Agent
 - **Files modified**: 6 (MainWindow.cpp/h, CMakeLists.txt, InitGui.py, CURRENT_PLAN.md, PROJECT.md, mastermind.md)
 - **Total insertions**: ~1,240 lines
 - **Total deletions**: ~578 lines
+
+---
+
+## Cycle 3 - Incremental Commits
+
+The original large commit "feat(integration): add end-to-end integration testing and startup scripts" (5b2976edff) has been refactored into 5 incremental commits.
+
+| Commit Hash | Message | Files Changed |
+|-------------|---------|---------------|
+| e170b17fa4 | fix(llm-bridge): correct WebSocket port configuration to match sidecar | server.py, sidecar_client.py |
+| 371bef7b21 | feat(scripts): add Windows startup script for LLM integration | start-llm-integration.bat |
+| 68cd4b6704 | feat(scripts): add Linux/Mac startup script for LLM integration | start-llm-integration.sh |
+| 4ac34f5116 | docs(skills): add comprehensive integration guide | INTEGRATION_GUIDE.md |
+| fb172d902b | docs(skills): mark integration cycle complete and update project status | CURRENT_PLAN.md, PROJECT.md, CURRENT_REVIEW.md, CYCLE_COUNT.md, incremental-commits.md, COMMIT_HISTORY.md |
+
+### Commit Progression
+
+1. **Port configuration fixes**: Align FreeCAD bridge ports (8766) and sidecar client ports (8765) with the sidecar server configuration
+2. **Windows startup script**: Batch script to launch FreeCAD and sidecar together with dependency checks
+3. **Linux/Mac startup script**: Shell script with background process management for Unix-like systems
+4. **Integration guide**: Comprehensive documentation with architecture diagram, setup instructions, and troubleshooting
+5. **Project status updates**: Mark integration cycle complete, add review documentation, and update cycle tracking
+
+### Summary
+
+- **Total commits**: 5
+- **Files created**: 5 (start-llm-integration.bat, start-llm-integration.sh, INTEGRATION_GUIDE.md, CURRENT_REVIEW.md, CYCLE_COUNT.md, incremental-commits.md)
+- **Files modified**: 4 (server.py, sidecar_client.py, CURRENT_PLAN.md, PROJECT.md, COMMIT_HISTORY.md)
+- **Total insertions**: ~1,096 lines
+- **Total deletions**: ~75 lines
