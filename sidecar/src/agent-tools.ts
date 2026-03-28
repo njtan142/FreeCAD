@@ -20,6 +20,10 @@ import {
   formatDimensionUpdate,
   formatTransformResult,
   formatExpressionResult,
+  formatSketchResult,
+  formatGeometryResult,
+  formatConstraintResult,
+  formatSketchGeometry,
 } from './result-formatters';
 import {
   validateFilePath,
@@ -82,6 +86,15 @@ export function createAgentTools(freeCADBridge: FreeCADBridge) {
     createSetExpressionTool(freeCADBridge),
     createGetExpressionTool(freeCADBridge),
     createClearExpressionTool(freeCADBridge),
+    // Sketcher constraint tools
+    createSketchTool(freeCADBridge),
+    addGeometryTool(freeCADBridge),
+    addGeometricConstraintTool(freeCADBridge),
+    addDimensionalConstraintTool(freeCADBridge),
+    setConstraintValueTool(freeCADBridge),
+    listSketchConstraintsTool(freeCADBridge),
+    deleteConstraintTool(freeCADBridge),
+    getSketchGeometryTool(freeCADBridge),
     // Session management tools
     createSaveChatSessionTool(),
     createLoadChatSessionTool(),
@@ -1838,6 +1851,621 @@ print(json.dumps(result))
         const result = await freeCADBridge.executePython(code);
         const parsed = JSON.parse(result.output || '{}');
         const formatted = formatExpressionResult(parsed.data, 'clear');
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+// ============================================================================
+// Sketcher Constraint Tools
+// ============================================================================
+
+/**
+ * Tool: create_sketch
+ *
+ * Create a new sketch on a plane or face.
+ */
+function createSketchTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_sketch',
+    `Create a new sketch on a plane or face.
+
+Parameters:
+- support (optional): Support specification for sketch placement, e.g., "Body001.Face4" or "(Body001, ['Face4'])"
+- mapMode (optional): Map mode - "Deactivated", "FlatFace", "Plane", "ThreePoints", "ThreePlanes", "Curved", "Axis", "Concentric", "RefPlane" (default: "FlatFace")
+- name (optional): Name for the sketch. If omitted, auto-generated.
+
+Returns:
+- success: Whether the sketch was created
+- sketchName: Internal name of the sketch
+- sketchLabel: User-friendly label
+- message: Status message
+
+Use this tool when you want to create a 2D sketch for profile-based features like pads, revolutions, or sweeps.
+
+Example:
+- Create sketch on XY plane: {}
+- Create sketch on a face: { support: "Body.Face4", mapMode: "FlatFace" }
+- Create named sketch: { name: "ProfileSketch" }`,
+    {
+      support: z.string().optional().describe('Support specification for sketch placement, e.g., "Body001.Face4"'),
+      mapMode: z.enum(['Deactivated', 'FlatFace', 'Plane', 'ThreePoints', 'ThreePlanes', 'Curved', 'Axis', 'Concentric', 'RefPlane']).optional().describe('Map mode for sketch placement'),
+      name: z.string().optional().describe('Name for the sketch'),
+    },
+    async (input) => {
+      const { support, mapMode, name } = input;
+
+      const code = `
+from llm_bridge.sketcher_handlers import handle_create_sketch
+import json
+params = json.loads('${JSON.stringify({ support: support || null, mapMode: mapMode || 'FlatFace', name: name || null })}')
+result = handle_create_sketch(
+    support=params['support'],
+    map_mode=params['mapMode'],
+    name=params['name']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatSketchResult(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: add_geometry
+ *
+ * Add geometry elements to a sketch.
+ */
+function addGeometryTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'add_geometry',
+    `Add geometry elements to a sketch.
+
+Parameters:
+- sketchName (required): Name of the sketch to add geometry to
+- geometryType (required): Type of geometry - "line", "circle", "arc", "rectangle", "point"
+- params (required): Geometry parameters based on type:
+  - line: { start: {x, y}, end: {x, y} }
+  - circle: { center: {x, y}, radius: number }
+  - arc: { center: {x, y}, radius: number, startAngle: number, endAngle: number } (angles in degrees)
+  - rectangle: { corner1: {x, y}, corner2: {x, y} }
+  - point: { x: number, y: number }
+
+Returns:
+- success: Whether geometry was added
+- sketchName: Name of the sketch
+- geometryIndex: Index of added geometry
+- geometryType: Type of geometry added
+- message: Status message
+
+Use this tool to add 2D geometry to a sketch before applying constraints.
+
+Example:
+- Add a line: { sketchName: "Sketch", geometryType: "line", params: { start: {x: 0, y: 0}, end: {x: 50, y: 0} } }
+- Add a circle: { sketchName: "Sketch", geometryType: "circle", params: { center: {x: 25, y: 25}, radius: 10 } }
+- Add a rectangle: { sketchName: "Sketch", geometryType: "rectangle", params: { corner1: {x: 0, y: 0}, corner2: {x: 50, y: 30} } }`,
+    {
+      sketchName: z.string().describe('Name of the sketch to add geometry to'),
+      geometryType: z.enum(['line', 'circle', 'arc', 'rectangle', 'point']).describe('Type of geometry to add'),
+      params: z.record(z.any()).describe('Geometry parameters based on type'),
+    },
+    async (input) => {
+      const { sketchName, geometryType, params } = input;
+
+      const code = `
+from llm_bridge.sketcher_handlers import handle_add_geometry
+import json
+params_data = json.loads('${JSON.stringify({ sketchName, geometryType, params })}')
+result = handle_add_geometry(
+    sketch_name=params_data['sketchName'],
+    geometry_type=params_data['geometryType'],
+    params=params_data['params']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatGeometryResult(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: add_geometric_constraint
+ *
+ * Add geometric constraints to sketch geometry.
+ */
+function addGeometricConstraintTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'add_geometric_constraint',
+    `Add geometric constraints to sketch geometry.
+
+Parameters:
+- sketchName (required): Name of the sketch
+- constraintType (required): Type of geometric constraint:
+  - "coincident" - Make two points coincident
+  - "horizontal" - Make a line horizontal
+  - "vertical" - Make a line vertical
+  - "parallel" - Make two lines parallel
+  - "perpendicular" - Make two lines perpendicular
+  - "tangent" - Make two curves tangent
+  - "equal" - Make two elements equal (lengths, radii)
+- geoIndex1 (required): Index of first geometry element (0-based)
+- pointPos1 (optional): Point position on first element (1=start, 2=end, 3=center)
+- geoIndex2 (optional): Index of second geometry element (for constraints involving two elements)
+- pointPos2 (optional): Point position on second element
+
+Returns:
+- success: Whether constraint was added
+- sketchName: Name of the sketch
+- constraintIndex: Index of added constraint
+- constraintType: Type of constraint
+- message: Status message
+
+Use this tool to add geometric relationships between sketch elements.
+
+Example:
+- Make line horizontal: { sketchName: "Sketch", constraintType: "horizontal", geoIndex1: 0 }
+- Make two points coincident: { sketchName: "Sketch", constraintType: "coincident", geoIndex1: 0, pointPos1: 2, geoIndex2: 1, pointPos2: 1 }
+- Make lines perpendicular: { sketchName: "Sketch", constraintType: "perpendicular", geoIndex1: 0, geoIndex2: 1 }`,
+    {
+      sketchName: z.string().describe('Name of the sketch'),
+      constraintType: z.enum(['coincident', 'horizontal', 'vertical', 'parallel', 'perpendicular', 'tangent', 'equal']).describe('Type of geometric constraint'),
+      geoIndex1: z.number().describe('Index of first geometry element (0-based)'),
+      pointPos1: z.number().optional().describe('Point position on first element (1=start, 2=end, 3=center)'),
+      geoIndex2: z.number().optional().describe('Index of second geometry element'),
+      pointPos2: z.number().optional().describe('Point position on second element'),
+    },
+    async (input) => {
+      const { sketchName, constraintType, geoIndex1, pointPos1, geoIndex2, pointPos2 } = input;
+
+      const code = `
+from llm_bridge.sketcher_handlers import handle_add_geometric_constraint
+import json
+params = json.loads('${JSON.stringify({ sketchName, constraintType, geoIndex1, pointPos1, geoIndex2, pointPos2 })}')
+result = handle_add_geometric_constraint(
+    sketch_name=params['sketchName'],
+    constraint_type=params['constraintType'],
+    geo_index1=params['geoIndex1'],
+    point_pos1=params.get('pointPos1'),
+    geo_index2=params.get('geoIndex2'),
+    point_pos2=params.get('pointPos2')
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatConstraintResult(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: add_dimensional_constraint
+ *
+ * Add dimensional constraints (distance, angle, radius, diameter) to sketch geometry.
+ */
+function addDimensionalConstraintTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'add_dimensional_constraint',
+    `Add dimensional constraints to sketch geometry.
+
+Parameters:
+- sketchName (required): Name of the sketch
+- constraintType (required): Type of dimensional constraint:
+  - "distance_x" - Horizontal distance
+  - "distance_y" - Vertical distance
+  - "distance" - Distance between two points or length of a line
+  - "angle" - Angle between two lines
+  - "radius" - Radius of circle/arc
+  - "diameter" - Diameter of circle/arc
+- value (required): Constraint value (number or string with units like "50mm", "90deg")
+- geoIndex1 (required): Index of first geometry element
+- pointPos1 (optional): Point position on first element
+- geoIndex2 (optional): Index of second geometry element (for distance/angle between elements)
+- pointPos2 (optional): Point position on second element
+
+Returns:
+- success: Whether constraint was added
+- sketchName: Name of the sketch
+- constraintIndex: Index of added constraint
+- constraintType: Type of constraint
+- constraintValue: Value of constraint
+- message: Status message
+
+Use this tool to add dimensional constraints that control sizes and distances.
+
+Example:
+- Set line length: { sketchName: "Sketch", constraintType: "distance", value: "50mm", geoIndex1: 0 }
+- Set circle radius: { sketchName: "Sketch", constraintType: "radius", value: "10mm", geoIndex1: 0 }
+- Set angle: { sketchName: "Sketch", constraintType: "angle", value: "90deg", geoIndex1: 0, geoIndex2: 1 }`,
+    {
+      sketchName: z.string().describe('Name of the sketch'),
+      constraintType: z.enum(['distance_x', 'distance_y', 'distance', 'angle', 'radius', 'diameter']).describe('Type of dimensional constraint'),
+      value: z.union([z.string(), z.number()]).describe('Constraint value (number or string with units)'),
+      geoIndex1: z.number().describe('Index of first geometry element'),
+      pointPos1: z.number().optional().describe('Point position on first element'),
+      geoIndex2: z.number().optional().describe('Index of second geometry element'),
+      pointPos2: z.number().optional().describe('Point position on second element'),
+    },
+    async (input) => {
+      const { sketchName, constraintType, value, geoIndex1, pointPos1, geoIndex2, pointPos2 } = input;
+
+      const code = `
+from llm_bridge.sketcher_handlers import handle_add_dimensional_constraint
+import json
+params = json.loads('${JSON.stringify({ sketchName, constraintType, value, geoIndex1, pointPos1, geoIndex2, pointPos2 })}')
+result = handle_add_dimensional_constraint(
+    sketch_name=params['sketchName'],
+    constraint_type=params['constraintType'],
+    value=params['value'],
+    geo_index1=params['geoIndex1'],
+    point_pos1=params.get('pointPos1'),
+    geo_index2=params.get('geoIndex2'),
+    point_pos2=params.get('pointPos2')
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatConstraintResult(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: set_constraint_value
+ *
+ * Modify the value of an existing dimensional constraint.
+ */
+function setConstraintValueTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'set_constraint_value',
+    `Modify the value of an existing dimensional constraint.
+
+Parameters:
+- sketchName (required): Name of the sketch
+- constraintIndex (required): Index of the constraint to modify (0-based)
+- value (required): New value (number or string with units like "50mm", "90deg")
+
+Returns:
+- success: Whether the value was updated
+- sketchName: Name of the sketch
+- constraintIndex: Index of modified constraint
+- oldValue: Previous value
+- newValue: New value
+- message: Status message
+
+Use this tool to change dimensional constraint values parametrically.
+
+Example:
+- Change length: { sketchName: "Sketch", constraintIndex: 0, value: "60mm" }
+- Change angle: { sketchName: "Sketch", constraintIndex: 2, value: "45deg" }`,
+    {
+      sketchName: z.string().describe('Name of the sketch'),
+      constraintIndex: z.number().describe('Index of the constraint to modify (0-based)'),
+      value: z.union([z.string(), z.number()]).describe('New value (number or string with units)'),
+    },
+    async (input) => {
+      const { sketchName, constraintIndex, value } = input;
+
+      const code = `
+from llm_bridge.sketcher_handlers import handle_set_constraint_value
+import json
+params = json.loads('${JSON.stringify({ sketchName, constraintIndex, value })}')
+result = handle_set_constraint_value(
+    sketch_name=params['sketchName'],
+    constraint_index=params['constraintIndex'],
+    value=params['value']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatConstraintResult(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: list_sketch_constraints
+ *
+ * List all constraints in a sketch.
+ */
+function listSketchConstraintsTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'list_sketch_constraints',
+    `List all constraints in a sketch.
+
+Parameters:
+- sketchName (required): Name of the sketch to query
+
+Returns:
+- success: Whether the query was successful
+- sketchName: Name of the sketch
+- constraintCount: Number of constraints
+- constraints: Array of constraint objects with index, type, value, and element references
+- message: Status message
+
+Use this tool to see all constraints applied to a sketch before making modifications.
+
+Example:
+- List constraints: { sketchName: "Sketch" }`,
+    {
+      sketchName: z.string().describe('Name of the sketch to query'),
+    },
+    async (input) => {
+      const { sketchName } = input;
+
+      const code = `
+from llm_bridge.sketcher_handlers import handle_list_sketch_constraints
+import json
+params = json.loads('${JSON.stringify({ sketchName })}')
+result = handle_list_sketch_constraints(
+    sketch_name=params['sketchName']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatSketchGeometry(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: delete_constraint
+ *
+ * Remove a constraint from a sketch.
+ */
+function deleteConstraintTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'delete_constraint',
+    `Remove a constraint from a sketch.
+
+Parameters:
+- sketchName (required): Name of the sketch
+- constraintIndex (required): Index of the constraint to remove (0-based)
+
+Returns:
+- success: Whether the constraint was deleted
+- sketchName: Name of the sketch
+- constraintIndex: Index of deleted constraint
+- message: Status message
+
+Use this tool to remove unwanted constraints from a sketch.
+
+Example:
+- Delete constraint: { sketchName: "Sketch", constraintIndex: 2 }`,
+    {
+      sketchName: z.string().describe('Name of the sketch'),
+      constraintIndex: z.number().describe('Index of the constraint to remove (0-based)'),
+    },
+    async (input) => {
+      const { sketchName, constraintIndex } = input;
+
+      const code = `
+from llm_bridge.sketcher_handlers import handle_delete_constraint
+import json
+params = json.loads('${JSON.stringify({ sketchName, constraintIndex })}')
+result = handle_delete_constraint(
+    sketch_name=params['sketchName'],
+    constraint_index=params['constraintIndex']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatConstraintResult(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: get_sketch_geometry
+ *
+ * Query sketch geometry and constraints.
+ */
+function getSketchGeometryTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'get_sketch_geometry',
+    `Query sketch geometry and constraints.
+
+Parameters:
+- sketchName (required): Name of the sketch to query
+
+Returns:
+- success: Whether the query was successful
+- sketchName: Name of the sketch
+- geometryCount: Number of geometry elements
+- geometry: Array of geometry objects with index, type, and coordinates
+- constraintCount: Number of constraints
+- constraints: Array of constraint objects
+- message: Status message
+
+Use this tool to get detailed information about sketch geometry and constraints.
+
+Example:
+- Get geometry: { sketchName: "Sketch" }`,
+    {
+      sketchName: z.string().describe('Name of the sketch to query'),
+    },
+    async (input) => {
+      const { sketchName } = input;
+
+      const code = `
+from llm_bridge.sketcher_handlers import handle_get_sketch_geometry
+import json
+params = json.loads('${JSON.stringify({ sketchName })}')
+result = handle_get_sketch_geometry(
+    sketch_name=params['sketchName']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatSketchGeometry(parsed.data);
         return {
           content: [
             {
