@@ -22,6 +22,32 @@ from .property_handlers import (
     handle_clear_expression,
 )
 
+from .sketcher_handlers import (
+    handle_create_sketch,
+    handle_add_geometry,
+    handle_add_geometric_constraint,
+    handle_add_dimensional_constraint,
+    handle_set_constraint_value,
+    handle_list_sketch_constraints,
+    handle_delete_constraint,
+    handle_get_sketch_geometry,
+)
+
+from .feature_handlers import (
+    handle_create_pad,
+    handle_create_pocket,
+    handle_create_revolution,
+    handle_create_groove,
+    handle_create_fillet,
+    handle_create_chamfer,
+    handle_create_body,
+    handle_set_active_body,
+    handle_list_bodies,
+    handle_update_feature,
+    handle_replace_sketch,
+    handle_delete_feature,
+)
+
 __all__ = [
     'handle_document_overview',
     'handle_object_details',
@@ -38,5 +64,25 @@ __all__ = [
     'handle_set_expression',
     'handle_get_expression',
     'handle_clear_expression',
+    'handle_create_sketch',
+    'handle_add_geometry',
+    'handle_add_geometric_constraint',
+    'handle_add_dimensional_constraint',
+    'handle_set_constraint_value',
+    'handle_list_sketch_constraints',
+    'handle_delete_constraint',
+    'handle_get_sketch_geometry',
+    'handle_create_pad',
+    'handle_create_pocket',
+    'handle_create_revolution',
+    'handle_create_groove',
+    'handle_create_fillet',
+    'handle_create_chamfer',
+    'handle_create_body',
+    'handle_set_active_body',
+    'handle_list_bodies',
+    'handle_update_feature',
+    'handle_replace_sketch',
+    'handle_delete_feature',
 ]
 
