@@ -355,3 +355,46 @@ The original large commits for Assembly Constraint Tools have been refactored in
 - **Files modified**: 5 (__init__.py, agent-tools.ts, result-formatters.ts, sidecar/README.md)
 - **Total insertions**: ~3,500 lines
 - **Total deletions**: ~100 lines
+
+---
+
+## Cycle 12 - Incremental Commits
+
+The original large commits for Draft Workbench Tools have been refactored into 5 incremental commits.
+
+| Commit Hash | Message | Files Changed |
+|-------------|---------|---------------|
+| 1f4fa3f343 | feat(python): add Draft workbench handlers for 2D geometry creation | draft_handlers.py |
+| ea8a6aa901 | feat(python): register Draft workbench handlers in llm_bridge package | __init__.py |
+| 2edd83f447 | feat(sidecar): add 22 Draft workbench tools to agent-tools | agent-tools.ts |
+| 07ac4a031e | feat(sidecar): add result formatters for Draft workbench operations | result-formatters.ts |
+| 6fcbcd5435 | docs(sidecar): document Draft workbench tools in README | sidecar/README.md |
+
+### Commit Progression
+
+1. **Python Draft handlers**: Added draft_handlers.py with 24 handlers for Draft workbench operations:
+   - Geometry creation: point, line, circle, arc, ellipse, rectangle, polygon, bspline, bezier, wire
+   - Dimension creation: linear, radial, angular, ordinate dimensions
+   - Text annotations
+   - Modification operations: move, rotate, scale, offset, join, split
+   - Utility functions: list_draft_objects, get_draft_properties
+
+2. **Handler registration**: Registered all 24 Draft handlers in llm_bridge/__init__.py and exported in __all__ list for WebSocket bridge accessibility
+
+3. **Agent tools implementation**: Added 22 Draft workbench tools to agent-tools.ts:
+   - 10 geometry creation tools (create_point, create_line, create_circle, create_arc, create_ellipse, create_rectangle, create_polygon, create_bspline, create_bezier, create_wire)
+   - 4 dimension tools (create_linear_dimension, create_radial_dimension, create_angular_dimension, create_ordinate_dimension)
+   - 2 text tools (create_text, create_dimension_text)
+   - 6 modification tools (move_objects, rotate_objects, scale_objects, offset_object, join_objects, split_object)
+
+4. **Result formatters**: Added 5 Draft-specific result formatters to result-formatters.ts (formatPointCreation, formatGeometryCreation, formatDimensionCreation, formatTextCreation, formatModificationResult)
+
+5. **Sidecar documentation**: Updated sidecar/README.md with comprehensive documentation for all 22 Draft tools including usage examples, parameter descriptions, and Draft workflow guidance
+
+### Summary
+
+- **Total commits**: 5
+- **Files created**: 1 (draft_handlers.py)
+- **Files modified**: 4 (__init__.py, agent-tools.ts, result-formatters.ts, sidecar/README.md)
+- **Total insertions**: ~4,400 lines
+- **Total deletions**: ~400 lines
