@@ -225,3 +225,35 @@ The original large commits for parametric feature editing have been refactored i
 - **Files modified**: 9 (agent-tools.ts, __init__.py, server.py, sidecar/README.md, CURRENT_PLAN.md, PROJECT.md, CURRENT_REVIEW.md, CYCLE_COUNT.md, implement.md, mastermind.md)
 - **Total insertions**: ~2,465 lines
 - **Total deletions**: ~258 lines
+
+---
+
+## Cycle 8 - Incremental Commits
+
+The original large commits for sketcher constraint tools have been refactored into 6 incremental commits.
+
+| Commit Hash | Message | Files Changed |
+|-------------|---------|---------------|
+| f548bba790 | feat(python): add sketcher constraint handlers for FreeCAD | sketcher_handlers.py |
+| 287a87a8e5 | feat(sidecar): add sketcher constraint agent tools | agent-tools.ts |
+| cfbdc27363 | feat(sidecar): add sketcher constraint result formatters | result-formatters.ts |
+| 0dd83a266f | docs(sidecar): document sketcher constraint tools | sidecar/README.md |
+| b90c43fd73 | docs(skills): update plan for sketcher constraint cycle | CURRENT_PLAN.md |
+| 5023210fdb | docs(skills): track sketcher constraint completion in project | PROJECT.md |
+
+### Commit Progression
+
+1. **Python sketcher handlers**: Added sketcher_handlers.py with 6 handlers for constraint operations (add_coincident_constraint, add_distance_constraint, add_angle_constraint, add_parallel_constraint, add_perpendicular_constraint, get_all_constraints); provides LLM bridge integration for sketcher constraint manipulation
+2. **Agent tools implementation**: Added 6 sketcher constraint tools to agent-tools.ts (addCoincidentConstraint, addDistanceConstraint, addAngleConstraint, addParallelConstraint, addPerpendicularConstraint, getAllConstraints) with Zod schema validation and WebSocket bridge integration
+3. **Result formatters**: Enhanced result-formatters.ts with constraint-specific formatters (formatConstraintResult, formatConstraintList) and error handling for constraint operations; formats constraint IDs and types for LLM responses
+4. **Sidecar documentation**: Updated sidecar/README.md with comprehensive documentation for all 6 sketcher constraint tools including usage examples, parameter descriptions, and constraint type reference table
+5. **Plan updates**: Marked sketcher constraint cycle as completed in CURRENT_PLAN.md with implementation summary and updated next steps for parametric editing
+6. **Project tracking**: Updated PROJECT.md with Cycle 8 completion status and added sketcher constraint tools to completed features list
+
+### Summary
+
+- **Total commits**: 6
+- **Files created**: 1 (sketcher_handlers.py)
+- **Files modified**: 5 (agent-tools.ts, result-formatters.ts, sidecar/README.md, CURRENT_PLAN.md, PROJECT.md)
+- **Total insertions**: ~2,396 lines
+- **Total deletions**: ~201 lines
