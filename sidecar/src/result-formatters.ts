@@ -719,20 +719,197 @@ function formatConstraintValue(type: string, value: number): string {
  */
 function formatConstraintElements(constraint: any): string {
   const parts: string[] = [];
-  
+
   if (constraint.geoIndex1 !== undefined) {
-    parts.push(`Geo${constraint.geoIndex1}`);
-    if (constraint.pointPos1 !== undefined) {
-      parts[parts.length - 1] += `.${constraint.pointPos1}`;
-    }
+    const pointLabel = formatPointPosition(constraint.pointPos1);
+    parts.push(`Element ${constraint.geoIndex1}${pointLabel ? ` (${pointLabel})` : ''}`);
   }
-  
+
   if (constraint.geoIndex2 !== undefined) {
-    parts.push(`Geo${constraint.geoIndex2}`);
-    if (constraint.pointPos2 !== undefined) {
-      parts[parts.length - 1] += `.${constraint.pointPos2}`;
-    }
+    const pointLabel = formatPointPosition(constraint.pointPos2);
+    parts.push(`Element ${constraint.geoIndex2}${pointLabel ? ` (${pointLabel})` : ''}`);
   }
-  
+
   return parts.length > 0 ? parts.join(' ↔ ') : '-';
+}
+
+/**
+ * Helper: Format point position to readable label
+ * 1=start, 2=end, 3=center
+ */
+function formatPointPosition(pos: number | undefined): string {
+  if (pos === undefined || pos === null || pos === -1) return '';
+  const labels: Record<number, string> = {
+    1: 'start',
+    2: 'end',
+    3: 'center'
+  };
+  return labels[pos] || `point${pos}`;
+}
+
+/**
+ * Format feature creation result from create_pad, create_pocket, create_revolution, etc.
+ */
+export function formatFeatureResult(data: any): string {
+  if (!data) return 'No feature data';
+
+  const lines: string[] = [];
+  lines.push(`Feature: ${data.featureLabel || data.featureName} (${data.featureName})`);
+  lines.push(`Type: ${data.featureType || 'Feature'}`);
+
+  if (data.bodyName) {
+    lines.push(`Body: ${data.bodyName}`);
+  }
+
+  if (data.sketchName) {
+    lines.push(`Sketch: ${data.sketchName}`);
+  }
+
+  // Feature-specific properties
+  if (data.length) {
+    lines.push(`Length: ${formatDimensionValue(data.length, 'mm')}`);
+  }
+  if (data.depth) {
+    lines.push(`Depth: ${formatDimensionValue(data.depth, 'mm')}`);
+  }
+  if (data.angle) {
+    lines.push(`Angle: ${formatDimensionValue(data.angle, 'deg')}`);
+  }
+  if (data.radius) {
+    lines.push(`Radius: ${formatDimensionValue(data.radius, 'mm')}`);
+  }
+  if (data.distance) {
+    lines.push(`Distance: ${formatDimensionValue(data.distance, 'mm')}`);
+  }
+  if (data.direction) {
+    lines.push(`Direction: ${data.direction}`);
+  }
+  if (data.axis) {
+    lines.push(`Axis: ${data.axis}`);
+  }
+  if (data.throughAll !== undefined) {
+    lines.push(`Through All: ${data.throughAll ? 'Yes' : 'No'}`);
+  }
+  if (data.edgesCount !== undefined) {
+    lines.push(`Edges: ${data.edgesCount}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Format body operation result from create_body or set_active_body
+ */
+export function formatBodyResult(data: any): string {
+  if (!data) return 'No body data';
+
+  const lines: string[] = [];
+  lines.push(`Body: ${data.bodyLabel || data.bodyName} (${data.bodyName})`);
+  lines.push(`Document: ${data.documentName || '(current)'}`);
+
+  if (data.activeBody !== undefined) {
+    lines.push(`Active Body: ${data.activeBody}`);
+  }
+  if (data.previousBody !== undefined) {
+    lines.push(`Previous Body: ${data.previousBody}`);
+  }
+  if (data.featureCount !== undefined) {
+    lines.push(`Features: ${data.featureCount}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Format body list as a readable table
+ */
+export function formatBodyList(data: any): string {
+  if (!data) return 'No body data';
+
+  const lines: string[] = [];
+  lines.push(`Total Bodies: ${data.bodyCount || 0}`);
+  lines.push('');
+
+  if (data.bodies && data.bodies.length > 0) {
+    lines.push(formatTableRow(['Name', 'Label', 'Features', 'Active']));
+    lines.push('─'.repeat(60));
+
+    for (const body of data.bodies) {
+      lines.push(formatTableRow([
+        body.name || '-',
+        body.label || '-',
+        String(body.featureCount || 0),
+        body.isActive ? 'Yes' : 'No'
+      ]));
+    }
+  } else {
+    lines.push('(No bodies in document)');
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Format feature dimension update result from update_feature
+ */
+export function formatFeatureUpdate(data: any): string {
+  if (!data) return 'No dimension update data';
+
+  const lines: string[] = [];
+  lines.push(`Feature: ${data.featureLabel || data.featureName} (${data.featureName})`);
+  lines.push('');
+  lines.push(`Dimension: ${capitalize(data.dimension || 'dimension')}`);
+
+  if (data.beforeValue !== undefined && data.afterValue !== undefined) {
+    const beforeVal = formatDimensionValue(data.beforeValue, data.dimension);
+    const afterVal = formatDimensionValue(data.afterValue, data.dimension);
+    lines.push(`Changed: ${beforeVal} → ${afterVal}`);
+  } else if (data.afterValue !== undefined) {
+    lines.push(`Set to: ${formatDimensionValue(data.afterValue, data.dimension)}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Helper: Format dimension value with appropriate units
+ */
+function formatDimensionValue(value: string | number, dimensionType: string): string {
+  if (value === undefined || value === null) return '-';
+
+  // If already a string with units, return as-is
+  if (typeof value === 'string' && (value.includes('mm') || value.includes('deg') || value.includes('cm') || value.includes('in'))) {
+    return value;
+  }
+
+  const numValue = typeof value === 'number' ? value : parseFloat(value);
+  if (isNaN(numValue)) return String(value);
+
+  // Determine unit based on dimension type
+  if (dimensionType === 'angle' || dimensionType === 'deg') {
+    return `${numValue.toFixed(1)}°`;
+  }
+
+  // Default to mm for length/distance/radius
+  return `${numValue.toFixed(2)} mm`;
 }
