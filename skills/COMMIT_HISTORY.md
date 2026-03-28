@@ -257,3 +257,39 @@ The original large commits for sketcher constraint tools have been refactored in
 - **Files modified**: 5 (agent-tools.ts, result-formatters.ts, sidecar/README.md, CURRENT_PLAN.md, PROJECT.md)
 - **Total insertions**: ~2,396 lines
 - **Total deletions**: ~201 lines
+
+---
+
+## Cycle 9 - Incremental Commits
+
+The original large commits for PartDesign feature tools have been refactored into 8 incremental commits.
+
+| Commit Hash | Message | Files Changed |
+|-------------|---------|---------------|
+| 939967f77a | fix: resolve sketcher tools code review issues | sketcher_handlers.py |
+| 82eda73c4f | feat(python): add PartDesign feature handlers | __init__.py, feature_handlers.py, server.py |
+| b49d3d2db6 | feat(sidecar): add PartDesign result formatters | result-formatters.ts |
+| f4d1b2182b | feat(sidecar): add PartDesign feature tools | agent-tools.ts |
+| 47e86328a9 | docs(sidecar): add PartDesign feature tools documentation | sidecar/README.md |
+| 9d6de663cb | docs(skills): mark PartDesign feature cycle complete | CURRENT_PLAN.md, PROJECT.md, CYCLE_COUNT.md |
+| 8ac6b47b24 | docs(skills): add sketcher constraint review documentation | CURRENT_REVIEW.md |
+| 9c22d1d3f0 | docs(skills): record Cycle 9 incremental commits history | COMMIT_HISTORY.md |
+
+### Commit Progression
+
+1. **Sketcher constraint fixes**: Fixed sketcher_handlers.py with validation for map mode, auto-constrain rectangles, added missing constraint types (symmetric, concentric, midpoint), and improved error messages
+2. **Python PartDesign handlers**: Added feature_handlers.py with 12 handlers for PartDesign operations (create_pad, create_pocket, create_revolution, create_groove, create_fillet, create_chamfer, create_body, set_active_body, list_bodies, update_feature, replace_sketch, delete_feature); integrated into LLMBridge module via __init__.py and server.py
+3. **Result formatters**: Enhanced result-formatters.ts with PartDesign-specific formatters (formatFeatureResult, formatBodyResult, formatBodyList, formatFeatureUpdate) for human-readable output
+4. **Agent tools implementation**: Added 11 PartDesign feature tools to agent-tools.ts (createBody, setActiveBody, listBodies, createPad, createPocket, createRevolution, createGroove, createFillet, createChamfer, updateFeature, replaceSketch, deleteFeature) with Zod schema validation and WebSocket bridge integration
+5. **Sidecar documentation**: Updated sidecar/README.md with comprehensive documentation for all 11 PartDesign feature tools including usage examples, parameter descriptions, and PartDesign workflow overview
+6. **Project tracking updates**: Marked PartDesign feature cycle as completed in CURRENT_PLAN.md with implementation summary; updated PROJECT.md and CYCLE_COUNT.md with Cycle 9 completion status
+7. **Review documentation**: Added sketcher constraint review to CURRENT_REVIEW.md documenting code review findings and verification status for Cycle 8
+8. **History recording**: Updated COMMIT_HISTORY.md to record the Cycle 9 incremental commits with correct commit hashes and file changes
+
+### Summary
+
+- **Total commits**: 8
+- **Files created**: 2 (feature_handlers.py, sketcher_handlers.py modifications)
+- **Files modified**: 9 (__init__.py, server.py, agent-tools.ts, result-formatters.ts, sidecar/README.md, CURRENT_PLAN.md, PROJECT.md, CURRENT_REVIEW.md, CYCLE_COUNT.md, COMMIT_HISTORY.md)
+- **Total insertions**: ~2,200 lines
+- **Total deletions**: ~300 lines
