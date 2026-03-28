@@ -22,6 +22,35 @@ import {
   getSupportedFormats,
   sanitizeFileName,
 } from './file-utils';
+import {
+  createSession,
+  loadSession,
+  saveSession,
+  deleteSession,
+  listSessions,
+  addMessage,
+  getMessages,
+  autoNameSession,
+  getSessionDir,
+} from './session-manager';
+import { ChatMessage } from './types';
+
+// Global session state (managed externally, passed in when needed)
+let currentSessionId: string | null = null;
+
+/**
+ * Set the current session ID
+ */
+export function setCurrentSessionId(sessionId: string | null): void {
+  currentSessionId = sessionId;
+}
+
+/**
+ * Get the current session ID
+ */
+export function getCurrentSessionId(): string | null {
+  return currentSessionId;
+}
 
 /**
  * Creates custom tools for the Claude Agent SDK
@@ -40,6 +69,9 @@ export function createAgentTools(freeCADBridge: FreeCADBridge) {
     createExportToFormatTool(freeCADBridge),
     createListRecentDocumentsTool(freeCADBridge),
     createNewDocumentTool(freeCADBridge),
+    createSaveChatSessionTool(),
+    createLoadChatSessionTool(),
+    createListChatSessionsTool(),
   ];
 }
 
@@ -373,8 +405,8 @@ print(f"Saved to {filePath}")
               type: 'text',
               text: result.output || 'Export completed',
             },
-          ];
-        }
+          ],
+        };
       } catch (error) {
         return {
           content: [
@@ -382,7 +414,7 @@ print(f"Saved to {filePath}")
               type: 'text',
               text: `Export failed: ${error instanceof Error ? error.message : String(error)}`,
             },
-          ];
+          ],
         };
       }
     },
@@ -1030,7 +1062,7 @@ print(json.dumps(result))
       try {
         const result = await freeCADBridge.executePython(code);
         const parsed = JSON.parse(result.output || '{}');
-        
+
         if (parsed.success) {
           return {
             content: [
@@ -1056,6 +1088,230 @@ print(json.dumps(result))
             {
               type: 'text',
               text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: save_chat_session
+ *
+ * Save the current conversation session to disk.
+ */
+function createSaveChatSessionTool() {
+  return tool(
+    'save_chat_session',
+    `Save the current conversation session to disk for later retrieval.
+
+Parameters:
+- name (optional): Custom name for the session. If omitted, auto-generates from first message.
+- includeToolHistory (optional): Whether to include tool call history. Default: true.
+
+Returns:
+- success: Whether the save was successful
+- sessionId: Unique identifier for the session
+- filePath: Path where the session was saved
+- message: Status message
+
+Use this tool when the user wants to save their conversation for later resumption.`,
+    {
+      name: z.string().optional().describe('Custom name for the session'),
+      includeToolHistory: z.boolean().optional().default(true).describe('Include tool call history'),
+    },
+    async (input) => {
+      try {
+        const sessionId = currentSessionId;
+        if (!sessionId) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: 'Error: No active session to save. Start a new conversation first.',
+              },
+            ],
+          };
+        }
+
+        const session = loadSession(sessionId);
+        if (!session) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: 'Error: Session not found.',
+              },
+            ],
+          };
+        }
+
+        // Update name if provided
+        if (input.name) {
+          session.name = input.name;
+        } else if (session.name === 'Untitled Session') {
+          autoNameSession(sessionId);
+        }
+
+        // Filter tool history if not included
+        if (!input.includeToolHistory) {
+          session.messages = session.messages.map(msg => ({
+            ...msg,
+            toolCalls: undefined,
+            toolResults: undefined,
+          }));
+        }
+
+        saveSession(session);
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Session saved: ${session.name}\nSession ID: ${sessionId}\nMessages: ${session.messages.length}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Save failed: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: load_chat_session
+ *
+ * Load a saved conversation session.
+ */
+function createLoadChatSessionTool() {
+  return tool(
+    'load_chat_session',
+    `Load a previously saved conversation session.
+
+Parameters:
+- sessionId (required): The unique identifier of the session to load.
+
+Returns:
+- success: Whether the load was successful
+- sessionName: Name of the loaded session
+- messageCount: Number of messages in the session
+- documentPath: Associated CAD file path (if any)
+- message: Status message
+
+Use this tool when the user wants to resume a previous conversation.`,
+    {
+      sessionId: z.string().describe('The unique identifier of the session to load'),
+    },
+    async (input) => {
+      try {
+        const session = loadSession(input.sessionId);
+        if (!session) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error: Session '${input.sessionId}' not found.`,
+              },
+            ],
+          };
+        }
+
+        // Update current session
+        setCurrentSessionId(session.id);
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Loaded session: ${session.name}\nMessages: ${session.messages.length}\nCreated: ${new Date(session.createdAt).toLocaleString()}${session.documentPath ? `\nDocument: ${session.documentPath}` : ''}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Load failed: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: list_chat_sessions
+ *
+ * List available saved conversation sessions.
+ */
+function createListChatSessionsTool() {
+  return tool(
+    'list_chat_sessions',
+    `List all available saved conversation sessions.
+
+Parameters:
+- limit (optional): Maximum number of sessions to return. Default: 10.
+
+Returns:
+- Array of session summaries with sessionId, name, createdAt, updatedAt, messageCount
+
+Use this tool when the user wants to see their saved conversations or find a specific session to load.`,
+    {
+      limit: z.number().optional().default(10).describe('Maximum number of sessions to list'),
+    },
+    async (input) => {
+      try {
+        const sessions = listSessions(input.limit);
+
+        if (sessions.length === 0) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: 'No saved sessions found.',
+              },
+            ],
+          };
+        }
+
+        let output = `Saved Sessions (${sessions.length}):\n\n`;
+        for (const session of sessions) {
+          const date = new Date(session.updatedAt).toLocaleString();
+          output += `- **${session.name}**\n`;
+          output += `  ID: ${session.id}\n`;
+          output += `  Messages: ${session.messageCount}\n`;
+          output += `  Updated: ${date}\n`;
+          if (session.documentPath) {
+            output += `  Document: ${session.documentPath}\n`;
+          }
+          output += '\n';
+        }
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: output,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `List failed: ${error instanceof Error ? error.message : String(error)}`,
             },
           ],
         };
