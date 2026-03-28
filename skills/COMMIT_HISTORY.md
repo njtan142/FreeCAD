@@ -159,3 +159,39 @@ The original large commits "feat(files): add file operation tools for save/open/
 - **Files modified**: 6 (agent-tools.ts, server.py, README.md, CURRENT_PLAN.md, CYCLE_COUNT.md, PROJECT.md, CURRENT_REVIEW.md)
 - **Total insertions**: ~1,434 lines
 - **Total deletions**: ~140 lines
+
+---
+
+## Cycle 6 - Incremental Commits
+
+The original large commits "feat(session): add conversation history and context management" (6b1597f255) and "fix: resolve all code review issues for conversation history and context management" (636c76b856) have been refactored into 8 incremental commits.
+
+| Commit Hash | Message | Files Changed |
+|-------------|---------|---------------|
+| 2b9b899d77 | feat(types): add TypeScript types for chat sessions and messages | types.ts |
+| 0089cdf1d8 | feat(session): add session manager for conversation persistence | session-manager.ts |
+| ea4861e6f1 | feat(context): add context injector for automatic state queries | context-injector.ts |
+| afdd50c3cf | feat(tools): add session management tools to agent | agent-tools.ts |
+| b98fe0f1a1 | feat(ui): add session display to dock widget | LLMDockWidget.cpp, LLMDockWidget.h |
+| e876ee28cd | feat(server): integrate session manager into dock server | dock-server.ts, index.ts |
+| 7fbdd5cdea | docs: update project tracking for conversation history cycle | CURRENT_PLAN.md, CYCLE_COUNT.md, PROJECT.md |
+| fd91c27813 | docs(review): add code review for conversation history and context management | CURRENT_REVIEW.md |
+
+### Commit Progression
+
+1. **TypeScript types**: Added types.ts with ChatMessage, ChatSession, ToolCall, and ToolResult interfaces for type-safe conversation persistence
+2. **Session manager**: Created session-manager.ts with full lifecycle management (create, load, save, delete sessions) and message management (add, get messages); stores sessions as JSON files in platform-specific directories with UUID-based session IDs
+3. **Context injector**: Implemented context-injector.ts for automatic FreeCAD model state queries before Claude operations; injects document info, selected objects, and recent tool results with token limit awareness
+4. **Session management tools**: Added three tools to agent-tools.ts (save_chat_session, load_chat_session, list_chat_sessions) with structured results and pagination support
+5. **Dock widget UI**: Enhanced LLMDockWidget.cpp/h with session name display, Save Session button, Load Session menu action, and session state indicators
+6. **Server integration**: Updated dock-server.ts and index.ts to initialize session manager on startup, add CLI options (--resume, --session, --list-sessions), and configure context injection
+7. **Project tracking**: Marked conversation history cycle complete in CURRENT_PLAN.md, updated PROJECT.md and CYCLE_COUNT.md with progress
+8. **Review documentation**: Added CURRENT_REVIEW.md with code review findings and verification status for session management implementation
+
+### Summary
+
+- **Total commits**: 8
+- **Files created**: 4 (types.ts, session-manager.ts, context-injector.ts, CURRENT_REVIEW.md)
+- **Files modified**: 6 (agent-tools.ts, LLMDockWidget.cpp, LLMDockWidget.h, dock-server.ts, index.ts, CURRENT_PLAN.md, CYCLE_COUNT.md, PROJECT.md)
+- **Total insertions**: ~1,508 lines
+- **Total deletions**: ~214 lines
