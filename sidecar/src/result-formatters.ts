@@ -410,11 +410,11 @@ export function formatExpressionResult(data: any, action: 'set' | 'get' | 'clear
   if (action === 'set') {
     lines.push(`Property: ${data.propertyName}`);
     lines.push(`Expression: ${data.expression}`);
-    
+
     if (data.previousExpression) {
       lines.push(`Previous: ${data.previousExpression}`);
     }
-    
+
     if (data.beforeValue !== undefined && data.afterValue !== undefined) {
       lines.push(`Value: ${data.beforeValue} → ${data.afterValue}`);
     }
@@ -424,7 +424,7 @@ export function formatExpressionResult(data: any, action: 'set' | 'get' | 'clear
     } else {
       lines.push(`Found ${data.expressionCount} expression(s):`);
       lines.push('─'.repeat(60));
-      
+
       if (data.expressions) {
         for (const [propName, exprData] of Object.entries(data.expressions)) {
           const expr = exprData as any;
@@ -455,4 +455,284 @@ export function formatExpressionResult(data: any, action: 'set' | 'get' | 'clear
   }
 
   return lines.join('\n');
+}
+
+/**
+ * Format sketch creation result from create_new_sketch
+ */
+export function formatSketchResult(data: any): string {
+  if (!data) return 'No sketch data';
+
+  const lines: string[] = [];
+  lines.push(`Sketch: ${data.sketchLabel || data.sketchName} (${data.sketchName})`);
+  lines.push(`Document: ${data.documentName || '(current)'}`);
+  lines.push('');
+
+  if (data.support) {
+    lines.push(`Support: ${data.support}`);
+  } else {
+    lines.push('Support: (none - base sketch)');
+  }
+
+  if (data.mapMode) {
+    lines.push(`Map Mode: ${data.mapMode}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Format added geometry result from add_sketch_geometry
+ */
+export function formatGeometryResult(data: any): string {
+  if (!data) return 'No geometry data';
+
+  const lines: string[] = [];
+  lines.push(`Sketch: ${data.sketchLabel || data.sketchName} (${data.sketchName})`);
+  lines.push('');
+
+  if (data.geometryAdded) {
+    lines.push(`Geometry Added: ${data.geometryCount || 1} element(s)`);
+    lines.push('─'.repeat(60));
+
+    if (data.geometry && data.geometry.length > 0) {
+      lines.push(formatTableRow(['Index', 'Type', 'Start', 'End']));
+      lines.push('─'.repeat(60));
+
+      for (const geom of data.geometry) {
+        const start = geom.startPoint ? `(${geom.startPoint.x?.toFixed(2) || 0}, ${geom.startPoint.y?.toFixed(2) || 0})` : '-';
+        const end = geom.endPoint ? `(${geom.endPoint.x?.toFixed(2) || 0}, ${geom.endPoint.y?.toFixed(2) || 0})` : '-';
+        lines.push(formatTableRow([
+          String(geom.index || '-'),
+          formatGeometryType(geom.type),
+          start,
+          end
+        ]));
+      }
+    } else {
+      lines.push(`  - Index: ${data.geometryIndex}, Type: ${formatGeometryType(data.geometryType)}`);
+    }
+  } else {
+    lines.push('Failed to add geometry');
+    if (data.error) {
+      lines.push(`Error: ${data.error}`);
+    }
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Format constraint addition result from add_sketch_constraint
+ */
+export function formatConstraintResult(data: any): string {
+  if (!data) return 'No constraint data';
+
+  const lines: string[] = [];
+  lines.push(`Sketch: ${data.sketchLabel || data.sketchName} (${data.sketchName})`);
+  lines.push('');
+
+  if (data.constraintAdded) {
+    lines.push(`Constraint Added: ${data.constraintCount || 1} constraint(s)`);
+    lines.push('─'.repeat(60));
+
+    if (data.constraints && data.constraints.length > 0) {
+      lines.push(formatTableRow(['Index', 'Type', 'Value']));
+      lines.push('─'.repeat(60));
+
+      for (const constraint of data.constraints) {
+        lines.push(formatTableRow([
+          String(constraint.index || '-'),
+          formatConstraintType(constraint.type),
+          constraint.value !== undefined ? formatConstraintValue(constraint.type, constraint.value) : '-'
+        ]));
+      }
+    } else {
+      lines.push(`  - Index: ${data.constraintIndex}, Type: ${formatConstraintType(data.constraintType)}`);
+      if (data.constraintValue !== undefined) {
+        lines.push(`    Value: ${formatConstraintValue(data.constraintType, data.constraintValue)}`);
+      }
+    }
+  } else {
+    lines.push('Failed to add constraint');
+    if (data.error) {
+      lines.push(`Error: ${data.error}`);
+    }
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Format sketch geometry listing from list_sketch_geometry
+ */
+export function formatSketchGeometry(data: any): string {
+  if (!data) return 'No sketch geometry data';
+
+  const lines: string[] = [];
+  lines.push(`Sketch: ${data.sketchLabel || data.sketchName} (${data.sketchName})`);
+  lines.push('');
+
+  // Geometry section
+  lines.push(`Geometry: ${data.geometryCount || 0} element(s)`);
+  if (data.geometry && data.geometry.length > 0) {
+    lines.push('─'.repeat(80));
+    lines.push(formatTableRow(['Idx', 'Type', 'Start Point', 'End Point']));
+    lines.push('─'.repeat(80));
+
+    for (const geom of data.geometry) {
+      const start = geom.startPoint 
+        ? `(${geom.startPoint.x?.toFixed(2) || 0}, ${geom.startPoint.y?.toFixed(2) || 0})` 
+        : '-';
+      const end = geom.endPoint 
+        ? `(${geom.endPoint.x?.toFixed(2) || 0}, ${geom.endPoint.y?.toFixed(2) || 0})` 
+        : '-';
+      lines.push(formatTableRow([
+        String(geom.index ?? geom.idx ?? '-'),
+        formatGeometryType(geom.type),
+        start,
+        end
+      ]));
+    }
+  } else {
+    lines.push('  (No geometry)');
+  }
+  lines.push('');
+
+  // Constraints section
+  lines.push(`Constraints: ${data.constraintCount || 0} constraint(s)`);
+  if (data.constraints && data.constraints.length > 0) {
+    lines.push('─'.repeat(80));
+    lines.push(formatTableRow(['Idx', 'Type', 'Value', 'Elements']));
+    lines.push('─'.repeat(80));
+
+    for (const constraint of data.constraints) {
+      const elements = formatConstraintElements(constraint);
+      lines.push(formatTableRow([
+        String(constraint.index ?? constraint.idx ?? '-'),
+        formatConstraintType(constraint.type),
+        constraint.value !== undefined ? formatConstraintValue(constraint.type, constraint.value) : '-',
+        elements
+      ]));
+    }
+  } else {
+    lines.push('  (No constraints)');
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Helper: Format geometry type string
+ */
+function formatGeometryType(typeId: string): string {
+  if (!typeId) return '-';
+  // Map common geometry types to readable names
+  const typeMap: Record<string, string> = {
+    'Line': 'Line',
+    'LineSegment': 'Line',
+    'Circle': 'Circle',
+    'Arc': 'Arc',
+    'ArcOfCircle': 'Arc',
+    'Ellipse': 'Ellipse',
+    'ArcOfEllipse': 'Ellipse Arc',
+    'Hyperbola': 'Hyperbola',
+    'Parabola': 'Parabola',
+    'BSpline': 'B-Spline',
+    'BezierCurve': 'Bezier',
+    'Point': 'Point',
+    'Rectangle': 'Rectangle',
+    'TrimmedArc': 'Trimmed Arc'
+  };
+  return typeMap[typeId] || typeId;
+}
+
+/**
+ * Helper: Format constraint type string
+ */
+function formatConstraintType(typeId: string): string {
+  if (!typeId) return '-';
+  // Map common constraint types to readable names
+  const typeMap: Record<string, string> = {
+    'Coincident': 'Coincident',
+    'Horizontal': 'Horizontal',
+    'Vertical': 'Vertical',
+    'Parallel': 'Parallel',
+    'Perpendicular': 'Perpendicular',
+    'Tangent': 'Tangent',
+    'Equal': 'Equal',
+    'Symmetric': 'Symmetric',
+    'DistanceX': 'Distance X',
+    'DistanceY': 'Distance Y',
+    'Distance': 'Distance',
+    'Radius': 'Radius',
+    'Diameter': 'Diameter',
+    'Angle': 'Angle',
+    'InternalAngle': 'Internal Angle',
+    'PointOnObject': 'Point On Object',
+    'Midpoint': 'Midpoint',
+    'Lock': 'Lock'
+  };
+  return typeMap[typeId] || typeId;
+}
+
+/**
+ * Helper: Format constraint value with units
+ */
+function formatConstraintValue(type: string, value: number): string {
+  if (value === undefined || value === null) return '-';
+  
+  const numValue = typeof value === 'number' ? value : parseFloat(value);
+  if (isNaN(numValue)) return String(value);
+
+  // Angle constraints are in radians, convert to degrees
+  if (type && (type.includes('Angle') || type === 'Lock')) {
+    return `${(numValue * 180 / Math.PI).toFixed(1)}°`;
+  }
+  
+  // Distance/length constraints are in mm
+  return `${numValue.toFixed(2)} mm`;
+}
+
+/**
+ * Helper: Format constraint element references
+ */
+function formatConstraintElements(constraint: any): string {
+  const parts: string[] = [];
+  
+  if (constraint.geoIndex1 !== undefined) {
+    parts.push(`Geo${constraint.geoIndex1}`);
+    if (constraint.pointPos1 !== undefined) {
+      parts[parts.length - 1] += `.${constraint.pointPos1}`;
+    }
+  }
+  
+  if (constraint.geoIndex2 !== undefined) {
+    parts.push(`Geo${constraint.geoIndex2}`);
+    if (constraint.pointPos2 !== undefined) {
+      parts[parts.length - 1] += `.${constraint.pointPos2}`;
+    }
+  }
+  
+  return parts.length > 0 ? parts.join(' ↔ ') : '-';
 }
