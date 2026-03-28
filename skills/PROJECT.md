@@ -94,4 +94,10 @@ This is a diverging fork. We modify FreeCAD directly without worrying about upst
   - Added session management tools: `save_chat_session`, `load_chat_session`, `list_chat_sessions`
   - Added CLI flags: `--resume <sessionId>`, `--session <name>`, `--list-sessions`, `--no-context-injection`
   - Updated `LLMDockWidget` with session display label and session management menu
+- [x] **Cycle 7: Parametric Feature Editing Tools** (COMPLETED)
+  - Created `src/Mod/LLMBridge/llm_bridge/property_handlers.py` - Property access and modification handlers
+  - Added 8 parametric editing tools: `set_object_property`, `update_dimensions`, `move_object`, `rotate_object`, `scale_object`, `set_expression`, `get_expression`, `clear_expression`
+  - Extended `sidecar/src/result-formatters.ts` with formatters for property change results
+  - Implemented undo stack integration for LLM changes
+  - All end-to-end test scenarios passed (single property edit, multi-dimension update, movement, rotation, scale, expressions, error handling, undo)
 - [ ] Define additional custom tools as needed
