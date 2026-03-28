@@ -16,6 +16,10 @@ import {
   formatSelection,
   formatDependencies,
   formatDocumentInfo,
+  formatPropertyChange,
+  formatDimensionUpdate,
+  formatTransformResult,
+  formatExpressionResult,
 } from './result-formatters';
 import {
   validateFilePath,
@@ -69,6 +73,16 @@ export function createAgentTools(freeCADBridge: FreeCADBridge) {
     createExportToFormatTool(freeCADBridge),
     createListRecentDocumentsTool(freeCADBridge),
     createNewDocumentTool(freeCADBridge),
+    // Parametric editing tools
+    createSetObjectPropertyTool(freeCADBridge),
+    createUpdateDimensionsTool(freeCADBridge),
+    createMoveObjectTool(freeCADBridge),
+    createRotateObjectTool(freeCADBridge),
+    createScaleObjectTool(freeCADBridge),
+    createSetExpressionTool(freeCADBridge),
+    createGetExpressionTool(freeCADBridge),
+    createClearExpressionTool(freeCADBridge),
+    // Session management tools
     createSaveChatSessionTool(),
     createLoadChatSessionTool(),
     createListChatSessionsTool(),
@@ -1312,6 +1326,532 @@ Use this tool when the user wants to see their saved conversations or find a spe
             {
               type: 'text',
               text: `List failed: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: set_object_property
+ *
+ * Set a single property on an object to a specific value.
+ */
+function createSetObjectPropertyTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'set_object_property',
+    `Set a single property on an object to a specific value.
+
+Parameters:
+- objectName (required): Name of the object to modify (e.g., "Box", "Cylinder001")
+- propertyName (required): Name of the property to set (e.g., "Length", "Radius", "Height")
+- value (required): Value to set. Can be:
+  - Numeric value (e.g., 50)
+  - String with units (e.g., "50mm", "90deg", "2.5m")
+
+Supported units:
+- Length: mm, cm, m, in, ft (internal unit: mm)
+- Angle: deg, rad, grad (internal unit: radians)
+
+Common properties by object type:
+- Part::Box: Length, Width, Height
+- Part::Cylinder: Radius, Height, Angle
+- Part::Sphere: Radius, Angle1, Angle2, Angle3
+- Part::Cone: Radius1, Radius2, Height
+- Part::Torus: Radius1, Radius2
+
+Use this tool when you need to modify a single property of an existing object.`,
+    {
+      objectName: z.string().describe('Name of the object to modify'),
+      propertyName: z.string().describe('Name of the property to set'),
+      value: z.union([z.string(), z.number()]).describe('Value to set (number or string with units)'),
+    },
+    async (input) => {
+      const { objectName, propertyName, value } = input;
+
+      const code = `
+from llm_bridge.property_handlers import handle_set_object_property
+import json
+params = json.loads('${JSON.stringify({ objectName, propertyName, value })}')
+result = handle_set_object_property(
+    object_name=params['objectName'],
+    property_name=params['propertyName'],
+    value=params['value']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatPropertyChange(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: update_dimensions
+ *
+ * Update multiple dimensional properties at once.
+ */
+function createUpdateDimensionsTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'update_dimensions',
+    `Update multiple dimensional properties at once. Useful for resizing objects with a single command.
+
+Parameters:
+- objectName (required): Name of the object to modify
+- dimensions (required): Object mapping property names to values, e.g., {"Length": "100mm", "Width": "50mm"}
+
+Use this tool when you need to update multiple dimensions of an object simultaneously.`,
+    {
+      objectName: z.string().describe('Name of the object to modify'),
+      dimensions: z.record(z.union([z.string(), z.number()])).describe('Object mapping property names to values'),
+    },
+    async (input) => {
+      const { objectName, dimensions } = input;
+
+      const code = `
+from llm_bridge.property_handlers import handle_update_dimensions
+import json
+params = json.loads('${JSON.stringify({ objectName, dimensions })}')
+result = handle_update_dimensions(
+    object_name=params['objectName'],
+    dimensions=params['dimensions']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatDimensionUpdate(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: move_object
+ *
+ * Reposition an object to a new location.
+ */
+function createMoveObjectTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'move_object',
+    `Reposition an object to a new location. Supports both absolute positioning and relative offsets.
+
+Parameters:
+- objectName (required): Name of the object to move
+- position (optional): Absolute target position as {x, y, z} coordinates in mm
+- offset (optional): Relative offset as {x, y, z} in mm
+- relative (optional): If true, treats position as an offset. Default: false
+
+Note: Either position or offset must be provided. The object's rotation is preserved.
+
+Use this tool when you need to move an object to a different location.`,
+    {
+      objectName: z.string().describe('Name of the object to move'),
+      position: z.object({ x: z.number(), y: z.number(), z: z.number() }).optional().describe('Absolute target position'),
+      offset: z.object({ x: z.number(), y: z.number(), z: z.number() }).optional().describe('Relative offset'),
+      relative: z.boolean().optional().default(false).describe('If true, treats position as an offset'),
+    },
+    async (input) => {
+      const { objectName, position, offset, relative } = input;
+
+      const code = `
+from llm_bridge.property_handlers import handle_move_object
+import json
+params = json.loads('${JSON.stringify({ objectName, position, offset, relative })}')
+result = handle_move_object(
+    object_name=params['objectName'],
+    position=params.get('position'),
+    offset=params.get('offset'),
+    relative=params.get('relative', False)
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatTransformResult(parsed.data, 'move');
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: rotate_object
+ *
+ * Rotate an object around a specified axis.
+ */
+function createRotateObjectTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'rotate_object',
+    `Rotate an object around a specified axis.
+
+Parameters:
+- objectName (required): Name of the object to rotate
+- angle (required): Rotation angle. Can be:
+  - Numeric value in radians
+  - String with units: "90deg", "45deg", "1.5rad"
+- axis (optional): Axis of rotation as {x, y, z}. Default: {x: 0, y: 0, z: 1} (Z-axis)
+- center (optional): Center point of rotation as {x, y, z}. Default: object's current position
+
+Use this tool when you need to rotate an object.`,
+    {
+      objectName: z.string().describe('Name of the object to rotate'),
+      angle: z.union([z.string(), z.number()]).describe('Rotation angle (number in radians or string with units)'),
+      axis: z.object({ x: z.number(), y: z.number(), z: z.number() }).optional().describe('Axis of rotation'),
+      center: z.object({ x: z.number(), y: z.number(), z: z.number() }).optional().describe('Center point of rotation'),
+    },
+    async (input) => {
+      const { objectName, angle, axis, center } = input;
+
+      const code = `
+from llm_bridge.property_handlers import handle_rotate_object
+import json
+params = json.loads('${JSON.stringify({ objectName, angle, axis, center })}')
+result = handle_rotate_object(
+    object_name=params['objectName'],
+    angle=params['angle'],
+    axis=params.get('axis'),
+    center=params.get('center')
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatTransformResult(parsed.data, 'rotate');
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: scale_object
+ *
+ * Scale an object uniformly or non-uniformly.
+ */
+function createScaleObjectTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'scale_object',
+    `Scale an object uniformly or non-uniformly.
+
+Parameters:
+- objectName (required): Name of the object to scale
+- scale (optional): Uniform scale factor (e.g., 2.0 for 2x size, 0.5 for half size)
+- scale_x, scale_y, scale_z (optional): Non-uniform scale factors for each axis
+- uniform (optional): If true, applies uniform scaling. Default: true
+
+Note: Either scale or individual scale_x/scale_y/scale_z must be provided.
+
+Use this tool when you need to resize an object.`,
+    {
+      objectName: z.string().describe('Name of the object to scale'),
+      scale: z.union([z.string(), z.number()]).optional().describe('Uniform scale factor (e.g., 2.0 for 2x size, 0.5 for half size)'),
+      scale_x: z.union([z.string(), z.number()]).optional().describe('Scale factor for X axis'),
+      scale_y: z.union([z.string(), z.number()]).optional().describe('Scale factor for Y axis'),
+      scale_z: z.union([z.string(), z.number()]).optional().describe('Scale factor for Z axis'),
+      uniform: z.boolean().optional().default(true).describe('If true, applies uniform scaling'),
+    },
+    async (input) => {
+      const { objectName, scale, scale_x, scale_y, scale_z, uniform } = input;
+
+      const code = `
+from llm_bridge.property_handlers import handle_scale_object
+import json
+params = json.loads('${JSON.stringify({ objectName, scale, scale_x, scale_y, scale_z, uniform })}')
+result = handle_scale_object(
+    object_name=params['objectName'],
+    scale=params.get('scale'),
+    scale_x=params.get('scale_x'),
+    scale_y=params.get('scale_y'),
+    scale_z=params.get('scale_z'),
+    uniform=params.get('uniform', True)
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatTransformResult(parsed.data, 'scale');
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: set_expression
+ *
+ * Create a parametric relationship by setting an expression on a property.
+ */
+function createSetExpressionTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'set_expression',
+    `Create a parametric relationship by setting an expression on a property.
+
+Parameters:
+- objectName (required): Name of the object
+- propertyName (required): Property to set expression on (e.g., "Length", "Radius")
+- expression (required): Expression string. Can reference other properties using syntax like "Body.Box.Length * 2" or "50mm"
+
+Expression syntax:
+- Reference another object's property: "ObjectName.PropertyName"
+- Mathematical operations: +, -, *, /, ^ (power)
+- Functions: sin(), cos(), tan(), sqrt(), abs(), etc.
+- Constants: PI, e
+- Units: Append units like "50mm", "90deg"
+
+Use this tool when you want to create parametric relationships between objects.`,
+    {
+      objectName: z.string().describe('Name of the object'),
+      propertyName: z.string().describe('Property to set expression on'),
+      expression: z.string().describe('Expression string'),
+    },
+    async (input) => {
+      const { objectName, propertyName, expression } = input;
+
+      const code = `
+from llm_bridge.property_handlers import handle_set_expression
+import json
+params = json.loads('${JSON.stringify({ objectName, propertyName, expression })}')
+result = handle_set_expression(
+    object_name=params['objectName'],
+    property_name=params['propertyName'],
+    expression=params['expression']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatExpressionResult(parsed.data, 'set');
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: get_expression
+ *
+ * Query existing expressions on an object.
+ */
+function createGetExpressionTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'get_expression',
+    `Query existing expressions on an object. Returns expression information for a specific property or all properties with expressions.
+
+Parameters:
+- objectName (required): Name of the object
+- propertyName (optional): Specific property to query. If omitted, returns all expressions on the object.
+
+Use this tool when you want to check what expressions are set on an object.`,
+    {
+      objectName: z.string().describe('Name of the object'),
+      propertyName: z.string().optional().describe('Specific property to query'),
+    },
+    async (input) => {
+      const { objectName, propertyName } = input;
+
+      const code = `
+from llm_bridge.property_handlers import handle_get_expression
+import json
+params = json.loads('${JSON.stringify({ objectName, propertyName })}')
+result = handle_get_expression(
+    object_name=params['objectName'],
+    property_name=params.get('propertyName')
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatExpressionResult(parsed.data, 'get');
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: clear_expression
+ *
+ * Remove expressions from an object's property.
+ */
+function createClearExpressionTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'clear_expression',
+    `Remove expressions from an object's property, converting it back to a fixed value.
+
+Parameters:
+- objectName (required): Name of the object
+- propertyName (optional): Specific property to clear. If omitted, clears all expressions on the object.
+
+Use this tool when you want to remove parametric relationships from an object.`,
+    {
+      objectName: z.string().describe('Name of the object'),
+      propertyName: z.string().optional().describe('Specific property to clear'),
+    },
+    async (input) => {
+      const { objectName, propertyName } = input;
+
+      const code = `
+from llm_bridge.property_handlers import handle_clear_expression
+import json
+params = json.loads('${JSON.stringify({ objectName, propertyName })}')
+result = handle_clear_expression(
+    object_name=params['objectName'],
+    property_name=params.get('propertyName')
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatExpressionResult(parsed.data, 'clear');
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
             },
           ],
         };

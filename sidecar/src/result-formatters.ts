@@ -269,3 +269,190 @@ export function truncateOutput(output: string, maxLength: number = 5000): string
   const remaining = output.length - maxLength;
   return `${truncated}\n\n[... truncated ${remaining} characters ...]`;
 }
+
+/**
+ * Format property change result from set_object_property
+ */
+export function formatPropertyChange(data: any): string {
+  if (!data) return 'No property change data';
+
+  const lines: string[] = [];
+  lines.push(`Object: ${data.objectLabel || data.objectName} (${data.objectName})`);
+  lines.push('');
+  lines.push(`Property: ${data.propertyName}`);
+  
+  if (data.beforeValue !== undefined && data.afterValue !== undefined) {
+    lines.push(`Changed: ${data.beforeValue} → ${data.afterValue}`);
+  } else if (data.afterValue !== undefined) {
+    lines.push(`Set to: ${data.afterValue}`);
+  }
+  
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Format dimension update result from update_dimensions
+ */
+export function formatDimensionUpdate(data: any): string {
+  if (!data) return 'No dimension update data';
+
+  const lines: string[] = [];
+  lines.push(`Object: ${data.objectLabel || data.objectName} (${data.objectName})`);
+  lines.push('');
+  lines.push(`Updated ${data.changeCount || 0} dimension(s):`);
+  lines.push('─'.repeat(60));
+
+  if (data.changes && data.changes.length > 0) {
+    lines.push(formatTableRow(['Property', 'Before', 'After']));
+    lines.push('─'.repeat(60));
+
+    for (const change of data.changes) {
+      lines.push(formatTableRow([
+        change.property || '-',
+        change.beforeValue || '-',
+        change.afterValue || '-'
+      ]));
+    }
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Format transform result from move_object, rotate_object, or scale_object
+ */
+export function formatTransformResult(data: any, transformType: 'move' | 'rotate' | 'scale'): string {
+  if (!data) return 'No transform data';
+
+  const lines: string[] = [];
+  lines.push(`Object: ${data.objectLabel || data.objectName} (${data.objectName})`);
+  lines.push(`Transform: ${capitalize(transformType)}`);
+  lines.push('');
+
+  if (transformType === 'move') {
+    if (data.beforePosition && data.afterPosition) {
+      const before = data.beforePosition;
+      const after = data.afterPosition;
+      lines.push(`Position: (${before.x.toFixed(2)}, ${before.y.toFixed(2)}, ${before.z.toFixed(2)})`);
+      lines.push(`       → (${after.x.toFixed(2)}, ${after.y.toFixed(2)}, ${after.z.toFixed(2)})`);
+    }
+    if (data.displacement) {
+      lines.push(`Displacement: ${data.displacement}`);
+    }
+  } else if (transformType === 'rotate') {
+    if (data.beforeRotation && data.afterRotation) {
+      // Python handler returns angle as formatted string (e.g., "45.00deg")
+      // Check if it's already a string, otherwise convert from radians
+      let beforeAngle: string;
+      let afterAngle: string;
+      if (typeof data.beforeRotation.angle === 'string') {
+        beforeAngle = data.beforeRotation.angle;
+      } else {
+        beforeAngle = `${(data.beforeRotation.angle * 180 / Math.PI).toFixed(1)}°`;
+      }
+      if (typeof data.afterRotation.angle === 'string') {
+        afterAngle = data.afterRotation.angle;
+      } else {
+        afterAngle = `${(data.afterRotation.angle * 180 / Math.PI).toFixed(1)}°`;
+      }
+      lines.push(`Rotation: ${beforeAngle} → ${afterAngle}`);
+      if (data.axis) {
+        lines.push(`Axis: (${data.axis.x.toFixed(2)}, ${data.axis.y.toFixed(2)}, ${data.axis.z.toFixed(2)})`);
+      }
+    }
+    if (data.rotationApplied) {
+      lines.push(`Applied: ${data.rotationApplied}`);
+    }
+  } else if (transformType === 'scale') {
+    if (data.scaleFactors) {
+      const sf = data.scaleFactors;
+      lines.push(`Scale Factors: X=${sf.x.toFixed(2)}, Y=${sf.y.toFixed(2)}, Z=${sf.z.toFixed(2)}`);
+    }
+    if (data.uniform !== undefined) {
+      lines.push(`Uniform: ${data.uniform ? 'Yes' : 'No'}`);
+    }
+    if (data.beforeDimensions && data.afterDimensions) {
+      const before = data.beforeDimensions;
+      const after = data.afterDimensions;
+      lines.push(`Dimensions: (${before.x.toFixed(2)}, ${before.y.toFixed(2)}, ${before.z.toFixed(2)})`);
+      lines.push(`         → (${after.x.toFixed(2)}, ${after.y.toFixed(2)}, ${after.z.toFixed(2)})`);
+    }
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Format expression result from set_expression, get_expression, or clear_expression
+ */
+export function formatExpressionResult(data: any, action: 'set' | 'get' | 'clear'): string {
+  if (!data) return 'No expression data';
+
+  const lines: string[] = [];
+  lines.push(`Object: ${data.objectLabel || data.objectName} (${data.objectName})`);
+  lines.push('');
+
+  if (action === 'set') {
+    lines.push(`Property: ${data.propertyName}`);
+    lines.push(`Expression: ${data.expression}`);
+    
+    if (data.previousExpression) {
+      lines.push(`Previous: ${data.previousExpression}`);
+    }
+    
+    if (data.beforeValue !== undefined && data.afterValue !== undefined) {
+      lines.push(`Value: ${data.beforeValue} → ${data.afterValue}`);
+    }
+  } else if (action === 'get') {
+    if (data.expressionCount === 0) {
+      lines.push('No expressions found on this object.');
+    } else {
+      lines.push(`Found ${data.expressionCount} expression(s):`);
+      lines.push('─'.repeat(60));
+      
+      if (data.expressions) {
+        for (const [propName, exprData] of Object.entries(data.expressions)) {
+          const expr = exprData as any;
+          lines.push(`${propName}:`);
+          lines.push(`  Expression: ${expr.expression || '(none)'}`);
+          if (expr.currentValue) {
+            lines.push(`  Current Value: ${expr.currentValue}`);
+          }
+        }
+      }
+    }
+  } else if (action === 'clear') {
+    if (data.clearedCount === 0) {
+      lines.push('No expressions to clear.');
+    } else {
+      lines.push(`Cleared ${data.clearedCount} expression(s):`);
+      if (data.clearedProperties && data.clearedProperties.length > 0) {
+        for (const prop of data.clearedProperties) {
+          lines.push(`  - ${prop}`);
+        }
+      }
+    }
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
