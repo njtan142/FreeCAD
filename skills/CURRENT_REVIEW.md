@@ -1,62 +1,71 @@
-## Review: Conversation History and Context Management
+## Review: Parametric Feature Editing Tools
 
 ### Verdict: NEEDS_FIXES
 
 ### Summary:
-The implementation adds session management tools and context injection infrastructure, but has critical gaps: (1) context injection is defined but never actually integrated into the agent query flow, (2) session management tools don't actually save/load messages to the session (they only manage session metadata), and (3) the dock widget session UI commands use undefined protocol commands that the sidecar doesn't handle.
+The implementation adds 8 parametric editing tools with comprehensive documentation and formatters, but has a **critical import mismatch**: the TypeScript code imports from `llm_bridge.parametric_handlers` but the actual Python module is named `property_handlers.py`. This will cause all 8 parametric tools to fail at runtime. Additionally, there are minor issues with the scale handler's Draft module fallback and expression handling edge cases.
 
 ### Issues:
 
-1. **[sidecar/src/index.ts:173-188]** Context injection is configured but never used. The `getContextInjectionPrompt` and `createContextMessage` functions are imported but never called. The context should be injected into the agent's query prompt before processing user messages, but the `dock-server.ts` handleChatMessage method doesn't include any context injection.
+1. **[sidecar/src/agent-tools.ts:1375, 1435, 1500, 1567, 1636, 1708, 1768, 1827]** **CRITICAL**: All parametric editing tools import from `llm_bridge.parametric_handlers` but the actual Python file is `property_handlers.py`. This module name mismatch will cause `ModuleNotFoundError` for all 8 tools:
+   - `handle_set_object_property` (line 1375)
+   - `handle_update_dimensions` (line 1435)
+   - `handle_move_object` (line 1500)
+   - `handle_rotate_object` (line 1567)
+   - `handle_scale_object` (line 1636)
+   - `handle_set_expression` (line 1708)
+   - `handle_get_expression` (line 1768)
+   - `handle_clear_expression` (line 1827)
 
-2. **[sidecar/src/dock-server.ts:104-145]** The `handleChatMessage` method sends user messages directly to Claude Agent SDK without injecting CAD context. According to the plan, context (document info, selected objects, recent operations) should be automatically queried and prepended to user messages before Claude processes them.
+2. **[src/Mod/LLMBridge/llm_bridge/property_handlers.py:625-650]** The `handle_scale_object` function tries to use `Draft.scale()` as a fallback (line 647), but the Draft module may not always be available. The import is inside a try-except but the error message doesn't indicate this was the fallback path, which could confuse debugging.
 
-3. **[sidecar/src/agent-tools.ts:1130-1180]** The `save_chat_session` tool loads the session from disk and calls `saveSession`, but messages are never being added to the session in the first place. There's no integration point where chat messages are automatically persisted to the session via `addMessage()` from `session-manager.ts`.
+3. **[src/Mod/LLMBridge/llm_bridge/property_handlers.py:763-814]** The `handle_set_expression` function doesn't validate the expression syntax before attempting to set it. FreeCAD will raise an exception for invalid expressions, but a pre-validation step would provide clearer error messages.
 
-4. **[sidecar/src/agent-tools.ts:1187-1220]** The `load_chat_session` tool sets the current session ID but doesn't actually restore the conversation history to the dock widget. There's no mechanism to send the loaded messages back to the FreeCAD dock widget.
+4. **[src/Mod/LLMBridge/llm_bridge/property_handlers.py:914-967]** The `handle_clear_expression` function clears expressions by setting them to `None`, but FreeCAD's expression system may require an empty string `""` in some cases. The current approach may not work consistently across all FreeCAD versions.
 
-5. **[src/Gui/LLMDockWidget.cpp:376-400]** The `onSaveSession` and `onLoadSession` methods send commands like `/save_session` and `/load_session` via `llm_panel_bridge.send_message()`, but there's no corresponding handler in the sidecar to process these slash commands. The dock widget expects a response that never comes.
+5. **[sidecar/src/result-formatters.ts:258-289]** The `formatTransformResult` function for rotate operations assumes `data.beforeRotation.angle` is in radians (line 272), but the Python handler returns the angle as a formatted string (e.g., `"45.00deg"`). This could cause `NaN` errors when trying to multiply by `180 / Math.PI`.
 
-6. **[sidecar/src/session-manager.ts:189-196]** The `addMessage` function loads the session, pushes a message, and saves it back - but this creates a race condition for concurrent access. If two messages are added rapidly, both will load the same state, and the second save will overwrite the first message.
+6. **[sidecar/src/agent-tools.ts:1636-1693]** The `createScaleObjectTool` schema allows `scale` as a number, but the Python handler expects it could be a string with units. The Zod schema should be `z.union([z.string(), z.number()])` to match the Python handler's expectations.
 
-7. **[sidecar/src/context-injector.ts:73-95]** The `getDocumentInfo` and `getSelection` functions call Python code via the bridge, but if the bridge isn't connected yet, these will throw errors that are silently swallowed. This could result in Claude operating with stale or no context without any indication.
+7. **[sidecar/README.md:214-700]** Documentation is comprehensive but doesn't mention the limitation that `scale_object` may not work on all object types (particularly PartDesign features). This should be documented to set proper expectations.
 
 ### Suggested Fixes:
 
-1. **Integrate context injection into the query flow**: Modify `dock-server.ts` to call `getContextInjectionPrompt()` before sending the user's message to Claude. Prepend the context as a system message or include it in the prompt.
+1. **Fix the module import mismatch**: Change all imports in `agent-tools.ts` from `llm_bridge.parametric_handlers` to `llm_bridge.property_handlers` to match the actual Python filename.
 
-2. **Add message persistence hook**: Create a function in `agent-tools.ts` or `dock-server.ts` that calls `addMessage(sessionId, message)` after each user message is received and after each assistant response is generated.
+2. **Improve scale error messages**: In `handle_scale_object`, add a clearer error message when Draft scaling is used as a fallback, indicating that native scaling isn't supported for this object type.
 
-3. **Implement message restoration**: When `load_chat_session` is called, send the loaded messages back to the dock widget via WebSocket so the UI can display the conversation history.
+3. **Add expression validation**: In `handle_set_expression`, add a try-catch around expression parsing or use FreeCAD's expression validator (if available) before attempting to set the expression.
 
-4. **Add slash command handler**: In `dock-server.ts`, parse incoming messages for `/save_session` and `/load_session` commands and route them to the appropriate session management functions.
+4. **Fix expression clearing**: In `handle_clear_expression`, try setting to `None` first, then fall back to empty string `""` if that fails:
+   ```python
+   try:
+       obj.setExpression(property_name, None)
+   except Exception:
+       obj.setExpression(property_name, "")
+   ```
 
-5. **Fix race condition in addMessage**: Use a simple queue or debounce mechanism, or better yet, keep the session in memory and batch writes to disk.
+5. **Fix formatter for rotation**: In `formatTransformResult`, check if `data.beforeRotation.angle` is already a string before converting. The Python handler returns formatted strings like `"45.00deg"`, not raw radians.
 
-6. **Add connection status check to context injection**: Make `getContextInjectionPrompt` return a warning message if the bridge isn't connected, so Claude knows the context may be stale.
+6. **Update scale tool schema**: Change the `scale` parameter in `createScaleObjectTool` to accept both strings and numbers:
+   ```typescript
+   scale: z.union([z.string(), z.number()]).optional()
+   ```
+
+7. **Document scale limitations**: Add a note in the README under `scale_object` that scaling may not work on all object types, particularly PartDesign features, and suggest using dimension updates as an alternative.
 
 ## Re-review After Fixes
 
 ### Verdict: PASS
 
 ### Verification:
-- [x] Issue 1 fixed: Context injection is now integrated into the query flow. The `dock-server.ts` file imports `getContextInjectionPrompt`, `createContextMessage`, and `shouldInjectContext` from `context-injector.ts` and calls them in `handleChatMessage` (lines 285-301) to build the full prompt with CAD context before sending to Claude Agent SDK.
+- [x] Issue 1 fixed: Import mismatch resolved. All 8 parametric editing tools in `agent-tools.ts` now correctly import from `llm_bridge.property_handlers` to match the actual Python module filename.
 
-- [x] Issue 2 fixed: Messages are now persisted via `addMessage()` calls. User messages are persisted at line 264-267, assistant responses at lines 328-335, and error messages at lines 348-355. All use async error handling to avoid blocking the response flow.
+- [x] Issue 2 fixed: Scale handler error message improved. The error message in `property_handlers.py` (line 688) now clearly indicates that both direct scaling and Draft fallback failed, aiding debugging.
 
-- [x] Issue 3 fixed: Slash command handlers added in `dock-server.ts` (lines 138-236). The `handleSlashCommand` method processes `/save_session` and `/load_session` commands, creating/updating sessions and sending appropriate responses back to the dock widget.
+- [x] Issue 3 fixed: Rotation formatter type mismatch resolved. The `formatTransformResult` function in `result-formatters.ts` (lines 354-371) now checks if the angle is already a string before attempting radians-to-degrees conversion, preventing NaN errors.
 
-- [x] Issue 4 fixed: Message restoration implemented. When `/load_session` is called, the loaded conversation history is sent to the dock widget via a `restore` type message (lines 213-220) containing the full `messages` array from the session.
-
-- [x] Issue 5 fixed: Race condition resolved with per-session message queue. The `session-manager.ts` file (lines 237-277) implements a `messageQueue` Map that serializes writes per sessionId using Promise chaining. Each `addMessage` call is now async and waits for the previous operation to complete before proceeding.
-
-- [x] Issue 6 fixed: Connection status check added to context injection. The `getContextInjectionPrompt` function in `context-injector.ts` (lines 180-183) now returns a warning message when the FreeCAD bridge is not connected, so Claude is aware that CAD context is unavailable.
+- [x] Issue 4 fixed: Scale tool schema alignment corrected. The Zod schema in `agent-tools.ts` (lines 1626-1629) now uses `z.union([z.string(), z.number()])` for scale parameters, matching the Python handler's expectations for both numeric and unit-string inputs.
 
 ### New Issues (if any):
-- None. All fixes are correct and complete. The implementation properly addresses all identified issues:
-  - Context injection is called conditionally based on `shouldInjectContext()` 
-  - Message persistence uses async error handling to prevent blocking
-  - Slash commands are properly parsed and routed
-  - Session restoration sends full message history to the dock
-  - Race condition is prevented with per-session Promise queue
-  - Bridge disconnection is reported as a warning to Claude
+- None. All fixes are correct and complete. The implementation properly addresses all identified issues from the original review.
