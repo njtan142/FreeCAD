@@ -49,7 +49,12 @@ This is a diverging fork. We modify FreeCAD directly without worrying about upst
 - [x] Defined architecture and component breakdown
 - [x] Created skill-based development workflow (plan → implement → review cycle)
 - [x] Build the Python WebSocket execution bridge inside FreeCAD (`src/Mod/LLMBridge/`)
-- [ ] **Next**: Build the LLM dock widget (Qt/C++)
-- [ ] Build the Node.js sidecar with Claude Agent SDK
+- [x] Build the LLM dock widget (Qt/C++)
+  - Created `LLMChatWidget` for displaying chat messages with different styles for user/assistant/system
+  - Created `LLMDockWidget` as the main dock panel with chat UI and input field
+  - Created Python bridge modules (`sidecar_client.py`, `llm_panel_bridge.py`) for sidecar communication
+  - Integrated dock widget into `MainWindow.cpp` with registration in `DockWindowManager`
+  - Added stub placeholder responses for when sidecar is not connected
+- [ ] **Next**: Build the Node.js sidecar with Claude Agent SDK
 - [ ] Define custom tool interface
 - [ ] End-to-end integration and testing
