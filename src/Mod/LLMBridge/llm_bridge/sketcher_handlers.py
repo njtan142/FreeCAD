@@ -68,7 +68,7 @@ def handle_create_sketch(support=None, map_mode='FlatFace', name=None):
         if sketch_support:
             sketch.Support = sketch_support
 
-        # Set map mode
+        # Set map mode with validation
         map_mode_map = {
             'Deactivated': 0,
             'FlatFace': 1,
@@ -80,8 +80,13 @@ def handle_create_sketch(support=None, map_mode='FlatFace', name=None):
             'Concentric': 7,
             'RefPlane': 8
         }
-        if map_mode in map_mode_map:
-            sketch.MapMode = map_mode_map[map_mode]
+        if map_mode not in map_mode_map:
+            return {
+                "success": False,
+                "error": f"Invalid map mode: '{map_mode}'. Valid options: {', '.join(map_mode_map.keys())}",
+                "data": None
+            }
+        sketch.MapMode = map_mode_map[map_mode]
 
         doc.recompute()
 
@@ -210,10 +215,10 @@ def handle_add_geometry(sketch_name, geometry_type, params):
 
             # Create 4 lines for rectangle
             lines = [
-                Part.LineSegment(Vector(x1, y1, 0), Vector(x2, y1, 0)),
-                Part.LineSegment(Vector(x2, y1, 0), Vector(x2, y2, 0)),
-                Part.LineSegment(Vector(x2, y2, 0), Vector(x1, y2, 0)),
-                Part.LineSegment(Vector(x1, y2, 0), Vector(x1, y1, 0))
+                Part.LineSegment(Vector(x1, y1, 0), Vector(x2, y1, 0)),  # Bottom
+                Part.LineSegment(Vector(x2, y1, 0), Vector(x2, y2, 0)),  # Right
+                Part.LineSegment(Vector(x2, y2, 0), Vector(x1, y2, 0)),  # Top
+                Part.LineSegment(Vector(x1, y2, 0), Vector(x1, y1, 0))   # Left
             ]
             indices = sketch.addGeometry(lines)
 
@@ -224,6 +229,16 @@ def handle_add_geometry(sketch_name, geometry_type, params):
                     "startPoint": {"x": line.StartPoint.x, "y": line.StartPoint.y},
                     "endPoint": {"x": line.EndPoint.x, "y": line.EndPoint.y}
                 })
+
+            # Auto-add coincident constraints at rectangle corners to close the shape
+            # Corner 1: end of line 0 = start of line 1
+            sketch.addConstraint(Sketcher.Constraint.Coincident, indices[0], indices[1], 2, 1)
+            # Corner 2: end of line 1 = start of line 2
+            sketch.addConstraint(Sketcher.Constraint.Coincident, indices[1], indices[2], 2, 1)
+            # Corner 3: end of line 2 = start of line 3
+            sketch.addConstraint(Sketcher.Constraint.Coincident, indices[2], indices[3], 2, 1)
+            # Corner 4: end of line 3 = start of line 0 (close the rectangle)
+            sketch.addConstraint(Sketcher.Constraint.Coincident, indices[3], indices[0], 2, 1)
 
         elif geometry_type == 'point':
             # Point: { x: number, y: number }
@@ -301,13 +316,16 @@ def handle_add_geometric_constraint(sketch_name, constraint_type, geo_index1,
             'parallel': Sketcher.Constraint.Parallel,
             'perpendicular': Sketcher.Constraint.Perpendicular,
             'tangent': Sketcher.Constraint.Tangent,
-            'equal': Sketcher.Constraint.Equal
+            'equal': Sketcher.Constraint.Equal,
+            'symmetric': Sketcher.Constraint.Symmetric,
+            'concentric': Sketcher.Constraint.Coincident,  # Concentric uses Coincident for circle centers
+            'midpoint': Sketcher.Constraint.Midpoint
         }
 
         if constraint_type not in constraint_type_map:
             return {
                 "success": False,
-                "error": f"Unknown constraint type: {constraint_type}",
+                "error": f"Unknown constraint type: {constraint_type}. Supported types: {', '.join(constraint_type_map.keys())}",
                 "data": None
             }
 
@@ -317,7 +335,7 @@ def handle_add_geometric_constraint(sketch_name, constraint_type, geo_index1,
         if constraint_type in ['horizontal', 'vertical']:
             # Single geometry constraint
             idx = sketch.addConstraint(constraint_enum, geo_index1, -1, point_pos1 or -1)
-        elif constraint_type in ['parallel', 'perpendicular', 'tangent', 'equal']:
+        elif constraint_type in ['parallel', 'perpendicular', 'tangent', 'equal', 'symmetric']:
             # Two geometry constraint
             if geo_index2 is None:
                 return {
@@ -327,12 +345,12 @@ def handle_add_geometric_constraint(sketch_name, constraint_type, geo_index1,
                 }
             idx = sketch.addConstraint(constraint_enum, geo_index1, geo_index2,
                                        point_pos1 or -1, point_pos2 or -1)
-        elif constraint_type == 'coincident':
-            # Coincident requires two points
+        elif constraint_type in ['coincident', 'concentric', 'midpoint']:
+            # Coincident/concentric/midpoint requires two points
             if geo_index2 is None:
                 return {
                     "success": False,
-                    "error": "Coincident constraint requires geo_index2",
+                    "error": f"{constraint_type.capitalize()} constraint requires geo_index2",
                     "data": None
                 }
             idx = sketch.addConstraint(constraint_enum, geo_index1, geo_index2,
