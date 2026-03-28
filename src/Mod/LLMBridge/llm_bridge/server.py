@@ -16,6 +16,7 @@ from . import query_handlers  # noqa: F401 - Import for availability via WebSock
 from . import file_handlers  # noqa: F401 - Import for availability via WebSocket
 from . import property_handlers  # noqa: F401 - Import for availability via WebSocket
 from . import feature_handlers  # noqa: F401 - Import for availability via WebSocket
+from . import boolean_handlers  # noqa: F401 - Import for availability via WebSocket
 
 # Default port for FreeCAD Python execution bridge
 DEFAULT_PORT = 8766

@@ -48,6 +48,16 @@ from .feature_handlers import (
     handle_delete_feature,
 )
 
+from .boolean_handlers import (
+    handle_boolean_fuse,
+    handle_boolean_cut,
+    handle_boolean_common,
+    handle_make_compound,
+    handle_validate_shape,
+    handle_heal_shape,
+    handle_get_shape_info,
+)
+
 __all__ = [
     'handle_document_overview',
     'handle_object_details',
@@ -84,5 +94,12 @@ __all__ = [
     'handle_update_feature',
     'handle_replace_sketch',
     'handle_delete_feature',
+    'handle_boolean_fuse',
+    'handle_boolean_cut',
+    'handle_boolean_common',
+    'handle_make_compound',
+    'handle_validate_shape',
+    'handle_heal_shape',
+    'handle_get_shape_info',
 ]
 
