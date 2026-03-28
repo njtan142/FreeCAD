@@ -1,60 +1,37 @@
-## Review: End-to-End Integration Testing
+## Review: Enhanced Model Query Tools
 
 ### Verdict: PASS
 
 ### Summary:
-The implementation successfully completes all planned tasks for end-to-end integration testing. The changes include startup scripts for both Windows and Linux/Mac, comprehensive integration documentation, port configuration fixes, and proper project tracking updates. All acceptance criteria from the plan have been met.
+The implementation fully matches the plan, adding 5 new query tools (`list_objects`, `get_object_properties`, `get_selection`, `get_document_info`, and enhanced `query_model_state`) with Python handlers, TypeScript formatters, and proper error handling throughout. The code is correct, secure, and integrates well with FreeCAD's architecture.
 
 ### Issues:
 
-None identified. The implementation is correct and complete:
+None blocking. The implementation is complete and correct.
 
-1. **Startup Scripts** (`scripts/start-llm-integration.bat` and `.sh`): Both scripts properly check for dependencies (Node.js, npm), install sidecar dependencies if needed, handle missing `.env` file gracefully, locate FreeCAD executable in standard locations, and provide clear next-step instructions.
+### Minor Observations (non-blocking):
 
-2. **Integration Guide** (`skills/INTEGRATION_GUIDE.md`): Comprehensive 381-line documentation covering architecture diagram, prerequisites, quick start guides for both platforms, manual setup steps, configuration reference, usage examples, troubleshooting section, and security considerations.
+1. **[sidecar/src/agent-tools.ts:204-210]** - The `formatQueryResult` function is imported from `result-formatters.ts` but not used anywhere in the file. This is dead code in the import list.
 
-3. **Port Configuration Fixes**: 
-   - `src/Mod/LLMBridge/llm_bridge/server.py`: Changed `DEFAULT_PORT` from 9876 to 8766 (FreeCAD Python execution bridge)
-   - `src/Mod/LLMBridge/llm_bridge/sidecar_client.py`: Changed `DEFAULT_SIDECAR_PORT` from 9877 to 8765 (dock widget WebSocket server)
-   - These fixes ensure all components use the correct ports as specified in the architecture.
+2. **[src/Mod/LLMBridge/llm_bridge/query_handlers.py:337-342]** - `handle_get_object_properties` is a direct alias for `handle_object_details`. While this works, it's a minor code duplication. However, this pattern is acceptable for clarity and matching tool names to handler names.
 
-4. **Documentation Updates**: 
-   - `skills/PROJECT.md`: Updated progress to mark end-to-end integration as completed
-   - `skills/CURRENT_PLAN.md`: Updated to show completion status with summary
-   - `skills/COMMIT_HISTORY.md`: Added historical record of incremental commits
-   - `skills/CYCLE_COUNT.md`: Added cycle tracking
-   - `skills/incremental-commits.md`: Added skill documentation for future use
+3. **[sidecar/src/result-formatters.ts:248]** - The `truncateOutput` function is defined but not used by any of the formatters. Consider using it for large document/object lists or removing if not needed.
 
-5. **Environment Template** (`sidecar/.env.example`): File exists with proper template (343 bytes), correctly git-ignored to prevent accidental API key commits.
-
-### Verification Against Plan:
-
-| Planned Task | Status |
-|--------------|--------|
-| Verify LLMBridge Module Startup | ✅ Port 8766 configured correctly |
-| Verify Dock Widget Integration | ✅ Port 8765 configured correctly |
-| Verify Sidecar Startup and Connections | ✅ Startup scripts created |
-| Test End-to-End Message Flow | ✅ Integration guide documents test sequence |
-| Create Startup Script and Documentation | ✅ Both `.bat` and `.sh` scripts + full guide |
-
-### Architecture Integration:
-
-The changes integrate properly with FreeCAD's existing architecture:
-- LLMBridge module uses FreeCAD's Python environment with `websockets` library
-- Dock widget connects via WebSocket to sidecar (no direct C++ modifications required for this step)
-- Sidecar uses Claude Agent SDK with MCP server pattern for tool registration
-- All network connections are localhost-only (security best practice)
+4. **[src/Mod/LLMBridge/llm_bridge/__init__.py]** - The `__init__.py` re-exports all query handlers, but `server.py` only imports the module with `from . import query_handlers` (line 15) without actually using it. The import appears to be for side-effect availability via WebSocket, but this pattern is unclear. The handlers are called directly via Python code strings sent through WebSocket, so the import comment "Import for availability via WebSocket" is misleading - the handlers are available because they're in the Python path, not because of this import.
 
 ### Security Review:
 
-- ✅ No command injection vulnerabilities in startup scripts (no user input in commands)
-- ✅ `.env.example` is git-ignored to prevent API key exposure
-- ✅ WebSocket servers bind to localhost only (not externally accessible)
-- ✅ Startup scripts validate dependencies before execution
+- **Command Injection**: The code properly uses raw string literals (`r"${...}"`) when passing object names to Python, and escapes double quotes with `.replace(/"/g, '\\"')`. This prevents basic injection attacks.
+- **Path Traversal**: The existing `export_model` tool (lines 285-300) has proper path validation rejecting `..` and `\` patterns. The new query tools don't accept file paths, so no additional validation needed.
+- **XSS**: Not applicable - this is a desktop application with Qt widgets, not a web UI.
 
-### Next Steps:
+### Architecture Review:
 
-Per `skills/PROJECT.md`, the next item is "Define additional custom tools as needed". The integration is ready for:
-- Adding more custom tools for Claude (file operations, model queries, etc.)
-- Improving error handling and edge cases
-- Adding unit/integration tests
+- The separation of concerns is clean: Python handlers in `query_handlers.py`, TypeScript tools in `agent-tools.ts`, and formatters in `result-formatters.ts`.
+- Error handling is consistent across all handlers with `{success, error, data}` pattern.
+- The FreeCAD API usage is correct (`App.ActiveDocument`, `Gui.getDocument()`, `InList`/`OutList` for dependencies).
+- Edge cases are handled: no active document, missing objects, GUI not available.
+
+### Recommendation:
+
+**PASS** - Proceed to Incremental Commits step.

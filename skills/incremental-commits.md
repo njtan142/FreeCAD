@@ -52,6 +52,13 @@ Write to `skills/COMMIT_HISTORY.md`:
 ...
 ```
 
+## Push Commits
+
+After creating all incremental commits:
+1. Run `git push` to push all commits to the remote repository
+2. Verify with `git status` that everything is pushed
+3. Report the push status in the output summary
+
 ## Rules
 
 - Do NOT change any code — only reorganize commits
@@ -59,3 +66,4 @@ Write to `skills/COMMIT_HISTORY.md`:
 - Create 3-7 commits depending on complexity (not too many, not too few)
 - If the original commit was already well-structured, you may leave it as-is and note that
 - After completing, verify with `git log -n [N]` that commits look correct
+- **Always push commits after creating them**

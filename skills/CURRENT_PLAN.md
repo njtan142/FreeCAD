@@ -1,197 +1,192 @@
 ## Status: COMPLETED
 
-# Current Plan: End-to-End Integration Testing
+# Current Plan: Enhanced Model Query Tools
 
 ## Overview
 
-Connect all components and verify the complete system works end-to-end:
-1. FreeCAD with LLMBridge module (Python WebSocket server on port 8766)
-2. LLM Dock Widget (Qt/C++ with sidecar client on port 8765)
-3. Node.js Sidecar (Claude Agent SDK + WebSocket servers)
+Expand the `query_model_state` tool to provide Claude with comprehensive visibility into the FreeCAD document structure. This enables Claude to understand existing models before modifying them, which is essential for iterative CAD workflows.
 
-This step ensures all pieces communicate correctly before adding more features.
-
-## Completion Summary
-
-All tasks completed successfully:
-- Created environment variable template (`sidecar/.env.example`)
-- Created Windows startup script (`scripts/start-llm-integration.bat`)
-- Created Linux/Mac startup script (`scripts/start-llm-integration.sh`)
-- Created integration guide (`skills/INTEGRATION_GUIDE.md`)
-- Fixed port configuration mismatches in FreeCAD Python bridge
-- Verified all component connections
-
-## Blockers
-
-None currently.
+Currently, Claude can execute Python code and export models, but has limited ability to query what already exists in the document. This plan adds structured query capabilities for:
+- Document structure and all objects
+- Individual object properties and parameters
+- Selected objects in the viewport
+- Document history/undo stack
+- Object dependencies and parent-child relationships
 
 ## Prerequisites
 
 The following must already exist:
+- `sidecar/src/agent-tools.ts` - Existing custom tools with basic `query_model_state`
 - `src/Mod/LLMBridge/` - Python WebSocket execution bridge
-- `src/Gui/LLMDockWidget.cpp/.h` - LLM dock widget
-- `src/Gui/LLMChatWidget.cpp/.h` - Chat UI component
-- `sidecar/` - Node.js sidecar with Claude Agent SDK
+- `sidecar/` - Node.js sidecar with Claude Agent SDK working end-to-end
 
 ## Tasks
 
-### 1. Verify LLMBridge Module Startup
+### 1. Define Enhanced Query Tool Schema
 
-**File**: `src/Mod/LLMBridge/Init.py`
-- Ensure the module initializes on FreeCAD startup
-- Verify the WebSocket server (port 8766) starts automatically
-- Add logging to confirm server is running
+**File**: `sidecar/src/agent-tools.ts`
 
-**File**: `src/Mod/LLMBridge/llm_bridge/server.py`
-- Verify WebSocket server binds to correct port
-- Add connection logging for debugging
-- Ensure thread-safe execution of Python code
+Expand the tools to include:
 
-**Acceptance Criteria**:
-- [ ] LLMBridge module loads when FreeCAD starts
-- [ ] WebSocket server listens on port 8766
-- [ ] Can send Python code and receive execution results
-- [ ] Errors are properly caught and returned
+1. **`query_model_state`** (enhanced) - Query with specific intent:
+   - `intent`: "document_overview" | "object_details" | "selection" | "dependencies"
+   - `objectName`: optional, for object-specific queries
+   - Returns structured JSON instead of raw Python output
 
-### 2. Verify Dock Widget Integration
+2. **`list_objects`** (new) - List all objects in active document:
+   - Returns: array of `{name, label, type, visibility}`
+   - Includes object type (Part::Box, Part::Cylinder, etc.)
 
-**File**: `src/Gui/LLMDockWidget.cpp`
-- Verify dock widget appears in FreeCAD main window
-- Check connection to sidecar WebSocket (port 8765)
-- Ensure chat messages display correctly
+3. **`get_object_properties`** (new) - Get detailed properties of a specific object:
+   - Parameters: `objectName` (required)
+   - Returns: `{name, label, type, placement, properties: {}}`
+   - Includes dimensions, position, rotation, color, etc.
 
-**File**: `src/Gui/MainWindow.cpp`
-- Verify dock widget is registered with DockWindowManager
-- Check that it's visible by default or can be shown via menu
+4. **`get_selection`** (new) - Get currently selected objects:
+   - Returns: array of selected object names and types
+   - Essential for context-aware operations
+
+5. **`get_document_info`** (new) - Get document metadata:
+   - Returns: `{name, label, objectCount, modified, filePath}`
 
 **Acceptance Criteria**:
-- [ ] LLM panel appears as dockable widget in FreeCAD
-- [ ] Can connect to sidecar WebSocket server
-- [ ] Chat messages render with correct styling (user/assistant/system)
-- [ ] Input field accepts user messages
+- [ ] Each tool has clear TypeScript type definitions
+- [ ] Tools use Zod schemas for validation (if used in project)
+- [ ] Tool descriptions are clear for Claude to understand when to use each
 
-### 3. Verify Sidecar Startup and Connections
+### 2. Implement Python Query Handlers
 
-**File**: `sidecar/src/index.ts`
-- Verify sidecar starts without errors
-- Check both WebSocket servers initialize (dock server on 8765, FreeCAD bridge on 8766)
-- Verify Claude Agent SDK initializes with API key
+**File**: `src/Mod/LLMBridge/llm_bridge/query_handlers.py` (new file)
 
-**File**: `sidecar/src/dock-server.ts`
-- Verify WebSocket server accepts connections from dock widget
-- Test message routing to Claude Agent
+Create dedicated handler functions for each query type:
 
-**File**: `sidecar/src/freecad-bridge.ts`
-- Verify connection to FreeCAD WebSocket (port 8766)
-- Test reconnection logic when FreeCAD not running
-
-**Acceptance Criteria**:
-- [ ] Sidecar starts with `npm start` or `node dist/index.js`
-- [ ] Dock server listens on port 8765
-- [ ] FreeCAD bridge connects to port 8766 (when available)
-- [ ] Claude Agent SDK initializes successfully
-- [ ] Automatic reconnection works when FreeCAD restarts
-
-### 4. Test End-to-End Message Flow
-
-**Test Sequence**:
-1. Start FreeCAD (LLMBridge module loads, port 8766 opens)
-2. Start sidecar (connects to FreeCAD, opens port 8765)
-3. Open LLM dock widget in FreeCAD (connects to sidecar)
-4. Send test message: "Create a cube with 10mm sides"
-5. Verify Claude generates FreeCAD Python code
-6. Verify code executes in FreeCAD
-7. Verify cube appears in 3D view
-8. Verify result returns to chat
-
-**Acceptance Criteria**:
-- [ ] Full message round-trip completes in <10 seconds
-- [ ] Python code executes without errors
-- [ ] 3D model updates visible in FreeCAD viewport
-- [ ] Chat shows complete conversation history
-- [ ] Errors display clearly to user
-
-### 5. Create Startup Script and Documentation
-
-**File**: `scripts/start-llm-integration.sh` (and `.bat` for Windows)
-- Script to start both FreeCAD and sidecar together
-- Environment variable setup
-- Error handling if dependencies missing
-
-**File**: `skills/INTEGRATION_GUIDE.md`
-- Step-by-step setup instructions
-- Troubleshooting common issues
-- Architecture diagram with ports and data flow
-
-**Acceptance Criteria**:
-- [ ] Single command starts full integration (or clear 2-step process)
-- [ ] Documentation covers all setup steps
-- [ ] Troubleshooting section addresses common failures
-
-## Configuration Requirements
-
-### Environment Variables
-
-Create `.env` file in `sidecar/` directory:
-```
-ANTHROPIC_API_KEY=your_api_key_here
-DOCK_SERVER_PORT=8765
-FREECAD_BRIDGE_PORT=8766
-FREECAD_HOST=localhost
+```python
+def handle_document_overview() -> dict
+def handle_object_details(object_name: str) -> dict
+def handle_selection() -> dict
+def handle_dependencies(object_name: str) -> dict
 ```
 
-### FreeCAD Configuration
+Each handler should:
+- Use proper FreeCAD API calls (`FreeCAD.ActiveDocument`, `Gui.ActiveDocument`, etc.)
+- Handle cases where document is None
+- Catch and return errors gracefully
+- Return JSON-serializable structures
 
-Ensure in FreeCAD preferences:
-- Python console access enabled
-- Network connections allowed (firewall)
-- LLMBridge module enabled on startup
+**Acceptance Criteria**:
+- [ ] All handlers return valid JSON structures
+- [ ] Errors are caught and returned as structured error messages
+- [ ] Handles edge cases (no document, invalid object names, etc.)
+- [ ] Uses FreeCAD's API correctly (verify with existing Python console patterns)
 
-## Dependencies
+### 3. Update Sidecar Tool Implementations
 
-Before starting this plan, verify:
-- [ ] Node.js 18+ installed
-- [ ] FreeCAD builds successfully from source
-- [ ] Python 3.8+ available in FreeCAD
-- [ ] Anthropic API key obtained
+**File**: `sidecar/src/agent-tools.ts`
+
+Update each tool to:
+- Call the appropriate Python handler via WebSocket
+- Parse the JSON response
+- Format results for Claude consumption
+- Handle connection errors gracefully
+
+Example tool structure:
+```typescript
+const listObjectsTool = {
+  name: 'list_objects',
+  description: 'List all objects in the active FreeCAD document...',
+  inputSchema: z.object({}),
+  execute: async (input) => {
+    const result = await freeCADBridge.execute('handle_list_objects()');
+    return formatResult(result);
+  }
+};
+```
+
+**Acceptance Criteria**:
+- [ ] All 5 tools implemented and registered with Claude Agent SDK
+- [ ] Tools return formatted, readable output
+- [ ] Error messages are clear and actionable
+- [ ] Tools appear in Claude's available tool list
+
+### 4. Add Query Result Formatting
+
+**File**: `sidecar/src/result-formatters.ts` (new file)
+
+Create utility functions to format query results for readability:
+- Format object lists as tables
+- Format properties as key-value pairs
+- Truncate long outputs with "..." and character counts
+- Highlight important values (dimensions, positions)
+
+**Acceptance Criteria**:
+- [ ] Formatters produce human-readable output
+- [ ] Large result sets are paginated or truncated
+- [ ] Output fits within Claude's context limits
+
+### 5. Test Query Tools End-to-End
+
+**Test Scenarios**:
+
+1. **Empty Document**:
+   - Start FreeCAD with new document
+   - Call `list_objects` → should return empty array
+   - Call `get_document_info` → should show 0 objects
+
+2. **Document with Objects**:
+   - Create cube via Python: `Part.makeBox(10,10,10)`
+   - Call `list_objects` → should show the box
+   - Call `get_object_properties` → should show dimensions, placement
+
+3. **Selection Query**:
+   - Select object in GUI
+   - Call `get_selection` → should return selected object
+
+4. **Error Handling**:
+   - Call `get_object_properties` with invalid name
+   - Should return clear error, not crash
+
+**Acceptance Criteria**:
+- [ ] All test scenarios pass
+- [ ] Query response time < 2 seconds
+- [ ] Results are accurate and match FreeCAD GUI state
+- [ ] No crashes on edge cases
 
 ## Files to Create/Modify
 
-### Existing Files to Verify/Update:
-1. `src/Mod/LLMBridge/Init.py` - Module initialization
-2. `src/Mod/LLMBridge/llm_bridge/server.py` - WebSocket server
-3. `src/Gui/LLMDockWidget.cpp` - Dock widget implementation
-4. `src/Gui/MainWindow.cpp` - Dock registration
-5. `sidecar/src/index.ts` - Sidecar entry point
-6. `sidecar/src/dock-server.ts` - Dock WebSocket server
-7. `sidecar/src/freecad-bridge.ts` - FreeCAD bridge client
+### New Files:
+1. `src/Mod/LLMBridge/llm_bridge/query_handlers.py` - Python query handlers
+2. `sidecar/src/result-formatters.ts` - Result formatting utilities
 
-### New Files to Create:
-1. `sidecar/.env.example` - Environment variable template
-2. `scripts/start-llm-integration.bat` - Windows startup script
-3. `scripts/start-llm-integration.sh` - Linux/Mac startup script
-4. `skills/INTEGRATION_GUIDE.md` - Setup and troubleshooting guide
+### Modified Files:
+1. `sidecar/src/agent-tools.ts` - Add/expand query tools
+2. `src/Mod/LLMBridge/llm_bridge/server.py` - Import and register new handlers
+
+## Dependencies
+
+- FreeCAD Python API knowledge (Part, Gui, Document objects)
+- Existing WebSocket bridge for Python execution
+- Claude Agent SDK tool registration pattern
 
 ## Out of Scope
 
 This plan does NOT include:
-- Adding new custom tools beyond the existing three
-- UI polish or styling improvements
-- Performance optimization
-- Unit tests (covered in future testing plan)
-- CI/CD integration
-
-## Next Step After This
-
-Once end-to-end integration is verified:
-- Either: Add more custom tools for Claude (file operations, model queries)
-- Or: Improve error handling and edge cases
-- Or: Add unit/integration tests
+- Modifying existing geometry (that's for execute_freecad_python)
+- File I/O operations (covered by export_model tool)
+- Undo/redo stack manipulation
+- Multi-document support (only ActiveDocument)
 
 ## Definition of Done
 
-- [ ] All acceptance criteria above are met
-- [ ] Can demonstrate full workflow: natural language → 3D model
-- [ ] Documentation enables new developer to set up in <30 minutes
-- [ ] Known issues documented
+- [ ] All 5 query tools implemented and working
+- [ ] Tools return structured, readable output
+- [ ] Error handling works for all edge cases
+- [ ] End-to-end tests pass
+- [ ] Claude can successfully query document state and understand results
 - [ ] Plan marked COMPLETED and moved to PROJECT.md progress
+
+## Next Step After This
+
+Once query tools are complete:
+- Add tools for file operations (open, save, import formats)
+- Or: Add conversation history persistence
+- Or: Improve LLM prompt context with automatic state queries

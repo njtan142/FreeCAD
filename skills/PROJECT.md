@@ -70,4 +70,12 @@ This is a diverging fork. We modify FreeCAD directly without worrying about upst
   - Created `skills/INTEGRATION_GUIDE.md` - Setup and troubleshooting guide
   - Fixed port configuration mismatches (FreeCAD bridge: 8766, Dock server: 8765)
   - Verified all components connect properly
+- [x] Enhanced Model Query Tools
+  - Created `src/Mod/LLMBridge/llm_bridge/query_handlers.py` - Python handlers for document introspection
+  - Created `sidecar/src/result-formatters.ts` - Result formatting utilities for readable output
+  - Enhanced `query_model_state` tool with structured intents (document_overview, object_details, selection, dependencies)
+  - Added `list_objects` tool - List all objects with name, type, visibility
+  - Added `get_object_properties` tool - Get detailed properties (dimensions, placement, color)
+  - Added `get_selection` tool - Get currently selected objects in viewport
+  - Added `get_document_info` tool - Get document metadata (name, modified status, object count)
 - [ ] Define additional custom tools as needed
