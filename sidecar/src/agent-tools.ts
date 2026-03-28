@@ -36,6 +36,11 @@ import {
   formatConstraintCreationResult,
   formatConstraintList,
   formatConstraintUpdate,
+  formatPointCreation,
+  formatGeometryCreation,
+  formatDimensionCreation,
+  formatTextCreation,
+  formatModificationResult,
 } from './result-formatters';
 import {
   validateFilePath,
@@ -150,6 +155,33 @@ export function createAgentTools(freeCADBridge: FreeCADBridge) {
     listConstraintsTool(freeCADBridge),
     suppressConstraintTool(freeCADBridge),
     activateConstraintTool(freeCADBridge),
+    // Draft workbench tools
+    // Geometry creation tools
+    createPointTool(freeCADBridge),
+    createLineTool(freeCADBridge),
+    createCircleTool(freeCADBridge),
+    createArcTool(freeCADBridge),
+    createEllipseTool(freeCADBridge),
+    createRectangleTool(freeCADBridge),
+    createPolygonTool(freeCADBridge),
+    createBSplineTool(freeCADBridge),
+    createBezierTool(freeCADBridge),
+    createWireTool(freeCADBridge),
+    // Dimension creation tools
+    createLinearDimensionTool(freeCADBridge),
+    createRadialDimensionTool(freeCADBridge),
+    createAngularDimensionTool(freeCADBridge),
+    createOrdinateDimensionTool(freeCADBridge),
+    // Text annotation tools
+    createTextTool(freeCADBridge),
+    createDimensionTextTool(freeCADBridge),
+    // Modification tools
+    moveObjectsTool(freeCADBridge),
+    rotateObjectsTool(freeCADBridge),
+    scaleObjectsTool(freeCADBridge),
+    offsetObjectTool(freeCADBridge),
+    joinObjectsTool(freeCADBridge),
+    splitObjectTool(freeCADBridge),
     // Session management tools
     createSaveChatSessionTool(),
     createLoadChatSessionTool(),
@@ -3962,284 +3994,6 @@ print(json.dumps(result))
 }
 
 /**
- * Tool: add_component_to_assembly
- *
- * Add a part to an assembly.
- */
-function addComponentToAssemblyTool(freeCADBridge: FreeCADBridge) {
-  return tool(
-    'add_component_to_assembly',
-    `Add a part or component to an existing assembly.
-
-Parameters:
-- objectName (required): Name of the part to add to the assembly
-- assemblyName (required): Name of the target assembly
-
-Returns:
-- success: Whether the component was added
-- componentName: Name of the added component
-- assemblyName: Name of the assembly
-- message: Status message
-
-Use this tool to include parts in an assembly for constraint-based positioning.
-
-Example:
-- Add part to assembly: { objectName: "Piston", assemblyName: "EngineAssembly" }`,
-    {
-      objectName: z.string().describe('Name of the part to add to the assembly'),
-      assemblyName: z.string().describe('Name of the target assembly'),
-    },
-    async (input) => {
-      const { objectName, assemblyName } = input;
-
-      const code = `
-from llm_bridge.assembly_handlers import handle_add_component_to_assembly
-import json
-params = json.loads('${JSON.stringify({ objectName, assemblyName })}')
-result = handle_add_component_to_assembly(
-    object_name=params['objectName'],
-    assembly_name=params['assemblyName']
-)
-print(json.dumps(result))
-`.trim();
-
-      try {
-        const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
-        const formatted = formatAssemblyCreationResult(parsed.data);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: parsed.success ? formatted : `Error: ${parsed.error}`,
-            },
-          ],
-        };
-      } catch (error) {
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
-            },
-          ],
-        };
-      }
-    },
-  );
-}
-
-/**
- * Tool: remove_component_from_assembly
- *
- * Remove a part from an assembly.
- */
-function removeComponentFromAssemblyTool(freeCADBridge: FreeCADBridge) {
-  return tool(
-    'remove_component_from_assembly',
-    `Remove a part or component from an assembly.
-
-Parameters:
-- componentName (required): Name of the component to remove
-- assemblyName (required): Name of the source assembly
-
-Returns:
-- success: Whether the component was removed
-- removedComponent: Name of the removed component
-- message: Status message
-
-Use this tool to remove a component from an assembly.
-
-Example:
-- Remove component: { componentName: "Piston", assemblyName: "EngineAssembly" }`,
-    {
-      componentName: z.string().describe('Name of the component to remove'),
-      assemblyName: z.string().describe('Name of the source assembly'),
-    },
-    async (input) => {
-      const { componentName, assemblyName } = input;
-
-      const code = `
-from llm_bridge.assembly_handlers import handle_remove_component_from_assembly
-import json
-params = json.loads('${JSON.stringify({ componentName, assemblyName })}')
-result = handle_remove_component_from_assembly(
-    component_name=params['componentName'],
-    assembly_name=params['assemblyName']
-)
-print(json.dumps(result))
-`.trim();
-
-      try {
-        const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
-        const formatted = formatAssemblyCreationResult(parsed.data);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: parsed.success ? formatted : `Error: ${parsed.error}`,
-            },
-          ],
-        };
-      } catch (error) {
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
-            },
-          ],
-        };
-      }
-    },
-  );
-}
-
-/**
- * Tool: list_assemblies
- *
- * List all assemblies in the document.
- */
-function listAssembliesTool(freeCADBridge: FreeCADBridge) {
-  return tool(
-    'list_assemblies',
-    `List all assemblies in the active FreeCAD document.
-
-Returns:
-- success: Whether the query was successful
-- assemblies: Array of assembly objects with name, label, componentCount
-- message: Status message
-
-Use this tool to see all available assemblies in the current document.
-
-Example:
-- List assemblies: {}`,
-    {
-      // No parameters needed
-    },
-    async () => {
-      const code = `
-from llm_bridge.assembly_handlers import handle_list_assemblies
-import json
-result = handle_list_assemblies()
-print(json.dumps(result))
-`.trim();
-
-      try {
-        const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
-
-        if (parsed.success) {
-          let output = `Assemblies: ${parsed.assemblyCount || 0}\n\n`;
-          if (parsed.assemblies && parsed.assemblies.length > 0) {
-            for (const asm of parsed.assemblies) {
-              output += `- ${asm.label || asm.name} (${asm.name})\n`;
-              output += `  Components: ${asm.componentCount || 0}\n`;
-            }
-          } else {
-            output += '(No assemblies found)';
-          }
-          return {
-            content: [
-              {
-                type: 'text',
-                text: output,
-              },
-            ],
-          };
-        } else {
-          return {
-            content: [
-              {
-                type: 'text',
-                text: `Error: ${parsed.error}`,
-              },
-            ],
-          };
-        }
-      } catch (error) {
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
-            },
-          ],
-        };
-      }
-    },
-  );
-}
-
-/**
- * Tool: list_assembly_components
- *
- * List components in a specific assembly.
- */
-function listAssemblyComponentsTool(freeCADBridge: FreeCADBridge) {
-  return tool(
-    'list_assembly_components',
-    `List all components in a specific assembly.
-
-Parameters:
-- assemblyName (required): Name of the assembly to query
-
-Returns:
-- success: Whether the query was successful
-- assemblyName: Name of the assembly
-- components: Array of component objects with name, label, constraintCount
-- message: Status message
-
-Use this tool to see what parts are contained in an assembly.
-
-Example:
-- List components: { assemblyName: "EngineAssembly" }`,
-    {
-      assemblyName: z.string().describe('Name of the assembly to query'),
-    },
-    async (input) => {
-      const { assemblyName } = input;
-
-      const code = `
-from llm_bridge.assembly_handlers import handle_list_assembly_components
-import json
-params = json.loads('${JSON.stringify({ assemblyName })}')
-result = handle_list_assembly_components(assembly_name=params['assemblyName'])
-print(json.dumps(result))
-`.trim();
-
-      try {
-        const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
-        const formatted = formatComponentList(parsed.data);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: parsed.success ? formatted : `Error: ${parsed.error}`,
-            },
-          ],
-        };
-      } catch (error) {
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
-            },
-          ],
-        };
-      }
-    },
-  );
-}
-
-// ============================================================================
-// Assembly Constraint Creation Tools
-// ============================================================================
-
-/**
  * Tool: add_coincident_constraint
  *
  * Add a coincident constraint between two subobjects.
@@ -4247,11 +4001,11 @@ print(json.dumps(result))
 function addCoincidentConstraintTool(freeCADBridge: FreeCADBridge) {
   return tool(
     'add_coincident_constraint',
-    `Add a coincident constraint between two subobjects (faces, edges, or vertices).
+    `Add a coincident constraint between two subobjects - makes them meet at a point or edge.
 
 Parameters:
 - object1 (required): Name of the first object
-- subobject1 (required): Subobject reference for first object (e.g., "Face1", "Edge2", "Vertex3")
+- subobject1 (required): Subobject reference for first object (e.g., "Face1", "Edge1", "Vertex1")
 - object2 (required): Name of the second object
 - subobject2 (required): Subobject reference for second object
 - name (optional): Name for the constraint. If omitted, auto-generated.
@@ -4260,17 +4014,16 @@ Returns:
 - success: Whether the constraint was added
 - constraintName: Name of the created constraint
 - constraintType: Type of constraint ("Coincident")
-- objects: Array of the constrained objects
 - message: Status message
 
-Use this tool to make two subobjects coincident (touching at the same point).
+Use this tool to make two subobjects coincident (meet at the same location).
 
 Example:
-- Make faces coincident: { object1: "Box", subobject1: "Face1", object2: "Cylinder", subobject2: "Face2" }
-- Make edges coincident: { object1: "Part", subobject1: "Edge1", object2: "Part2", subobject2: "Edge3" }`,
+- Coincident vertices: { object1: "Box", subobject1: "Vertex1", object2: "Cylinder", subobject2: "Vertex1" }
+- Coincident faces: { object1: "Part", subobject1: "Face1", object2: "Base", subobject2: "Face1" }`,
     {
       object1: z.string().describe('Name of the first object'),
-      subobject1: z.string().describe('Subobject reference (e.g., "Face1", "Edge2", "Vertex3")'),
+      subobject1: z.string().describe('Subobject reference (e.g., "Face1", "Edge1", "Vertex1")'),
       object2: z.string().describe('Name of the second object'),
       subobject2: z.string().describe('Subobject reference for second object'),
       name: z.string().optional().describe('Name for the constraint'),
@@ -4321,16 +4074,16 @@ print(json.dumps(result))
 /**
  * Tool: add_parallel_constraint
  *
- * Add a parallel constraint between two linear subobjects.
+ * Add a parallel constraint between two subobjects.
  */
 function addParallelConstraintTool(freeCADBridge: FreeCADBridge) {
   return tool(
     'add_parallel_constraint',
-    `Add a parallel constraint between two linear subobjects (edges or axes).
+    `Add a parallel constraint between two subobjects - makes them parallel to each other.
 
 Parameters:
 - object1 (required): Name of the first object
-- subobject1 (required): Subobject reference for first object (e.g., "Edge1", "Axis")
+- subobject1 (required): Subobject reference for first object (e.g., "Face1", "Edge1")
 - object2 (required): Name of the second object
 - subobject2 (required): Subobject reference for second object
 - name (optional): Name for the constraint. If omitted, auto-generated.
@@ -4341,13 +4094,14 @@ Returns:
 - constraintType: Type of constraint ("Parallel")
 - message: Status message
 
-Use this tool to make two linear subobjects parallel (facing the same direction).
+Use this tool to make two subobjects parallel (aligned in the same direction).
 
 Example:
-- Make edges parallel: { object1: "Box", subobject1: "Edge1", object2: "Cylinder", subobject2: "Axis" }`,
+- Parallel faces: { object1: "Box", subobject1: "Face1", object2: "Plate", subobject2: "Face1" }
+- Parallel edges: { object1: "Rod", subobject1: "Edge1", object2: "Guide", subobject2: "Edge1" }`,
     {
       object1: z.string().describe('Name of the first object'),
-      subobject1: z.string().describe('Subobject reference (e.g., "Edge1", "Axis")'),
+      subobject1: z.string().describe('Subobject reference (e.g., "Face1", "Edge1")'),
       object2: z.string().describe('Name of the second object'),
       subobject2: z.string().describe('Subobject reference for second object'),
       name: z.string().optional().describe('Name for the constraint'),
@@ -4403,11 +4157,11 @@ print(json.dumps(result))
 function addPerpendicularConstraintTool(freeCADBridge: FreeCADBridge) {
   return tool(
     'add_perpendicular_constraint',
-    `Add a perpendicular constraint between two subobjects.
+    `Add a perpendicular constraint between two subobjects - makes them orthogonal.
 
 Parameters:
 - object1 (required): Name of the first object
-- subobject1 (required): Subobject reference for first object (e.g., "Edge1", "Face1")
+- subobject1 (required): Subobject reference for first object (e.g., "Face1", "Edge1")
 - object2 (required): Name of the second object
 - subobject2 (required): Subobject reference for second object
 - name (optional): Name for the constraint. If omitted, auto-generated.
@@ -4418,13 +4172,14 @@ Returns:
 - constraintType: Type of constraint ("Perpendicular")
 - message: Status message
 
-Use this tool to make two subobjects perpendicular (at 90 degrees).
+Use this tool to make two subobjects perpendicular (at 90 degrees to each other).
 
 Example:
-- Make faces perpendicular: { object1: "Box", subobject1: "Face1", object2: "Part", subobject2: "Face2" }`,
+- Perpendicular faces: { object1: "Box", subobject1: "Face1", object2: "Wall", subobject2: "Face1" }
+- Perpendicular edges: { object1: "Beam", subobject1: "Edge1", object2: "Support", subobject2: "Edge1" }`,
     {
       object1: z.string().describe('Name of the first object'),
-      subobject1: z.string().describe('Subobject reference (e.g., "Edge1", "Face1")'),
+      subobject1: z.string().describe('Subobject reference (e.g., "Face1", "Edge1")'),
       object2: z.string().describe('Name of the second object'),
       subobject2: z.string().describe('Subobject reference for second object'),
       name: z.string().optional().describe('Name for the constraint'),
@@ -4480,14 +4235,14 @@ print(json.dumps(result))
 function addAngleConstraintTool(freeCADBridge: FreeCADBridge) {
   return tool(
     'add_angle_constraint',
-    `Add an angle constraint between two subobjects at a specific angle.
+    `Add an angle constraint between two subobjects - constrains them to a specific angle.
 
 Parameters:
 - object1 (required): Name of the first object
-- subobject1 (required): Subobject reference for first object (e.g., "Edge1", "Face1")
+- subobject1 (required): Subobject reference for first object (e.g., "Face1", "Edge1")
 - object2 (required): Name of the second object
 - subobject2 (required): Subobject reference for second object
-- angle (required): Angle value in degrees (e.g., 45 for 45 degrees)
+- angle (required): Angle value in degrees
 - name (optional): Name for the constraint. If omitted, auto-generated.
 
 Returns:
@@ -4500,13 +4255,14 @@ Returns:
 Use this tool to set a specific angle between two subobjects.
 
 Example:
-- Set 45 degree angle: { object1: "Part", subobject1: "Face1", object2: "Part2", subobject2: "Face2", angle: 45 }`,
+- 45 degree angle: { object1: "Arm", subobject1: "Edge1", object2: "Base", subobject2: "Edge1", angle: 45 }
+- 90 degree angle: { object1: "Bracket", subobject1: "Face1", object2: "Plate", subobject2: "Face1", angle: 90 }`,
     {
       object1: z.string().describe('Name of the first object'),
-      subobject1: z.string().describe('Subobject reference (e.g., "Edge1", "Face1")'),
+      subobject1: z.string().describe('Subobject reference (e.g., "Face1", "Edge1")'),
       object2: z.string().describe('Name of the second object'),
       subobject2: z.string().describe('Subobject reference for second object'),
-      angle: z.number().describe('Angle value in degrees'),
+      angle: z.union([z.string(), z.number()]).describe('Angle value in degrees'),
       name: z.string().optional().describe('Name for the constraint'),
     },
     async (input) => {
@@ -4587,7 +4343,7 @@ Example:
       subobject1: z.string().describe('Subobject reference (e.g., "Face1", "Edge1")'),
       object2: z.string().describe('Name of the second object'),
       subobject2: z.string().describe('Subobject reference for second object'),
-      distance: z.number().describe('Distance value in millimeters'),
+      distance: z.union([z.string(), z.number()]).describe('Distance value in mm or string like "10mm"'),
       name: z.string().optional().describe('Name for the constraint'),
     },
     async (input) => {
@@ -4898,7 +4654,7 @@ Example:
       subobject1: z.string().describe('Subobject reference (e.g., "Face1", "Edge1")'),
       object2: z.string().describe('Name of the second object'),
       subobject2: z.string().describe('Subobject reference for second object'),
-      symmetryPlane: z.string().describe('Reference to the symmetry plane'),
+      symmetryPlane: z.string().optional().describe('Reference to the symmetry plane (optional)'),
       name: z.string().optional().describe('Name for the constraint'),
     },
     async (input) => {
@@ -5290,6 +5046,1678 @@ print(json.dumps(result))
             ],
           };
         }
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+// ============================================================================
+// Draft Workbench Tools
+// ============================================================================
+
+/**
+ * Tool: create_point
+ *
+ * Create a point in 3D space.
+ */
+function createPointTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_point',
+    `Create a point in 3D space using the Draft workbench.
+
+Parameters:
+- x (required): X coordinate in mm
+- y (required): Y coordinate in mm
+- z (optional): Z coordinate in mm (default: 0)
+- name (optional): Name for the point. If omitted, auto-generated.
+
+Returns:
+- success: Whether the point was created
+- objectName: Internal name of the point
+- objectType: Type of object ("Point")
+- coordinates: {x, y, z} position of the point
+- message: Status message
+
+Use this tool when you need to create a single point in 3D space.
+
+Example:
+- Create point at origin: { x: 0, y: 0, z: 0 }
+- Create point at (10, 20, 5): { x: 10, y: 20, z: 5 }
+- Named point: { x: 50, y: 50, name: "PointA" }`,
+    {
+      x: z.number().describe('X coordinate in mm'),
+      y: z.number().describe('Y coordinate in mm'),
+      z: z.number().optional().default(0).describe('Z coordinate in mm (default: 0)'),
+      name: z.string().optional().describe('Name for the point'),
+    },
+    async (input) => {
+      const { x, y, z, name } = input;
+
+      const code = `
+from llm_bridge.draft_handlers import handle_create_point
+import json
+params = json.loads('${JSON.stringify({ x, y, z: z || 0, name: name || null })}')
+result = handle_create_point(
+    x=params['x'],
+    y=params['y'],
+    z=params.get('z', 0),
+    name=params['name']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatPointCreation(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: create_line
+ *
+ * Create a line between two points.
+ */
+function createLineTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_line',
+    `Create a line segment between two points using the Draft workbench.
+
+Parameters:
+- startX, startY, startZ (required): Start point coordinates in mm
+- endX, endY, endZ (required): End point coordinates in mm
+- name (optional): Name for the line. If omitted, auto-generated.
+
+Returns:
+- success: Whether the line was created
+- objectName: Internal name of the line
+- objectType: Type of object ("Line")
+- startPoint: {x, y, z} of start
+- endPoint: {x, y, z} of end
+- message: Status message
+
+Use this tool when you need to create a straight line segment.
+
+Example:
+- Create line from (0,0,0) to (100,50,0): { startX: 0, startY: 0, startZ: 0, endX: 100, endY: 50, endZ: 0 }
+- Horizontal line: { startX: 0, startY: 0, startZ: 0, endX: 100, endY: 0, endZ: 0 }`,
+    {
+      startX: z.number().describe('Start X coordinate in mm'),
+      startY: z.number().describe('Start Y coordinate in mm'),
+      startZ: z.number().optional().default(0).describe('Start Z coordinate in mm (default: 0)'),
+      endX: z.number().describe('End X coordinate in mm'),
+      endY: z.number().describe('End Y coordinate in mm'),
+      endZ: z.number().optional().default(0).describe('End Z coordinate in mm (default: 0)'),
+      name: z.string().optional().describe('Name for the line'),
+    },
+    async (input) => {
+      const { startX, startY, startZ, endX, endY, endZ, name } = input;
+
+      const code = `
+from llm_bridge.draft_handlers import handle_create_line
+import json
+params = json.loads('${JSON.stringify({ startX, startY, startZ: startZ || 0, endX, endY, endZ: endZ || 0, name: name || null })}')
+result = handle_create_line(
+    start_point=[params['startX'], params['startY'], params.get('startZ', 0)],
+    end_point=[params['endX'], params['endY'], params.get('endZ', 0)],
+    name=params['name']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatGeometryCreation(parsed.data, 'Line');
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: create_circle
+ *
+ * Create a circle.
+ */
+function createCircleTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_circle',
+    `Create a circle using the Draft workbench.
+
+Parameters:
+- centerX, centerY, centerZ (required): Center point coordinates in mm
+- radius (required): Radius of the circle in mm
+- name (optional): Name for the circle. If omitted, auto-generated.
+
+Returns:
+- success: Whether the circle was created
+- objectName: Internal name of the circle
+- objectType: Type of object ("Circle")
+- center: {x, y, z} of center
+- radius: Radius of the circle
+- message: Status message
+
+Use this tool when you need to create a circle.
+
+Example:
+- Create circle at (50, 50, 0) with 20mm radius: { centerX: 50, centerY: 50, centerZ: 0, radius: 20 }
+- Circle at origin with 10mm radius: { centerX: 0, centerY: 0, centerZ: 0, radius: 10 }`,
+    {
+      centerX: z.number().describe('Center X coordinate in mm'),
+      centerY: z.number().describe('Center Y coordinate in mm'),
+      centerZ: z.number().optional().default(0).describe('Center Z coordinate in mm (default: 0)'),
+      radius: z.number().describe('Radius of the circle in mm'),
+      name: z.string().optional().describe('Name for the circle'),
+    },
+    async (input) => {
+      const { centerX, centerY, centerZ, radius, name } = input;
+
+      const code = `
+from llm_bridge.draft_handlers import handle_create_circle
+import json
+params = json.loads('${JSON.stringify({ centerX, centerY, centerZ: centerZ || 0, radius, name: name || null })}')
+result = handle_create_circle(
+    center=[params['centerX'], params['centerY'], params.get('centerZ', 0)],
+    radius=params['radius'],
+    name=params['name']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatGeometryCreation(parsed.data, 'Circle');
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: create_arc
+ *
+ * Create a circular arc.
+ */
+function createArcTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_arc',
+    `Create a circular arc using the Draft workbench.
+
+Parameters:
+- centerX, centerY, centerZ (required): Center point coordinates in mm
+- radius (required): Radius of the arc in mm
+- startAngle (required): Start angle in degrees (0-360)
+- endAngle (required): End angle in degrees (0-360)
+- name (optional): Name for the arc. If omitted, auto-generated.
+
+Returns:
+- success: Whether the arc was created
+- objectName: Internal name of the arc
+- objectType: Type of object ("Arc")
+- center: {x, y, z} of center
+- radius: Radius of the arc
+- startAngle: Start angle in degrees
+- endAngle: End angle in degrees
+- message: Status message
+
+Use this tool when you need to create a circular arc (partial circle).
+
+Example:
+- Quarter arc: { centerX: 0, centerY: 0, centerZ: 0, radius: 50, startAngle: 0, endAngle: 90 }
+- Half arc: { centerX: 0, centerY: 0, centerZ: 0, radius: 50, startAngle: 0, endAngle: 180 }`,
+    {
+      centerX: z.number().describe('Center X coordinate in mm'),
+      centerY: z.number().describe('Center Y coordinate in mm'),
+      centerZ: z.number().optional().default(0).describe('Center Z coordinate in mm (default: 0)'),
+      radius: z.number().describe('Radius of the arc in mm'),
+      startAngle: z.number().describe('Start angle in degrees (0-360)'),
+      endAngle: z.number().describe('End angle in degrees (0-360)'),
+      name: z.string().optional().describe('Name for the arc'),
+    },
+    async (input) => {
+      const { centerX, centerY, centerZ, radius, startAngle, endAngle, name } = input;
+
+      const code = `
+from llm_bridge.draft_handlers import handle_create_arc
+import json
+params = json.loads('${JSON.stringify({ centerX, centerY, centerZ: centerZ || 0, radius, startAngle, endAngle, name: name || null })}')
+result = handle_create_arc(
+    center=[params['centerX'], params['centerY'], params.get('centerZ', 0)],
+    radius=params['radius'],
+    start_angle=params['startAngle'],
+    end_angle=params['endAngle'],
+    name=params['name']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatGeometryCreation(parsed.data, 'Arc');
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: create_ellipse
+ *
+ * Create an ellipse.
+ */
+function createEllipseTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_ellipse',
+    `Create an ellipse using the Draft workbench.
+
+Parameters:
+- centerX, centerY, centerZ (required): Center point coordinates in mm
+- majorRadius (required): Major axis radius in mm
+- minorRadius (required): Minor axis radius in mm
+- name (optional): Name for the ellipse. If omitted, auto-generated.
+
+Returns:
+- success: Whether the ellipse was created
+- objectName: Internal name of the ellipse
+- objectType: Type of object ("Ellipse")
+- center: {x, y, z} of center
+- majorRadius: Major axis radius
+- minorRadius: Minor axis radius
+- message: Status message
+
+Use this tool when you need to create an ellipse.
+
+Example:
+- Ellipse at origin: { centerX: 0, centerY: 0, centerZ: 0, majorRadius: 50, minorRadius: 30 }
+- Ellipse at (100, 50): { centerX: 100, centerY: 50, centerZ: 0, majorRadius: 40, minorRadius: 25 }`,
+    {
+      centerX: z.number().describe('Center X coordinate in mm'),
+      centerY: z.number().describe('Center Y coordinate in mm'),
+      centerZ: z.number().optional().default(0).describe('Center Z coordinate in mm (default: 0)'),
+      majorRadius: z.number().describe('Major axis radius in mm'),
+      minorRadius: z.number().describe('Minor axis radius in mm'),
+      name: z.string().optional().describe('Name for the ellipse'),
+    },
+    async (input) => {
+      const { centerX, centerY, centerZ, majorRadius, minorRadius, name } = input;
+
+      const code = `
+from llm_bridge.draft_handlers import handle_create_ellipse
+import json
+params = json.loads('${JSON.stringify({ centerX, centerY, centerZ: centerZ || 0, majorRadius, minorRadius, name: name || null })}')
+result = handle_create_ellipse(
+    center=[params['centerX'], params['centerY'], params.get('centerZ', 0)],
+    major_radius=params['majorRadius'],
+    minor_radius=params['minorRadius'],
+    name=params['name']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatGeometryCreation(parsed.data, 'Ellipse');
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: create_rectangle
+ *
+ * Create a rectangle.
+ */
+function createRectangleTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_rectangle',
+    `Create a rectangle using the Draft workbench.
+
+Parameters:
+- width (required): Width of the rectangle in mm
+- height (required): Height of the rectangle in mm
+- x (optional): X coordinate of the lower-left corner (default: 0)
+- y (optional): Y coordinate of the lower-left corner (default: 0)
+- z (optional): Z coordinate (default: 0)
+- name (optional): Name for the rectangle. If omitted, auto-generated.
+
+Returns:
+- success: Whether the rectangle was created
+- objectName: Internal name of the rectangle
+- objectType: Type of object ("Rectangle")
+- width: Width of the rectangle
+- height: Height of the rectangle
+- message: Status message
+
+Use this tool when you need to create a rectangle.
+
+Example:
+- 100mm by 50mm rectangle at origin: { width: 100, height: 50 }
+- Rectangle at (20, 30): { width: 80, height: 40, x: 20, y: 30 }`,
+    {
+      width: z.number().describe('Width of the rectangle in mm'),
+      height: z.number().describe('Height of the rectangle in mm'),
+      x: z.number().optional().default(0).describe('X coordinate of lower-left corner (default: 0)'),
+      y: z.number().optional().default(0).describe('Y coordinate of lower-left corner (default: 0)'),
+      z: z.number().optional().default(0).describe('Z coordinate (default: 0)'),
+      name: z.string().optional().describe('Name for the rectangle'),
+    },
+    async (input) => {
+      const { width, height, x, y, z, name } = input;
+
+      const code = `
+from llm_bridge.draft_handlers import handle_create_rectangle
+import json
+params = json.loads('${JSON.stringify({ width, height, x: x || 0, y: y || 0, z: z || 0, name: name || null })}')
+result = handle_create_rectangle(
+    width=params['width'],
+    height=params['height'],
+    position=[params.get('x', 0), params.get('y', 0), params.get('z', 0)],
+    name=params['name']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatGeometryCreation(parsed.data, 'Rectangle');
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: create_polygon
+ *
+ * Create a regular polygon.
+ */
+function createPolygonTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_polygon',
+    `Create a regular polygon using the Draft workbench.
+
+Parameters:
+- sides (required): Number of sides (3-12)
+- radius (required): Circumradius (distance from center to vertices) in mm
+- x (optional): X coordinate of center (default: 0)
+- y (optional): Y coordinate of center (default: 0)
+- z (optional): Z coordinate (default: 0)
+- name (optional): Name for the polygon. If omitted, auto-generated.
+
+Returns:
+- success: Whether the polygon was created
+- objectName: Internal name of the polygon
+- objectType: Type of object ("Polygon")
+- sides: Number of sides
+- radius: Circumradius in mm
+- message: Status message
+
+Use this tool when you need to create a regular polygon (triangle, square, pentagon, hexagon, etc.).
+
+Example:
+- Hexagon with 20mm radius: { sides: 6, radius: 20 }
+- Octagon at (50, 50): { sides: 8, radius: 15, x: 50, y: 50 }
+- Triangle: { sides: 3, radius: 30 }`,
+    {
+      sides: z.number().min(3).max(12).describe('Number of sides (3-12)'),
+      radius: z.number().describe('Circumradius in mm'),
+      x: z.number().optional().default(0).describe('X coordinate of center (default: 0)'),
+      y: z.number().optional().default(0).describe('Y coordinate of center (default: 0)'),
+      z: z.number().optional().default(0).describe('Z coordinate (default: 0)'),
+      name: z.string().optional().describe('Name for the polygon'),
+    },
+    async (input) => {
+      const { sides, radius, x, y, z, name } = input;
+
+      const code = `
+from llm_bridge.draft_handlers import handle_create_polygon
+import json
+params = json.loads('${JSON.stringify({ sides, radius, x: x || 0, y: y || 0, z: z || 0, name: name || null })}')
+result = handle_create_polygon(
+    sides=params['sides'],
+    radius=params['radius'],
+    center=[params.get('x', 0), params.get('y', 0), params.get('z', 0)],
+    name=params['name']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatGeometryCreation(parsed.data, 'Polygon');
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: create_bspline
+ *
+ * Create a B-spline curve through specified points.
+ */
+function createBSplineTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_bspline',
+    `Create a B-spline curve passing through specified points using the Draft workbench.
+
+Parameters:
+- points (required): Array of [x, y, z] coordinates for each point
+- name (optional): Name for the B-spline. If omitted, auto-generated.
+
+Returns:
+- success: Whether the B-spline was created
+- objectName: Internal name of the B-spline
+- objectType: Type of object ("BSpline")
+- pointCount: Number of control points
+- message: Status message
+
+Use this tool when you need to create a smooth curve through multiple points.
+
+Example:
+- B-spline through 3 points: { points: [[0, 0, 0], [50, 80, 0], [100, 0, 0]] }
+- Complex curve: { points: [[0, 0, 0], [25, 50, 0], [50, 50, 0], [75, 25, 0], [100, 0, 0]] }`,
+    {
+      points: z.array(z.tuple([z.number(), z.number(), z.number()])).describe('Array of [x, y, z] coordinates for each point'),
+      name: z.string().optional().describe('Name for the B-spline'),
+    },
+    async (input) => {
+      const { points, name } = input;
+
+      const code = `
+from llm_bridge.draft_handlers import handle_create_bspline
+import json
+params = json.loads('${JSON.stringify({ points, name: name || null })}')
+result = handle_create_bspline(
+    points=params['points'],
+    name=params['name']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatGeometryCreation(parsed.data, 'BSpline');
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: create_bezier
+ *
+ * Create a Bezier curve through specified control points.
+ */
+function createBezierTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_bezier',
+    `Create a Bezier curve using specified control points via the Draft workbench.
+
+Parameters:
+- points (required): Array of [x, y, z] coordinates for control points
+- name (optional): Name for the Bezier curve. If omitted, auto-generated.
+
+Returns:
+- success: Whether the Bezier curve was created
+- objectName: Internal name of the Bezier curve
+- objectType: Type of object ("Bezier")
+- pointCount: Number of control points
+- message: Status message
+
+Use this tool when you need to create a smooth curve defined by control points.
+
+Example:
+- Simple Bezier: { points: [[0, 0, 0], [50, 100, 0], [100, 0, 0]] }
+- Complex curve: { points: [[0, 0, 0], [30, 80, 0], [70, 80, 0], [100, 0, 0]] }`,
+    {
+      points: z.array(z.tuple([z.number(), z.number(), z.number()])).describe('Array of [x, y, z] coordinates for control points'),
+      name: z.string().optional().describe('Name for the Bezier curve'),
+    },
+    async (input) => {
+      const { points, name } = input;
+
+      const code = `
+from llm_bridge.draft_handlers import handle_create_bezier
+import json
+params = json.loads('${JSON.stringify({ points, name: name || null })}')
+result = handle_create_bezier(
+    points=params['points'],
+    name=params['name']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatGeometryCreation(parsed.data, 'Bezier');
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: create_wire
+ *
+ * Create a polyline/wire from a series of points.
+ */
+function createWireTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_wire',
+    `Create a polyline/wire (connected line segments) from a series of points using the Draft workbench.
+
+Parameters:
+- points (required): Array of [x, y, z] coordinates for each vertex
+- closed (optional): Whether to close the wire (connect last to first). Default: false
+- name (optional): Name for the wire. If omitted, auto-generated.
+
+Returns:
+- success: Whether the wire was created
+- objectName: Internal name of the wire
+- objectType: Type of object ("Wire" or "Polyline")
+- pointCount: Number of vertices
+- closed: Whether the wire is closed
+- message: Status message
+
+Use this tool when you need to create a connected series of line segments.
+
+Example:
+- Open polyline: { points: [[0, 0, 0], [50, 0, 0], [50, 50, 0], [100, 50, 0]] }
+- Closed shape: { points: [[0, 0, 0], [100, 0, 0], [100, 100, 0], [0, 100, 0]], closed: true }`,
+    {
+      points: z.array(z.tuple([z.number(), z.number(), z.number()])).describe('Array of [x, y, z] coordinates for each vertex'),
+      closed: z.boolean().optional().default(false).describe('Whether to close the wire (connect last to first)'),
+      name: z.string().optional().describe('Name for the wire'),
+    },
+    async (input) => {
+      const { points, closed, name } = input;
+
+      const code = `
+from llm_bridge.draft_handlers import handle_create_wire
+import json
+params = json.loads('${JSON.stringify({ points, closed: closed || false, name: name || null })}')
+result = handle_create_wire(
+    points=params['points'],
+    closed=params.get('closed', False),
+    name=params['name']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatGeometryCreation(parsed.data, 'Wire');
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: create_linear_dimension
+ *
+ * Create a linear dimension between two points.
+ */
+function createLinearDimensionTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_linear_dimension',
+    `Create a linear dimension between two points using the Draft workbench.
+
+Parameters:
+- startX, startY, startZ (required): Start point coordinates in mm
+- endX, endY, endZ (required): End point coordinates in mm
+- offset (optional): Perpendicular offset from the measured line in mm (default: 0)
+- name (optional): Name for the dimension. If omitted, auto-generated.
+
+Returns:
+- success: Whether the dimension was created
+- objectName: Internal name of the dimension
+- objectType: Type of object ("LinearDimension")
+- measurement: The measured distance in mm
+- startPoint: {x, y, z} of start
+- endPoint: {x, y, z} of end
+- message: Status message
+
+Use this tool when you need to add a linear (aligned or horizontal/vertical) dimension to your drawing.
+
+Example:
+- Dimension a line: { startX: 0, startY: 0, startZ: 0, endX: 100, endY: 0, endZ: 0 }
+- Offset dimension: { startX: 0, startY: 0, startZ: 0, endX: 50, endY: 50, endZ: 0, offset: 10 }`,
+    {
+      startX: z.number().describe('Start X coordinate in mm'),
+      startY: z.number().describe('Start Y coordinate in mm'),
+      startZ: z.number().optional().default(0).describe('Start Z coordinate in mm (default: 0)'),
+      endX: z.number().describe('End X coordinate in mm'),
+      endY: z.number().describe('End Y coordinate in mm'),
+      endZ: z.number().optional().default(0).describe('End Z coordinate in mm (default: 0)'),
+      offset: z.number().optional().default(0).describe('Perpendicular offset from measured line in mm (default: 0)'),
+      name: z.string().optional().describe('Name for the dimension'),
+    },
+    async (input) => {
+      const { startX, startY, startZ, endX, endY, endZ, offset, name } = input;
+
+      const code = `
+from llm_bridge.draft_handlers import handle_create_linear_dimension
+import json
+params = json.loads('${JSON.stringify({ startX, startY, startZ: startZ || 0, endX, endY, endZ: endZ || 0, offset: offset || 0, name: name || null })}')
+result = handle_create_linear_dimension(
+    start_point=[params['startX'], params['startY'], params.get('startZ', 0)],
+    end_point=[params['endX'], params['endY'], params.get('endZ', 0)],
+    offset=params.get('offset', 0),
+    name=params['name']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatDimensionCreation(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: create_radial_dimension
+ *
+ * Create a radial dimension (radius or diameter) for a circle or arc.
+ */
+function createRadialDimensionTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_radial_dimension',
+    `Create a radial dimension (radius or diameter) for a circle or arc using the Draft workbench.
+
+Parameters:
+- objectName (required): Name of the circle or arc object to dimension
+- name (optional): Name for the dimension. If omitted, auto-generated.
+
+Returns:
+- success: Whether the dimension was created
+- objectName: Internal name of the dimension
+- objectType: Type of object ("RadialDimension" or "Dimension")
+- measurement: The radius or diameter value in mm
+- message: Status message
+
+Use this tool when you need to add a radius or diameter dimension to a circle or arc.
+
+Example:
+- Radius dimension: { objectName: "Circle" }
+- Diameter dimension: { objectName: "Circle001" }`,
+    {
+      objectName: z.string().describe('Name of the circle or arc object to dimension'),
+      name: z.string().optional().describe('Name for the dimension'),
+    },
+    async (input) => {
+      const { objectName, name } = input;
+
+      const code = `
+from llm_bridge.draft_handlers import handle_create_radial_dimension
+import json
+params = json.loads('${JSON.stringify({ objectName, name: name || null })}')
+result = handle_create_radial_dimension(
+    circle=params['objectName'],
+    name=params['name']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatDimensionCreation(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: create_angular_dimension
+ *
+ * Create an angular dimension between two lines.
+ */
+function createAngularDimensionTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_angular_dimension',
+    `Create an angular dimension between two lines using the Draft workbench.
+
+Parameters:
+- objectName1 (required): Name of the first line object
+- objectName2 (required): Name of the second line object
+- name (optional): Name for the dimension. If omitted, auto-generated.
+
+Returns:
+- success: Whether the dimension was created
+- objectName: Internal name of the dimension
+- objectType: Type of object ("AngularDimension")
+- measurement: The angle in degrees
+- message: Status message
+
+Use this tool when you need to show the angle between two lines.
+
+Example:
+- Angle between lines: { objectName1: "Line", objectName2: "Line001" }`,
+    {
+      objectName1: z.string().describe('Name of the first line object'),
+      objectName2: z.string().describe('Name of the second line object'),
+      name: z.string().optional().describe('Name for the dimension'),
+    },
+    async (input) => {
+      const { objectName1, objectName2, name } = input;
+
+      const code = `
+from llm_bridge.draft_handlers import handle_create_angular_dimension
+import json
+params = json.loads('${JSON.stringify({ objectName1, objectName2, name: name || null })}')
+result = handle_create_angular_dimension(
+    line1=params['objectName1'],
+    line2=params['objectName2'],
+    name=params['name']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatDimensionCreation(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: create_ordinate_dimension
+ *
+ * Create an ordinate dimension (X or Y distance from origin).
+ */
+function createOrdinateDimensionTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_ordinate_dimension',
+    `Create an ordinate dimension (X or Y distance from origin) using the Draft workbench.
+
+Parameters:
+- objectName (required): Name of the point or vertex object to dimension
+- direction (required): Direction - "x" for horizontal, "y" for vertical
+- originX, originY, originZ (optional): Origin point coordinates (default: 0, 0, 0)
+- name (optional): Name for the dimension. If omitted, auto-generated.
+
+Returns:
+- success: Whether the dimension was created
+- objectName: Internal name of the dimension
+- objectType: Type of object ("OrdinateDimension")
+- measurement: The distance in mm
+- direction: "x" or "y"
+- message: Status message
+
+Use this tool when you need to show the X or Y coordinate distance from a specific origin point.
+
+Example:
+- X distance from origin: { objectName: "Point", direction: "x" }
+- Y distance from origin: { objectName: "Vertex", direction: "y" }
+- Custom origin: { objectName: "Point", direction: "x", originX: 50, originY: 50 }`,
+    {
+      objectName: z.string().describe('Name of the point or vertex object to dimension'),
+      direction: z.enum(['x', 'y']).describe('Direction - "x" for horizontal, "y" for vertical'),
+      originX: z.number().optional().default(0).describe('Origin X coordinate (default: 0)'),
+      originY: z.number().optional().default(0).describe('Origin Y coordinate (default: 0)'),
+      originZ: z.number().optional().default(0).describe('Origin Z coordinate (default: 0)'),
+      name: z.string().optional().describe('Name for the dimension'),
+    },
+    async (input) => {
+      const { objectName, direction, originX, originY, originZ, name } = input;
+
+      const code = `
+from llm_bridge.draft_handlers import handle_create_ordinate_dimension
+import json
+params = json.loads('${JSON.stringify({ objectName, direction, originX: originX || 0, originY: originY || 0, originZ: originZ || 0, name: name || null })}')
+result = handle_create_ordinate_dimension(
+    point=params['objectName'],
+    direction=params['direction'],
+    origin=[params.get('originX', 0), params.get('originY', 0), params.get('originZ', 0)],
+    name=params['name']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatDimensionCreation(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: create_text
+ *
+ * Create a text annotation.
+ */
+function createTextTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_text',
+    `Create a text annotation using the Draft workbench.
+
+Parameters:
+- text (required): The text string to display
+- x, y, z (optional): Position coordinates in mm (default: 0, 0, 0)
+- name (optional): Name for the text. If omitted, auto-generated.
+
+Returns:
+- success: Whether the text was created
+- objectName: Internal name of the text
+- objectType: Type of object ("Text")
+- text: The text content
+- position: {x, y, z} position
+- message: Status message
+
+Use this tool when you need to add text labels or annotations to your drawing.
+
+Example:
+- Simple text: { text: "DANGER" }
+- Positioned text: { text: "MAX 50mm", x: 100, y: 50, z: 0 }
+- Label: { text: "Part A - Front View", x: 0, y: 100 }`,
+    {
+      text: z.string().describe('The text string to display'),
+      x: z.number().optional().default(0).describe('X coordinate (default: 0)'),
+      y: z.number().optional().default(0).describe('Y coordinate (default: 0)'),
+      z: z.number().optional().default(0).describe('Z coordinate (default: 0)'),
+      name: z.string().optional().describe('Name for the text'),
+    },
+    async (input) => {
+      const { text, x, y, z, name } = input;
+
+      const code = `
+from llm_bridge.draft_handlers import handle_create_text
+import json
+params = json.loads('${JSON.stringify({ text, x: x || 0, y: y || 0, z: z || 0, name: name || null })}')
+result = handle_create_text(
+    text=params['text'],
+    position=[params.get('x', 0), params.get('y', 0), params.get('z', 0)],
+    name=params['name']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatTextCreation(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: create_dimension_text
+ *
+ * Add custom text to an existing dimension.
+ */
+function createDimensionTextTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_dimension_text',
+    `Add custom text to an existing dimension using the Draft workbench.
+
+Parameters:
+- objectName (required): Name of the dimension object to modify
+- customText (required): Custom text to add (e.g., "TYP", "MAX", "MIN")
+- position (optional): Where to place the text - "before", "after", "replacement" (default: "after")
+
+Returns:
+- success: Whether the text was modified
+- objectName: Name of the modified dimension
+- previousText: Previous text value
+- newText: New text value
+- message: Status message
+
+Use this tool when you need to add custom text annotations to dimensions (e.g., "TYP" for typical, "MAX" for maximum).
+
+Example:
+- Add "TYP" after measurement: { objectName: "Dimension", customText: "TYP", position: "after" }
+- Replace with custom text: { objectName: "Dimension001", customText: "±0.5", position: "replacement" }`,
+    {
+      objectName: z.string().describe('Name of the dimension object to modify'),
+      customText: z.string().describe('Custom text to add'),
+      position: z.enum(['before', 'after', 'replacement']).optional().default('after').describe('Where to place text'),
+    },
+    async (input) => {
+      const { objectName, customText, position } = input;
+
+      const code = `
+from llm_bridge.draft_handlers import handle_create_dimension_text
+import json
+params = json.loads('${JSON.stringify({ objectName, customText, position: position || 'after' })}')
+result = handle_create_dimension_text(
+    dimension=params['objectName'],
+    custom_text=params['customText'],
+    position=params['position']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatDimensionCreation(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: move_objects
+ *
+ * Move one or more objects by a vector.
+ */
+function moveObjectsTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'move_objects',
+    `Move one or more objects by a displacement vector using the Draft workbench.
+
+Parameters:
+- objectNames (required): Array of object names to move
+- deltaX, deltaY, deltaZ (required): Displacement vector components in mm
+- name (optional): Name for the moved object (for single object). If omitted, original name kept.
+
+Returns:
+- success: Whether the move was successful
+- objectNames: Names of the moved objects
+- originalPositions: {x, y, z} positions before move
+- newPositions: {x, y, z} positions after move
+- message: Status message
+
+Use this tool when you need to reposition objects.
+
+Example:
+- Move single object: { objectNames: ["Circle"], deltaX: 50, deltaY: 0, deltaZ: 0 }
+- Move multiple objects: { objectNames: ["Line", "Rectangle"], deltaX: 10, deltaY: 20, deltaZ: 0 }`,
+    {
+      objectNames: z.array(z.string()).describe('Array of object names to move'),
+      deltaX: z.number().describe('X displacement in mm'),
+      deltaY: z.number().describe('Y displacement in mm'),
+      deltaZ: z.number().optional().default(0).describe('Z displacement in mm (default: 0)'),
+    },
+    async (input) => {
+      const { objectNames, deltaX, deltaY, deltaZ } = input;
+
+      const code = `
+from llm_bridge.draft_handlers import handle_move
+import json
+params = json.loads('${JSON.stringify({ objectNames, deltaX, deltaY, deltaZ: deltaZ || 0 })}')
+result = handle_move(
+    object_names=params['objectNames'],
+    vector=[params['deltaX'], params['deltaY'], params.get('deltaZ', 0)]
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatModificationResult(parsed.data, 'move');
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: rotate_objects
+ *
+ * Rotate one or more objects by an angle around a center point.
+ */
+function rotateObjectsTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'rotate_objects',
+    `Rotate one or more objects by an angle around a center point using the Draft workbench.
+
+Parameters:
+- objectNames (required): Array of object names to rotate
+- angle (required): Rotation angle in degrees
+- centerX, centerY, centerZ (optional): Center point of rotation (default: 0, 0, 0)
+- name (optional): Name for the rotated object (for single object).
+
+Returns:
+- success: Whether the rotation was successful
+- objectNames: Names of the rotated objects
+- angle: Rotation angle applied in degrees
+- center: Center point of rotation
+- message: Status message
+
+Use this tool when you need to rotate objects.
+
+Example:
+- Rotate 45 degrees around origin: { objectNames: ["Rectangle"], angle: 45 }
+- Rotate around custom center: { objectNames: ["Circle"], angle: 90, centerX: 50, centerY: 50, centerZ: 0 }`,
+    {
+      objectNames: z.array(z.string()).describe('Array of object names to rotate'),
+      angle: z.number().describe('Rotation angle in degrees'),
+      centerX: z.number().optional().default(0).describe('Center X coordinate (default: 0)'),
+      centerY: z.number().optional().default(0).describe('Center Y coordinate (default: 0)'),
+      centerZ: z.number().optional().default(0).describe('Center Z coordinate (default: 0)'),
+    },
+    async (input) => {
+      const { objectNames, angle, centerX, centerY, centerZ } = input;
+
+      const code = `
+from llm_bridge.draft_handlers import handle_rotate
+import json
+params = json.loads('${JSON.stringify({ objectNames, angle, centerX: centerX || 0, centerY: centerY || 0, centerZ: centerZ || 0 })}')
+result = handle_rotate(
+    object_names=params['objectNames'],
+    angle=params['angle'],
+    center=[params.get('centerX', 0), params.get('centerY', 0), params.get('centerZ', 0)]
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatModificationResult(parsed.data, 'rotate');
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: scale_objects
+ *
+ * Scale one or more objects by a factor.
+ */
+function scaleObjectsTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'scale_objects',
+    `Scale one or more objects by a factor using the Draft workbench.
+
+Parameters:
+- objectNames (required): Array of object names to scale
+- scaleFactor (required): Uniform scale factor (e.g., 2.0 for 2x size, 0.5 for half size)
+- centerX, centerY, centerZ (optional): Center point of scaling (default: 0, 0, 0)
+- name (optional): Name for the scaled object (for single object).
+
+Returns:
+- success: Whether the scaling was successful
+- objectNames: Names of the scaled objects
+- scaleFactor: Scale factor applied
+- center: Center point of scaling
+- message: Status message
+
+Use this tool when you need to resize objects.
+
+Example:
+- Double size: { objectNames: ["Rectangle"], scaleFactor: 2.0 }
+- Half size: { objectNames: ["Circle"], scaleFactor: 0.5 }
+- Scale around custom center: { objectNames: ["Polygon"], scaleFactor: 1.5, centerX: 50, centerY: 50 }`,
+    {
+      objectNames: z.array(z.string()).describe('Array of object names to scale'),
+      scaleFactor: z.number().describe('Scale factor (e.g., 2.0 for 2x size, 0.5 for half)'),
+      centerX: z.number().optional().default(0).describe('Center X coordinate (default: 0)'),
+      centerY: z.number().optional().default(0).describe('Center Y coordinate (default: 0)'),
+      centerZ: z.number().optional().default(0).describe('Center Z coordinate (default: 0)'),
+    },
+    async (input) => {
+      const { objectNames, scaleFactor, centerX, centerY, centerZ } = input;
+
+      const code = `
+from llm_bridge.draft_handlers import handle_scale
+import json
+params = json.loads('${JSON.stringify({ objectNames, scaleFactor, centerX: centerX || 0, centerY: centerY || 0, centerZ: centerZ || 0 })}')
+result = handle_scale(
+    object_names=params['objectNames'],
+    scale_factor=params['scaleFactor'],
+    center=[params.get('centerX', 0), params.get('centerY', 0), params.get('centerZ', 0)]
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatModificationResult(parsed.data, 'scale');
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: offset_object
+ *
+ * Create an offset copy of an object.
+ */
+function offsetObjectTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'offset_object',
+    `Create an offset (parallel) copy of an object using the Draft workbench.
+
+Parameters:
+- objectName (required): Name of the object to offset
+- distance (required): Offset distance in mm (positive for outward, negative for inward)
+- name (optional): Name for the offset object. If omitted, auto-generated.
+
+Returns:
+- success: Whether the offset was successful
+- originalName: Name of the original object
+- newObjectName: Name of the created offset object
+- distance: Offset distance applied
+- message: Status message
+
+Use this tool when you need to create a parallel copy of an object at a specific distance.
+
+Example:
+- Parallel line 10mm away: { objectName: "Line", distance: 10 }
+- Offset circle inward: { objectName: "Circle", distance: -5 }
+- Offset rectangle: { objectName: "Rectangle", distance: 20 }`,
+    {
+      objectName: z.string().describe('Name of the object to offset'),
+      distance: z.number().describe('Offset distance in mm (positive for outward, negative for inward)'),
+      name: z.string().optional().describe('Name for the offset object'),
+    },
+    async (input) => {
+      const { objectName, distance, name } = input;
+
+      const code = `
+from llm_bridge.draft_handlers import handle_offset
+import json
+params = json.loads('${JSON.stringify({ objectName, distance, name: name || null })}')
+result = handle_offset(
+    object_name=params['objectName'],
+    distance=params['distance'],
+    name=params['name']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatModificationResult(parsed.data, 'offset');
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: join_objects
+ *
+ * Join multiple draft objects into a single wire/polyline.
+ */
+function joinObjectsTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'join_objects',
+    `Join multiple draft objects (wires/edges) into a single wire/polyline using the Draft workbench.
+
+Parameters:
+- objectNames (required): Array of object names to join
+- name (optional): Name for the joined object. If omitted, auto-generated.
+
+Returns:
+- success: Whether the join was successful
+- originalNames: Names of the original objects
+- newObjectName: Name of the created joined object
+- objectType: Type of the joined object ("Wire" or "Polyline")
+- message: Status message
+
+Use this tool when you need to combine multiple connected lines into a single polyline.
+
+Example:
+- Join lines: { objectNames: ["Line", "Line001", "Line002"] }
+- Join arcs: { objectNames: ["Arc", "Arc001"] }`,
+    {
+      objectNames: z.array(z.string()).describe('Array of object names to join'),
+      name: z.string().optional().describe('Name for the joined object'),
+    },
+    async (input) => {
+      const { objectNames, name } = input;
+
+      const code = `
+from llm_bridge.draft_handlers import handle_join
+import json
+params = json.loads('${JSON.stringify({ objectNames, name: name || null })}')
+result = handle_join(
+    object_names=params['objectNames'],
+    name=params['name']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatModificationResult(parsed.data, 'join');
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: split_object
+ *
+ * Split a draft object at specified points.
+ */
+function splitObjectTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'split_object',
+    `Split a draft object at specified points using the Draft workbench.
+
+Parameters:
+- objectName (required): Name of the object to split
+- points (required): Array of [x, y, z] coordinates where to split
+- name (optional): Base name for the split objects. If omitted, auto-generated.
+
+Returns:
+- success: Whether the split was successful
+- originalName: Name of the original object
+- newObjectNames: Names of the created split objects
+- message: Status message
+
+Use this tool when you need to divide an object into multiple parts at specific points.
+
+Example:
+- Split line at midpoint: { objectName: "Line", points: [[50, 0, 0]] }
+- Split at multiple points: { objectName: "Wire", points: [[25, 0, 0], [75, 0, 0]] }`,
+    {
+      objectName: z.string().describe('Name of the object to split'),
+      points: z.array(z.tuple([z.number(), z.number(), z.number()])).describe('Array of [x, y, z] coordinates where to split'),
+      name: z.string().optional().describe('Base name for the split objects'),
+    },
+    async (input) => {
+      const { objectName, points, name } = input;
+
+      const code = `
+from llm_bridge.draft_handlers import handle_split
+import json
+params = json.loads('${JSON.stringify({ objectName, points, name: name || null })}')
+result = handle_split(
+    object_name=params['objectName'],
+    points=params['points'],
+    name=params['name']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatModificationResult(parsed.data, 'split');
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
       } catch (error) {
         return {
           content: [
