@@ -111,6 +111,7 @@
 #include "WaitCursor.h"
 #include "WorkbenchManager.h"
 #include "Workbench.h"
+#include "LLMDockWidget.h"
 
 #include "MergeDocuments.h"
 #include "ViewProviderExtern.h"
@@ -564,6 +565,7 @@ void MainWindow::setupDockWindows()
     setupPythonConsole();
     setupSelectionView();
     setupTaskView();
+    setupLLMDockWidget();
 
     initDockWindows(false);
 
@@ -649,6 +651,25 @@ bool MainWindow::setupPythonConsole()
 
         DockWindowManager* pDockMgr = DockWindowManager::instance();
         pDockMgr->registerDockWindow("Std_PythonView", pcPython);
+        return true;
+    }
+
+    return false;
+}
+
+bool MainWindow::setupLLMDockWidget()
+{
+    // LLM Assistant dock widget
+    if (d->hiddenDockWindows.find("Std_LLMDockWidget") == std::string::npos) {
+        auto llmDock = new LLMDockWidget(this);
+        llmDock->setWindowIcon(Gui::BitmapFactory().iconFromTheme("applications-chat"));
+        llmDock->setObjectName(QStringLiteral("LLM Assistant"));
+        llmDock->setWindowTitle(QDockWidget::tr("LLM Assistant"));
+        llmDock->setMinimumWidth(300);
+        llmDock->setMinimumHeight(400);
+
+        DockWindowManager* pDockMgr = DockWindowManager::instance();
+        pDockMgr->registerDockWindow("Std_LLMDockWidget", llmDock);
         return true;
     }
 
