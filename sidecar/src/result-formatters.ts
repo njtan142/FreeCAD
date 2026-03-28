@@ -1301,3 +1301,215 @@ function formatDistanceValue(value: number | string): string {
 
   return `${numValue.toFixed(2)} mm`;
 }
+
+// ============================================================================
+// Draft Workbench Result Formatters
+// ============================================================================
+
+/**
+ * Format point creation result
+ */
+export function formatPointCreation(data: any): string {
+  if (!data) return 'No point data';
+
+  const lines: string[] = [];
+  lines.push(`Created Point: ${data.objectLabel || data.objectName} (${data.objectName})`);
+
+  if (data.coordinates) {
+    const coord = data.coordinates;
+    lines.push(`Position: (${coord.x?.toFixed(2) || 0}, ${coord.y?.toFixed(2) || 0}, ${coord.z?.toFixed(2) || 0}) mm`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Format geometry creation result for various Draft objects
+ */
+export function formatGeometryCreation(data: any, objectType: string): string {
+  if (!data) return 'No geometry data';
+
+  const lines: string[] = [];
+  lines.push(`Created ${objectType}: ${data.objectLabel || data.objectName} (${data.objectName})`);
+
+  if (data.center) {
+    const center = data.center;
+    lines.push(`Center: (${center.x?.toFixed(2) || 0}, ${center.y?.toFixed(2) || 0}, ${center.z?.toFixed(2) || 0}) mm`);
+  }
+
+  if (data.radius !== undefined) {
+    lines.push(`Radius: ${data.radius.toFixed(2)} mm`);
+  }
+
+  if (data.majorRadius !== undefined && data.minorRadius !== undefined) {
+    lines.push(`Major Radius: ${data.majorRadius.toFixed(2)} mm`);
+    lines.push(`Minor Radius: ${data.minorRadius.toFixed(2)} mm`);
+  }
+
+  if (data.width !== undefined && data.height !== undefined) {
+    lines.push(`Size: ${data.width.toFixed(2)} x ${data.height.toFixed(2)} mm`);
+  }
+
+  if (data.sides !== undefined) {
+    lines.push(`Sides: ${data.sides}`);
+    lines.push(`Radius: ${(data.radius || 0).toFixed(2)} mm`);
+  }
+
+  if (data.startPoint && data.endPoint) {
+    const start = data.startPoint;
+    const end = data.endPoint;
+    lines.push(`From: (${start.x?.toFixed(2) || 0}, ${start.y?.toFixed(2) || 0}, ${start.z?.toFixed(2) || 0})`);
+    lines.push(`To: (${end.x?.toFixed(2) || 0}, ${end.y?.toFixed(2) || 0}, ${end.z?.toFixed(2) || 0})`);
+  }
+
+  if (data.pointCount !== undefined) {
+    lines.push(`Points: ${data.pointCount}`);
+  }
+
+  if (data.closed !== undefined) {
+    lines.push(`Closed: ${data.closed ? 'Yes' : 'No'}`);
+  }
+
+  if (data.startAngle !== undefined && data.endAngle !== undefined) {
+    lines.push(`Start Angle: ${data.startAngle.toFixed(1)}°`);
+    lines.push(`End Angle: ${data.endAngle.toFixed(1)}°`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Format dimension creation result
+ */
+export function formatDimensionCreation(data: any): string {
+  if (!data) return 'No dimension data';
+
+  const lines: string[] = [];
+  lines.push(`Created Dimension: ${data.objectLabel || data.objectName} (${data.objectName})`);
+  lines.push(`Type: ${data.objectType || 'Dimension'}`);
+
+  if (data.measurement !== undefined) {
+    if (data.measurementType === 'angular') {
+      lines.push(`Angle: ${data.measurement.toFixed(1)}°`);
+    } else {
+      lines.push(`Measurement: ${data.measurement.toFixed(2)} mm`);
+    }
+  }
+
+  if (data.direction) {
+    lines.push(`Direction: ${data.direction.toUpperCase()}`);
+  }
+
+  if (data.previousText !== undefined || data.newText !== undefined) {
+    lines.push('');
+    if (data.previousText) {
+      lines.push(`Previous text: ${data.previousText}`);
+    }
+    if (data.newText) {
+      lines.push(`New text: ${data.newText}`);
+    }
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Format text creation result
+ */
+export function formatTextCreation(data: any): string {
+  if (!data) return 'No text data';
+
+  const lines: string[] = [];
+  lines.push(`Created Text: ${data.objectLabel || data.objectName} (${data.objectName})`);
+
+  if (data.text) {
+    lines.push('');
+    lines.push(`"${data.text}"`);
+  }
+
+  if (data.position) {
+    const pos = data.position;
+    lines.push(`Position: (${pos.x?.toFixed(2) || 0}, ${pos.y?.toFixed(2) || 0}, ${pos.z?.toFixed(2) || 0}) mm`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Format modification result (move, rotate, scale, offset, join, split)
+ */
+export function formatModificationResult(data: any, operation: string): string {
+  if (!data) return 'No modification data';
+
+  const lines: string[] = [];
+  const opName = operation.charAt(0).toUpperCase() + operation.slice(1);
+
+  if (operation === 'move') {
+    lines.push(`Moved ${data.objectNames?.length || 1} object(s): ${(data.objectNames || []).join(', ')}`);
+
+    if (data.originalPositions && data.newPositions) {
+      const orig = data.originalPositions[0];
+      const newPos = data.newPositions[0];
+      if (orig && newPos) {
+        lines.push(`From: (${orig.x?.toFixed(2) || 0}, ${orig.y?.toFixed(2) || 0}, ${orig.z?.toFixed(2) || 0})`);
+        lines.push(`To: (${newPos.x?.toFixed(2) || 0}, ${newPos.y?.toFixed(2) || 0}, ${newPos.z?.toFixed(2) || 0}) mm`);
+      }
+    }
+  } else if (operation === 'rotate') {
+    lines.push(`Rotated ${data.objectNames?.length || 1} object(s): ${(data.objectNames || []).join(', ')}`);
+    if (data.angle !== undefined) {
+      lines.push(`Angle: ${data.angle}°`);
+    }
+    if (data.center) {
+      lines.push(`Center: (${data.center.x?.toFixed(2) || 0}, ${data.center.y?.toFixed(2) || 0}, ${data.center.z?.toFixed(2) || 0})`);
+    }
+  } else if (operation === 'scale') {
+    lines.push(`Scaled ${data.objectNames?.length || 1} object(s): ${(data.objectNames || []).join(', ')}`);
+    if (data.scaleFactor !== undefined) {
+      lines.push(`Scale Factor: ${data.scaleFactor.toFixed(2)}`);
+    }
+    if (data.center) {
+      lines.push(`Center: (${data.center.x?.toFixed(2) || 0}, ${data.center.y?.toFixed(2) || 0}, ${data.center.z?.toFixed(2) || 0})`);
+    }
+  } else if (operation === 'offset') {
+    lines.push(`Created offset: ${data.newObjectName || 'Offset'}`);
+    lines.push(`Original: ${data.originalName}`);
+    if (data.distance !== undefined) {
+      lines.push(`Distance: ${data.distance.toFixed(2)} mm`);
+    }
+  } else if (operation === 'join') {
+    lines.push(`Joined ${data.originalNames?.length || 0} objects into: ${data.newObjectName}`);
+    lines.push(`Type: ${data.objectType || 'Wire'}`);
+  } else if (operation === 'split') {
+    lines.push(`Split ${data.originalName} into ${data.newObjectNames?.length || 0} object(s): ${(data.newObjectNames || []).join(', ')}`);
+  } else {
+    lines.push(`${opName} operation completed`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
