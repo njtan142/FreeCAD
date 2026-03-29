@@ -85,6 +85,14 @@ import {
   formatFEAConstraint,
   formatFEASolver,
   formatFEAResults,
+  formatPathJobCreation,
+  formatPathJobList,
+  formatPathToolCreation,
+  formatPathToolList,
+  formatPathOperation,
+  formatPathDressup,
+  formatGCodeExport,
+  formatPathSimulation,
 } from './result-formatters';
 import {
   validateFilePath,
@@ -400,6 +408,29 @@ export function createAgentTools(freeCADBridge: FreeCADBridge) {
     getFeaReactionsTool(freeCADBridge),
     getFeaStrainTool(freeCADBridge),
     getFeaResultSummaryTool(freeCADBridge),
+    // Path/CAM workbench tools
+    // Job management
+    createPathJobTool(freeCADBridge),
+    configurePathJobTool(freeCADBridge),
+    deletePathJobTool(freeCADBridge),
+    listPathJobsTool(freeCADBridge),
+    // Tool management
+    createPathToolTool(freeCADBridge),
+    createPathToolbitTool(freeCADBridge),
+    createToolControllerTool(freeCADBridge),
+    listPathToolsTool(freeCADBridge),
+    // Path operations
+    createPathProfileTool(freeCADBridge),
+    createPathPocketTool(freeCADBridge),
+    createPathDrillTool(freeCADBridge),
+    createPathFaceTool(freeCADBridge),
+    // Dressup operations
+    createPathDressupRadiusTool(freeCADBridge),
+    createPathDressupTagTool(freeCADBridge),
+    createPathDressupLeadOffTool(freeCADBridge),
+    // G-code and simulation
+    exportGCodeTool(freeCADBridge),
+    simulatePathTool(freeCADBridge),
   ];
 }
 
@@ -15423,6 +15454,1150 @@ print(json.dumps(result))
         const result = await freeCADBridge.executePython(code);
         const parsed = parseLastJsonLine(result.output);
         const formatted = formatFEAResults(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function createPathJobTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_path_job',
+    `Create a new Path Job from a base model object.
+
+Parameters:
+- modelObject (required): Name of the base model object (e.g., "Body001")
+- name (optional): Name for the new Path Job. If omitted, auto-generated.
+
+Returns:
+- success: Whether the job was created
+- jobName: Internal name of the job
+- jobLabel: User-friendly label
+- toolController: Name of default tool controller
+- message: Status message
+
+Use this tool to create a new CNC machining job from a solid model. The job will include default tool controller and stock settings.
+
+Example:
+- Create job from body: { modelObject: "Body001" }
+- Create named job: { modelObject: "Body001", name: "CNCJob1" }`,
+    {
+      modelObject: z.string().describe('Name of the base model object'),
+      name: z.string().optional().describe('Name for the new Path Job'),
+    },
+    async (input) => {
+      const { modelObject, name } = input;
+
+      const code = `
+from llm_bridge.path_handlers import handle_create_path_job
+import json
+params = json.loads('${JSON.stringify({ modelObject, name: name || null })}')
+result = handle_create_path_job(
+    model_object=params['modelObject'],
+    name=params['name']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatPathJobCreation(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function configurePathJobTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'configure_path_job',
+    `Configure an existing Path Job with tool controller and stock settings.
+
+Parameters:
+- jobName (required): Name of the Path Job to configure
+- toolController (optional): Name of the tool controller to use
+- stock (optional): Stock specification (e.g., "0,0,0,100,100,50" for bounding box)
+
+Returns:
+- success: Whether the job was configured
+- jobName: Name of the configured job
+- toolController: Tool controller in use
+- stock: Stock settings
+- message: Status message
+
+Use this tool to set up tool controller and stock for a Path Job.
+
+Example:
+- Configure job: { jobName: "Job", toolController: "TC1", stock: "0,0,0,100,100,50" }`,
+    {
+      jobName: z.string().describe('Name of the Path Job to configure'),
+      toolController: z.string().optional().describe('Name of the tool controller'),
+      stock: z.string().optional().describe('Stock specification'),
+    },
+    async (input) => {
+      const { jobName, toolController, stock } = input;
+
+      const code = `
+from llm_bridge.path_handlers import handle_configure_path_job
+import json
+params = json.loads('${JSON.stringify({ jobName, toolController: toolController || null, stock: stock || null })}')
+result = handle_configure_path_job(
+    job_name=params['jobName'],
+    tool_controller=params['toolController'],
+    stock=params['stock']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatPathJobCreation(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function deletePathJobTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'delete_path_job',
+    `Delete a Path Job from the document.
+
+Parameters:
+- jobName (required): Name of the Path Job to delete
+
+Returns:
+- success: Whether the job was deleted
+- jobName: Name of the deleted job
+- message: Status message
+
+Use this tool to remove an unwanted Path Job.
+
+Example:
+- Delete job: { jobName: "Job" }`,
+    {
+      jobName: z.string().describe('Name of the Path Job to delete'),
+    },
+    async (input) => {
+      const { jobName } = input;
+
+      const code = `
+from llm_bridge.path_handlers import handle_delete_path_job
+import json
+params = json.loads('${JSON.stringify({ jobName })}')
+result = handle_delete_path_job(
+    job_name=params['jobName']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatPathJobCreation(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function listPathJobsTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'list_path_jobs',
+    `List all Path Jobs in the active document.
+
+Returns:
+- success: Whether the query was successful
+- jobCount: Number of jobs found
+- jobs: Array of job objects with name, label, operation count, and status
+- message: Status message
+
+Use this tool to see all available Path Jobs before creating or modifying operations.
+
+Example:
+- List jobs: {}`,
+    {
+    },
+    async () => {
+      const code = `
+from llm_bridge.path_handlers import handle_list_path_jobs
+import json
+result = handle_list_path_jobs()
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatPathJobList(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function createPathToolTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_path_tool',
+    `Create a new Path Tool definition.
+
+Parameters:
+- name (required): Name for the tool
+- toolType (required): Tool type - "endmill", "ball_endmill", "chamfer", "v-bit", "drill", "tap"
+- diameter (required): Tool diameter (e.g., 10 for 10mm)
+- cuttingEdgeAngle (optional): Cutting edge angle in degrees (for chamfer/v-bit)
+
+Returns:
+- success: Whether the tool was created
+- toolName: Internal name of the tool
+- toolLabel: User-friendly label
+- diameter: Tool diameter
+- message: Status message
+
+Use this tool to define cutting tools for CNC operations.
+
+Example:
+- Create endmill: { name: "10mm Endmill", toolType: "endmill", diameter: 10 }
+- Create ball endmill: { name: "6mm Ball", toolType: "ball_endmill", diameter: 6 }
+- Create chamfer: { name: "Chamfer 90", toolType: "chamfer", diameter: 10, cuttingEdgeAngle: 90 }`,
+    {
+      name: z.string().describe('Name for the tool'),
+      toolType: z.enum(['endmill', 'ball_endmill', 'chamfer', 'v-bit', 'drill', 'tap']).describe('Tool type'),
+      diameter: z.number().describe('Tool diameter'),
+      cuttingEdgeAngle: z.number().optional().describe('Cutting edge angle in degrees'),
+    },
+    async (input) => {
+      const { name, toolType, diameter, cuttingEdgeAngle } = input;
+
+      const code = `
+from llm_bridge.path_handlers import handle_create_path_tool
+import json
+params = json.loads('${JSON.stringify({ name, toolType, diameter, cuttingEdgeAngle: cuttingEdgeAngle || null })}')
+result = handle_create_path_tool(
+    name=params['name'],
+    tool_type=params['toolType'],
+    diameter=params['diameter'],
+    cutting_edge_angle=params['cuttingEdgeAngle']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatPathToolCreation(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function createPathToolbitTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_path_toolbit',
+    `Create a Path ToolBit from geometry.
+
+Parameters:
+- geometry (required): Tool bit geometry specification
+  - type: "cylinder" or "cone"
+  - diameter: Diameter for cylinder (required for cylinder)
+  - tipDiameter: Tip diameter (required for cone)
+  - length: Tool length
+  - cuttingEdgeLength: Length of cutting edge
+- name (optional): Name for the tool bit. If omitted, auto-generated.
+
+Returns:
+- success: Whether the tool bit was created
+- toolbitName: Internal name of the tool bit
+- toolbitLabel: User-friendly label
+- geometry: Geometry parameters used
+- message: Status message
+
+Use this tool to create custom tool definitions from geometric shapes.
+
+Example:
+- Cylinder tool: { geometry: { type: "cylinder", diameter: 10, length: 50, cuttingEdgeLength: 20 } }
+- Cone tool: { geometry: { type: "cone", tipDiameter: 5, diameter: 10, length: 50, cuttingEdgeLength: 20 } }`,
+    {
+      geometry: z.object({
+        type: z.enum(['cylinder', 'cone']).describe('Tool bit geometry type'),
+        diameter: z.number().optional().describe('Diameter for cylinder type'),
+        tipDiameter: z.number().optional().describe('Tip diameter for cone type'),
+        length: z.number().describe('Tool length'),
+        cuttingEdgeLength: z.number().describe('Length of cutting edge'),
+      }).describe('Tool bit geometry specification'),
+      name: z.string().optional().describe('Name for the tool bit'),
+    },
+    async (input) => {
+      const { geometry, name } = input;
+
+      const code = `
+from llm_bridge.path_handlers import handle_create_path_toolbit
+import json
+params = json.loads('${JSON.stringify({ geometry, name: name || null })}')
+result = handle_create_path_toolbit(
+    geometry=params['geometry'],
+    name=params['name']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatPathToolCreation(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function createToolControllerTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_tool_controller',
+    `Create a Tool Controller for a Path Job.
+
+Parameters:
+- jobName (required): Name of the Path Job
+- tool (required): Name of the tool or tool bit to use
+- speed (optional): Spindle speed in RPM (e.g., 3000)
+- feedRate (optional): Feed rate (e.g., "500" or "500mm/min")
+
+Returns:
+- success: Whether the tool controller was created
+- toolControllerName: Internal name of the tool controller
+- jobName: Name of the parent job
+- tool: Tool being used
+- speed: Spindle speed
+- feedRate: Feed rate
+- message: Status message
+
+Use this tool to add a tool with cutting parameters to a Path Job.
+
+Example:
+- Create controller: { jobName: "Job", tool: "10mm Endmill", speed: 3000, feedRate: "500mm/min" }`,
+    {
+      jobName: z.string().describe('Name of the Path Job'),
+      tool: z.string().describe('Name of the tool or tool bit'),
+      speed: z.number().optional().describe('Spindle speed in RPM'),
+      feedRate: z.union([z.string(), z.number()]).optional().describe('Feed rate'),
+    },
+    async (input) => {
+      const { jobName, tool, speed, feedRate } = input;
+
+      const code = `
+from llm_bridge.path_handlers import handle_create_tool_controller
+import json
+params = json.loads('${JSON.stringify({ jobName, tool, speed: speed || null, feedRate: feedRate || null })}')
+result = handle_create_tool_controller(
+    job_name=params['jobName'],
+    tool=params['tool'],
+    speed=params['speed'],
+    feed_rate=params['feedRate']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatPathToolCreation(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function listPathToolsTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'list_path_tools',
+    `List all Path Tools in the active document.
+
+Returns:
+- success: Whether the query was successful
+- toolCount: Number of tools found
+- tools: Array of tool objects with name, label, type, and diameter
+- message: Status message
+
+Use this tool to see all available tools before creating operations.
+
+Example:
+- List tools: {}`,
+    {
+    },
+    async () => {
+      const code = `
+from llm_bridge.path_handlers import handle_list_path_tools
+import json
+result = handle_list_path_tools()
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatPathToolList(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function createPathProfileTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_path_profile',
+    `Create a Profile operation on edges of a model.
+
+Parameters:
+- baseObject (required): Name of the base model object
+- jobName (optional): Name of the Path Job to add operation to
+- name (optional): Name for the profile operation. If omitted, auto-generated.
+- offsetSide (optional): Side to profile - "outside", "inside", "on" (default: "outside")
+
+Returns:
+- success: Whether the operation was created
+- operationName: Internal name of the operation
+- operationLabel: User-friendly label
+- jobName: Name of the parent job
+- baseObject: Base model object
+- message: Status message
+
+Use this tool to create a contour profile along edges of a model.
+
+Example:
+- Profile outside: { baseObject: "Body001", jobName: "Job", offsetSide: "outside" }
+- Profile inside: { baseObject: "Body001", jobName: "Job", offsetSide: "inside" }`,
+    {
+      baseObject: z.string().describe('Name of the base model object'),
+      jobName: z.string().optional().describe('Name of the Path Job'),
+      name: z.string().optional().describe('Name for the profile operation'),
+      offsetSide: z.enum(['outside', 'inside', 'on']).optional().describe('Side to profile'),
+    },
+    async (input) => {
+      const { baseObject, jobName, name, offsetSide } = input;
+
+      const code = `
+from llm_bridge.path_handlers import handle_create_path_profile
+import json
+params = json.loads('${JSON.stringify({ baseObject, jobName: jobName || null, name: name || null, offsetSide: offsetSide || 'outside' })}')
+result = handle_create_path_profile(
+    base_object=params['baseObject'],
+    job_name=params['jobName'],
+    name=params['name'],
+    offset_side=params['offsetSide']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatPathOperation(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function createPathPocketTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_path_pocket',
+    `Create a Pocket operation inside a boundary.
+
+Parameters:
+- baseObject (required): Name of the base model object or face
+- jobName (optional): Name of the Path Job to add operation to
+- name (optional): Name for the pocket operation. If omitted, auto-generated.
+
+Returns:
+- success: Whether the operation was created
+- operationName: Internal name of the operation
+- operationLabel: User-friendly label
+- jobName: Name of the parent job
+- baseObject: Base model object or face
+- message: Status message
+
+Use this tool to create a pocketing operation to clear material inside a boundary.
+
+Example:
+- Pocket operation: { baseObject: "Body001.Face5", jobName: "Job" }`,
+    {
+      baseObject: z.string().describe('Name of the base model object or face'),
+      jobName: z.string().optional().describe('Name of the Path Job'),
+      name: z.string().optional().describe('Name for the pocket operation'),
+    },
+    async (input) => {
+      const { baseObject, jobName, name } = input;
+
+      const code = `
+from llm_bridge.path_handlers import handle_create_path_pocket
+import json
+params = json.loads('${JSON.stringify({ baseObject, jobName: jobName || null, name: name || null })}')
+result = handle_create_path_pocket(
+    base_object=params['baseObject'],
+    job_name=params['jobName'],
+    name=params['name']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatPathOperation(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function createPathDrillTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_path_drill',
+    `Create a Drill operation at point locations.
+
+Parameters:
+- centers (required): Array of center points for drill operations [{x, y, z}, ...]
+- jobName (optional): Name of the Path Job to add operation to
+- name (optional): Name for the drill operation. If omitted, auto-generated.
+- cycle (optional): Drill cycle - " drilling", " peck", " deep", " break", " tap" (default: "drilling")
+
+Returns:
+- success: Whether the operation was created
+- operationName: Internal name of the operation
+- operationLabel: User-friendly label
+- jobName: Name of the parent job
+- centerCount: Number of drill points
+- message: Status message
+
+Use this tool to create drilling operations at specified locations.
+
+Example:
+- Drill holes: { centers: [{x: 10, y: 10, z: 0}, {x: 50, y: 50, z: 0}], jobName: "Job" }`,
+    {
+      centers: z.array(z.object({
+        x: z.number(),
+        y: z.number(),
+        z: z.number(),
+      })).describe('Array of center points for drill operations'),
+      jobName: z.string().optional().describe('Name of the Path Job'),
+      name: z.string().optional().describe('Name for the drill operation'),
+      cycle: z.enum(['drilling', 'peck', 'deep', 'break', 'tap']).optional().describe('Drill cycle type'),
+    },
+    async (input) => {
+      const { centers, jobName, name, cycle } = input;
+
+      const code = `
+from llm_bridge.path_handlers import handle_create_path_drill
+import json
+params = json.loads('${JSON.stringify({ centers, jobName: jobName || null, name: name || null, cycle: cycle || 'drilling' })}')
+result = handle_create_path_drill(
+    centers=params['centers'],
+    job_name=params['jobName'],
+    name=params['name'],
+    cycle=params['cycle']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatPathOperation(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function createPathFaceTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_path_face',
+    `Create a Face operation on a surface.
+
+Parameters:
+- baseObject (required): Name of the base model object or face
+- jobName (optional): Name of the Path Job to add operation to
+- name (optional): Name for the face operation. If omitted, auto-generated.
+- cutClamp (optional): Maximum distance from face to cut (default: 1.0)
+
+Returns:
+- success: Whether the operation was created
+- operationName: Internal name of the operation
+- operationLabel: User-friendly label
+- jobName: Name of the parent job
+- baseObject: Base model object or face
+- message: Status message
+
+Use this tool to create a face milling operation on a planar surface.
+
+Example:
+- Face top: { baseObject: "Body001.Face6", jobName: "Job" }`,
+    {
+      baseObject: z.string().describe('Name of the base model object or face'),
+      jobName: z.string().optional().describe('Name of the Path Job'),
+      name: z.string().optional().describe('Name for the face operation'),
+      cutClamp: z.number().optional().describe('Maximum distance from face to cut'),
+    },
+    async (input) => {
+      const { baseObject, jobName, name, cutClamp } = input;
+
+      const code = `
+from llm_bridge.path_handlers import handle_create_path_face
+import json
+params = json.loads('${JSON.stringify({ baseObject, jobName: jobName || null, name: name || null, cutClamp: cutClamp || null })}')
+result = handle_create_path_face(
+    base_object=params['baseObject'],
+    job_name=params['jobName'],
+    name=params['name'],
+    cut_clamp=params['cutClamp']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatPathOperation(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function createPathDressupRadiusTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_path_dressup_radius',
+    `Add radius compensation (corner radius) dressup to a path operation.
+
+Parameters:
+- jobName (required): Name of the Path Job or operation to dress up
+- radiusCompensation (optional): Enable radius compensation (default: true)
+- radius (optional): Corner radius value
+
+Returns:
+- success: Whether the dressup was created
+- dressupName: Internal name of the dressup
+- dressupLabel: User-friendly label
+- baseOperation: Name of the base operation
+- parameters: Dressup parameters
+- message: Status message
+
+Use this tool to add corner radius compensation to compensate for tool diameter.
+
+Example:
+- Add radius dressup: { jobName: "Profile" }`,
+    {
+      jobName: z.string().describe('Name of the Path Job or operation'),
+      radiusCompensation: z.boolean().optional().describe('Enable radius compensation'),
+      radius: z.number().optional().describe('Corner radius value'),
+    },
+    async (input) => {
+      const { jobName, radiusCompensation, radius } = input;
+
+      const code = `
+from llm_bridge.path_handlers import handle_create_path_dressup_radius
+import json
+params = json.loads('${JSON.stringify({ jobName, radiusCompensation: radiusCompensation !== false, radius: radius || null })}')
+result = handle_create_path_dressup_radius(
+    job_name=params['jobName'],
+    radius_compensation=params['radiusCompensation'],
+    radius=params['radius']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatPathDressup(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function createPathDressupTagTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_path_dressup_tag',
+    `Add holding tag dressup to a path operation.
+
+Parameters:
+- jobName (required): Name of the Path Job or operation to dress up
+- tagWidth (optional): Width of holding tags (default: 5)
+- tagHeight (optional): Height of holding tags (default: 2)
+- tagSpacing (optional): Spacing between tags
+
+Returns:
+- success: Whether the dressup was created
+- dressupName: Internal name of the dressup
+- dressupLabel: User-friendly label
+- baseOperation: Name of the base operation
+- parameters: Dressup parameters
+- message: Status message
+
+Use this tool to add holding tags to keep parts attached during machining.
+
+Example:
+- Add tags: { jobName: "Profile", tagWidth: 5, tagHeight: 2 }`,
+    {
+      jobName: z.string().describe('Name of the Path Job or operation'),
+      tagWidth: z.number().optional().describe('Width of holding tags'),
+      tagHeight: z.number().optional().describe('Height of holding tags'),
+      tagSpacing: z.number().optional().describe('Spacing between tags'),
+    },
+    async (input) => {
+      const { jobName, tagWidth, tagHeight, tagSpacing } = input;
+
+      const code = `
+from llm_bridge.path_handlers import handle_create_path_dressup_tag
+import json
+params = json.loads('${JSON.stringify({ jobName, tagWidth: tagWidth || null, tagHeight: tagHeight || null, tagSpacing: tagSpacing || null })}')
+result = handle_create_path_dressup_tag(
+    job_name=params['jobName'],
+    tag_width=params['tagWidth'],
+    tag_height=params['tagHeight'],
+    tag_spacing=params['tagSpacing']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatPathDressup(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function createPathDressupLeadOffTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_path_dressup_leadoff',
+    `Add lead-in/lead-out dressup to a path operation.
+
+Parameters:
+- jobName (required): Name of the Path Job or operation to dress up
+- leadIn (optional): Lead-in specification { length, radius, angle }
+- leadOut (optional): Lead-out specification { length, radius, angle }
+
+Returns:
+- success: Whether the dressup was created
+- dressupName: Internal name of the dressup
+- dressupLabel: User-friendly label
+- baseOperation: Name of the base operation
+- parameters: Dressup parameters
+- message: Status message
+
+Use this tool to add lead-in and lead-out moves for smoother tool entry/exit.
+
+Example:
+- Add lead off: { jobName: "Profile", leadIn: { length: 10, radius: 5, angle: 90 } }`,
+    {
+      jobName: z.string().describe('Name of the Path Job or operation'),
+      leadIn: z.object({
+        length: z.number(),
+        radius: z.number(),
+        angle: z.number(),
+      }).optional().describe('Lead-in specification'),
+      leadOut: z.object({
+        length: z.number(),
+        radius: z.number(),
+        angle: z.number(),
+      }).optional().describe('Lead-out specification'),
+    },
+    async (input) => {
+      const { jobName, leadIn, leadOut } = input;
+
+      const code = `
+from llm_bridge.path_handlers import handle_create_path_dressup_leadoff
+import json
+params = json.loads('${JSON.stringify({ jobName, leadIn: leadIn || null, leadOut: leadOut || null })}')
+result = handle_create_path_dressup_leadoff(
+    job_name=params['jobName'],
+    lead_in=params['leadIn'],
+    lead_out=params['leadOut']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatPathDressup(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function exportGCodeTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'export_gcode',
+    `Export G-code from a Path Job.
+
+Parameters:
+- jobName (required): Name of the Path Job to export
+- filePath (required): Output file path (e.g., "/path/to/output.nc")
+
+Returns:
+- success: Whether the export was successful
+- filePath: Output file path
+- lineCount: Number of G-code lines
+- toolChanges: Number of tool changes
+- rapidMoves: Number of rapid moves
+- feedMoves: Number of feed moves
+- message: Status message
+
+Use this tool to generate G-code output from a Path Job for CNC machining.
+
+Example:
+- Export G-code: { jobName: "Job", filePath: "/tmp/cnc_program.nc" }`,
+    {
+      jobName: z.string().describe('Name of the Path Job to export'),
+      filePath: z.string().describe('Output file path'),
+    },
+    async (input) => {
+      const { jobName, filePath } = input;
+
+      const code = `
+from llm_bridge.path_handlers import handle_export_gcode
+import json
+params = json.loads('${JSON.stringify({ jobName, filePath })}')
+result = handle_export_gcode(
+    job_name=params['jobName'],
+    file_path=params['filePath']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatGCodeExport(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function simulatePathTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'simulate_path',
+    `Get path simulation data for a Path Job.
+
+Parameters:
+- jobName (required): Name of the Path Job to simulate
+
+Returns:
+- success: Whether the simulation was successful
+- jobName: Name of the job
+- duration: Estimated machining duration in seconds
+- toolpathLength: Total toolpath length
+- rapidLength: Total rapid move length
+- feedLength: Total feed move length
+- toolChanges: Number of tool changes
+- message: Status message
+
+Use this tool to get simulation statistics for a Path Job.
+
+Example:
+- Simulate path: { jobName: "Job" }`,
+    {
+      jobName: z.string().describe('Name of the Path Job to simulate'),
+    },
+    async (input) => {
+      const { jobName } = input;
+
+      const code = `
+from llm_bridge.path_handlers import handle_simulate_path
+import json
+params = json.loads('${JSON.stringify({ jobName })}')
+result = handle_simulate_path(
+    job_name=params['jobName']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatPathSimulation(parsed.data);
         return {
           content: [
             {
