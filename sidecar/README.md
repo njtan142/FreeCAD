@@ -3811,6 +3811,65 @@ Create a Bezier curve through control points.
 
 ---
 
+##### `create_wire(points: Array<{x: number, y: number, z?: number}>, closed?: boolean, name?: string)`
+
+Create a polyline/wire (connected line segments) from a series of points.
+
+**Parameters:**
+- `points` (required): Array of 3D points [{x, y, z}, ...] - minimum 2 points
+- `closed` (optional): Whether to close the wire (connect last to first). Default: false
+- `name` (optional): Name for the wire object
+
+**Response format:**
+```json
+{
+  "success": true,
+  "objectName": "Wire",
+  "objectType": "Wire",
+  "pointCount": 4,
+  "closed": false,
+  "message": "Created Wire 'Wire' with 4 points"
+}
+```
+
+**Example usage:**
+```typescript
+// Create an open polyline
+{
+  name: "create_wire",
+  arguments: {
+    points: [
+      {x: 0, y: 0, z: 0},
+      {x: 50, y: 0, z: 0},
+      {x: 50, y: 50, z: 0},
+      {x: 100, y: 50, z: 0}
+    ]
+  }
+}
+
+// Create a closed shape (rectangle)
+{
+  name: "create_wire",
+  arguments: {
+    points: [
+      {x: 0, y: 0, z: 0},
+      {x: 100, y: 0, z: 0},
+      {x: 100, y: 100, z: 0},
+      {x: 0, y: 100, z: 0}
+    ],
+    closed: true,
+    name: "RectangleOutline"
+  }
+}
+```
+
+**Natural language examples:**
+- "Create a wire through these points"
+- "Draw a polyline from (0,0) to (50,0) to (50,50)"
+- "Create a closed rectangle outline"
+
+---
+
 #### Dimension and Annotation Tools
 
 ##### `create_linear_dimension(startX: number, startY: number, startZ: number, endX: number, endY: number, endZ: number, offset?: number | string, name?: string)`
@@ -4444,6 +4503,857 @@ Set the Draft working plane.
 5. Add part geometry in each view
 6. Add dimensions and annotations
 7. List all draft objects to verify completeness
+```
+
+---
+
+### TechDraw Workbench Tools
+
+The TechDraw workbench tools allow you to create 2D drawing pages from 3D models, add dimensions, annotations, and export technical drawings for manufacturing or documentation.
+
+**TechDraw Overview:**
+
+TechDraw is FreeCAD's dedicated workbench for generating 2D drawings from 3D models. It supports multiple projection types (Third Angle and First Angle), standard paper sizes, and parametric views that update when the source 3D model changes.
+
+**Drawing Workflow (3D Model → 2D Drawing):**
+
+```
+1. 3D Model (Part/PartDesign) → Create drawing page with template
+2. Create projection views (front, top, side, isometric, section)
+3. Add dimensions (linear, radial, diameter, angular)
+4. Add annotations (text, balloons, symbols)
+5. Export to SVG/PDF for distribution
+```
+
+**View Types Reference:**
+
+| View Type | Description | Use Case |
+|-----------|-------------|----------|
+| Front View | Primary elevation view | Main detail specification |
+| Top View | Plan view from above | Floor plans, top-down layouts |
+| Side View | Left or right elevation | Width/depth specifications |
+| Isometric View | 3D representation at 30° | Visual documentation |
+| Section View | Cut-through view | Internal features |
+| Detail View | Enlarged portion | Showing fine details |
+| Projection Group | Multiple views arranged | Standard 3-view drawings |
+
+**Export Formats:**
+
+| Format | Description | Best For |
+|--------|-------------|----------|
+| SVG | Scalable Vector Graphics | Web, printable documents |
+| PDF | Portable Document Format | Manufacturing, archival |
+
+---
+
+#### Page Management Tools
+
+##### `create_drawing_page(template?: string, paperSize?: string)`
+
+Create a new TechDraw page with a standard template.
+
+**Parameters:**
+- `template` (optional): Template name. Default: "A4_Landscape". Options: "A4_Landscape", "A4_Portrait", "A3_Landscape", "A3_Portrait", "Letter_Landscape", "Letter_Portrait"
+- `paperSize` (optional): Paper size override. Format: "A4", "A3", "Letter", etc.
+
+**Response format:**
+```json
+{
+  "success": true,
+  "pageName": "Page",
+  "template": "A4_Landscape",
+  "paperSize": "A4",
+  "message": "Created TechDraw page 'Page' with A4_Landscape template"
+}
+```
+
+**Example usage:**
+```typescript
+{
+  name: "create_drawing_page",
+  arguments: {}
+}
+
+// Create A3 landscape page
+{
+  name: "create_drawing_page",
+  arguments: {
+    template: "A3_Landscape"
+  }
+}
+```
+
+**Natural language examples:**
+- "Create a new drawing page"
+- "Start a new A4 landscape drawing"
+- "Create an A3 page for the drawing"
+
+---
+
+##### `list_drawing_pages()`
+
+List all TechDraw pages in the current document.
+
+**Parameters:** None
+
+**Response format:**
+```json
+{
+  "success": true,
+  "pages": [
+    {
+      "name": "Page",
+      "template": "A4_Landscape",
+      "viewCount": 3
+    },
+    {
+      "name": "Page001",
+      "template": "A3_Landscape",
+      "viewCount": 1
+    }
+  ],
+  "pageCount": 2,
+  "message": "Found 2 TechDraw page(s)"
+}
+```
+
+**Example usage:**
+```typescript
+{
+  name: "list_drawing_pages",
+  arguments: {}
+}
+```
+
+**Natural language examples:**
+- "Show all drawing pages"
+- "What pages do I have?"
+- "List all TechDraw pages"
+
+---
+
+##### `delete_drawing_page(pageName: string)`
+
+Delete a TechDraw page.
+
+**Parameters:**
+- `pageName` (required): Name of the page to delete
+
+**Response format:**
+```json
+{
+  "success": true,
+  "pageName": "Page",
+  "message": "Deleted TechDraw page 'Page'"
+}
+```
+
+**Example usage:**
+```typescript
+{
+  name: "delete_drawing_page",
+  arguments: {
+    pageName: "Page"
+  }
+}
+```
+
+**Natural language examples:**
+- "Delete the drawing page"
+- "Remove this page"
+- "Delete Page001"
+
+---
+
+#### View Creation Tools
+
+##### `create_standard_view(sourceObject: string, viewName?: string, projectionType?: "Third" | "First")`
+
+Create a standard projection view of a 3D object.
+
+**Parameters:**
+- `sourceObject` (required): Name of the 3D object to project
+- `viewName` (optional): Name for the view. If omitted, auto-generated
+- `projectionType` (optional): Projection standard - "Third" (Third Angle, default) or "First" (First Angle)
+
+**Response format:**
+```json
+{
+  "success": true,
+  "viewName": "View",
+  "sourceObject": "Body",
+  "projectionType": "Third",
+  "position": {"x": 100, "y": 100},
+  "message": "Created projection view of 'Body' (Third Angle)"
+}
+```
+
+**Example usage:**
+```typescript
+{
+  name: "create_standard_view",
+  arguments: {
+    sourceObject: "Body"
+  }
+}
+
+// First angle projection
+{
+  name: "create_standard_view",
+  arguments: {
+    sourceObject: "Part",
+    projectionType: "First"
+  }
+}
+```
+
+**Natural language examples:**
+- "Add a front view of this part"
+- "Create a third-angle projection of the body"
+- "Project the assembly using first angle notation"
+
+**Notes:**
+- Third Angle projection: Left view is left, top view is top (US standard)
+- First Angle projection: Left view is right, top view is top (European standard)
+
+---
+
+##### `create_isometric_view(sourceObject: string, viewName?: string)`
+
+Create an isometric (3D representation) view of an object.
+
+**Parameters:**
+- `sourceObject` (required): Name of the 3D object
+- `viewName` (optional): Name for the view. If omitted, auto-generated
+
+**Response format:**
+```json
+{
+  "success": true,
+  "viewName": "IsoView",
+  "sourceObject": "Body",
+  "message": "Created isometric view of 'Body'"
+}
+```
+
+**Example usage:**
+```typescript
+{
+  name: "create_isometric_view",
+  arguments: {
+    sourceObject: "Body"
+  }
+}
+
+// Named isometric view
+{
+  name: "create_isometric_view",
+  arguments: {
+    sourceObject: "Assembly",
+    viewName: "MainIso"
+  }
+}
+```
+
+**Natural language examples:**
+- "Create an isometric view"
+- "Show me an isometric of this part"
+- "Add an isometric view to the drawing"
+
+---
+
+##### `create_top_view(sourceObject: string, viewName?: string)`
+
+Create a top (plan) view - looking down from above.
+
+**Parameters:**
+- `sourceObject` (required): Name of the 3D object
+- `viewName` (optional): Name for the view
+
+**Response format:**
+```json
+{
+  "success": true,
+  "viewName": "TopView",
+  "sourceObject": "Body",
+  "message": "Created top view of 'Body'"
+}
+```
+
+**Example usage:**
+```typescript
+{
+  name: "create_top_view",
+  arguments: {
+    sourceObject: "Body"
+  }
+}
+```
+
+**Natural language examples:**
+- "Add a top view"
+- "Create a plan view from above"
+- "Show the top orthographic projection"
+
+---
+
+##### `create_front_view(sourceObject: string, viewName?: string)`
+
+Create a front view - looking at the front face.
+
+**Parameters:**
+- `sourceObject` (required): Name of the 3D object
+- `viewName` (optional): Name for the view
+
+**Response format:**
+```json
+{
+  "success": true,
+  "viewName": "FrontView",
+  "sourceObject": "Body",
+  "message": "Created front view of 'Body'"
+}
+```
+
+**Example usage:**
+```typescript
+{
+  name: "create_front_view",
+  arguments: {
+    sourceObject: "Body"
+  }
+}
+```
+
+**Natural language examples:**
+- "Add a front view"
+- "Create elevation from front"
+- "Show the front elevation"
+
+---
+
+##### `create_side_view(sourceObject: string, side: "Left" | "Right", viewName?: string)`
+
+Create a left or right side view.
+
+**Parameters:**
+- `sourceObject` (required): Name of the 3D object
+- `side` (required): "Left" or "Right"
+- `viewName` (optional): Name for the view
+
+**Response format:**
+```json
+{
+  "success": true,
+  "viewName": "RightSideView",
+  "sourceObject": "Body",
+  "side": "Right",
+  "message": "Created right side view of 'Body'"
+}
+```
+
+**Example usage:**
+```typescript
+{
+  name: "create_side_view",
+  arguments: {
+    sourceObject: "Body",
+    side: "Right"
+  }
+}
+
+// Left side view
+{
+  name: "create_side_view",
+  arguments: {
+    sourceObject: "Body",
+    side: "Left",
+    viewName: "LeftSide"
+  }
+}
+```
+
+**Natural language examples:**
+- "Add a right side view"
+- "Create a left elevation"
+- "Show the left side orthographic projection"
+
+---
+
+##### `create_section_view(sourceObject: string, cutLine: {start: {x: number, y: number}, end: {x: number, y: number}}, viewName?: string)`
+
+Create a section (cut-through) view showing internal features.
+
+**Parameters:**
+- `sourceObject` (required): Name of the 3D object
+- `cutLine` (required): Start and end points of the cut line as JSON `{start: {x, y}, end: {x, y}}`
+- `viewName` (optional): Name for the view
+
+**Response format:**
+```json
+{
+  "success": true,
+  "viewName": "SectionView",
+  "sourceObject": "Body",
+  "cutLine": {"start": {"x": 0, "y": 50}, "end": {"x": 100, "y": 50}},
+  "message": "Created section view of 'Body'"
+}
+```
+
+**Example usage:**
+```typescript
+{
+  name: "create_section_view",
+  arguments: {
+    sourceObject: "Body",
+    cutLine: {
+      start: {x: 0, y: 50},
+      end: {x: 100, y: 50}
+    }
+  }
+}
+```
+
+**Natural language examples:**
+- "Create a cross-section view"
+- "Section through the middle horizontally"
+- "Show a vertical cut through the center"
+
+**Notes:**
+- Section views reveal internal structure
+- Hatch patterns are applied to cut surfaces automatically
+
+---
+
+##### `create_projection_group(sourceObject: string, views: string[], viewName?: string)`
+
+Create a projection group with multiple related views.
+
+**Parameters:**
+- `sourceObject` (required): Name of the 3D object
+- `views` (required): Array of view types to include, e.g., `["Front", "Top", "RightSide"]`
+- `viewName` (optional): Name for the projection group
+
+**Response format:**
+```json
+{
+  "success": true,
+  "groupName": "ProjectionGroup",
+  "views": ["Front", "Top", "RightSide"],
+  "sourceObject": "Body",
+  "message": "Created projection group with 3 views"
+}
+```
+
+**Example usage:**
+```typescript
+{
+  name: "create_projection_group",
+  arguments: {
+    sourceObject: "Body",
+    views: ["Front", "Top", "RightSide"]
+  }
+}
+
+// Include isometric
+{
+  name: "create_projection_group",
+  arguments: {
+    sourceObject: "Assembly",
+    views: ["Front", "Top", "RightSide", "Isometric"]
+  }
+}
+```
+
+**Natural language examples:**
+- "Create front, top, and side views"
+- "Add standard three-view projection"
+- "Generate a complete projection group with isometric"
+
+---
+
+#### Dimension Tools
+
+##### `add_linear_dimension(pageName: string, viewName: string, startPoint: {x: number, y: number}, endPoint: {x: number, y: number})`
+
+Add a linear (aligned) dimension between two points in a view.
+
+**Parameters:**
+- `pageName` (required): Name of the TechDraw page
+- `viewName` (required): Name of the view to dimension
+- `startPoint` (required): Start point as `{x, y}` coordinates in the view
+- `endPoint` (required): End point as `{x, y}` coordinates in the view
+
+**Response format:**
+```json
+{
+  "success": true,
+  "dimensionName": "LinearDimension",
+  "measurement": "50.00mm",
+  "startPoint": {"x": 10, "y": 20},
+  "endPoint": {"x": 60, "y": 20},
+  "message": "Added LinearDimension: 50.00mm"
+}
+```
+
+**Example usage:**
+```typescript
+{
+  name: "add_linear_dimension",
+  arguments: {
+    pageName: "Page",
+    viewName: "FrontView",
+    startPoint: {"x": 10, "y": 20},
+    endPoint: {"x": 60, "y": 20}
+  }
+}
+```
+
+**Natural language examples:**
+- "Add a dimension from point (10, 20) to (60, 20)"
+- "Dimension this edge"
+- "Add a 50mm dimension between these points"
+
+---
+
+##### `add_radial_dimension(pageName: string, viewName: string, circleName: string)`
+
+Add a radial (radius) dimension to a circle in a view.
+
+**Parameters:**
+- `pageName` (required): Name of the TechDraw page
+- `viewName` (required): Name of the view containing the circle
+- `circleName` (required): Name of the circle object in the 3D model
+
+**Response format:**
+```json
+{
+  "success": true,
+  "dimensionName": "RadiusDimension",
+  "measurement": "10.00mm",
+  "circleName": "Hole",
+  "message": "Added RadiusDimension: 10.00mm"
+}
+```
+
+**Example usage:**
+```typescript
+{
+  name: "add_radial_dimension",
+  arguments: {
+    pageName: "Page",
+    viewName: "TopView",
+    circleName: "Hole"
+  }
+}
+```
+
+**Natural language examples:**
+- "Add radius dimension to this circle"
+- "Show the diameter as a radius"
+- "Dimension the hole with radius R"
+
+---
+
+##### `add_diameter_dimension(pageName: string, viewName: string, circleName: string)`
+
+Add a diameter dimension to a circle in a view.
+
+**Parameters:**
+- `pageName` (required): Name of the TechDraw page
+- `viewName` (required): Name of the view containing the circle
+- `circleName` (required): Name of the circle object
+
+**Response format:**
+```json
+{
+  "success": true,
+  "dimensionName": "DiameterDimension",
+  "measurement": "20.00mm",
+  "circleName": "Hole",
+  "message": "Added DiameterDimension: 20.00mm"
+}
+```
+
+**Example usage:**
+```typescript
+{
+  name: "add_diameter_dimension",
+  arguments: {
+    pageName: "Page",
+    viewName: "TopView",
+    circleName: "Hole"
+  }
+}
+```
+
+**Natural language examples:**
+- "Add diameter dimension to this circle"
+- "Show this as diameter not radius"
+- "Add a Ø20mm diameter callout"
+
+---
+
+##### `add_angular_dimension(pageName: string, viewName: string, line1Name: string, line2Name: string)`
+
+Add an angular dimension between two lines in a view.
+
+**Parameters:**
+- `pageName` (required): Name of the TechDraw page
+- `viewName` (required): Name of the view
+- `line1Name` (required): Name of first line object in 3D model
+- `line2Name` (required): Name of second line object in 3D model
+
+**Response format:**
+```json
+{
+  "success": true,
+  "dimensionName": "AngularDimension",
+  "measurement": "45.00deg",
+  "line1Name": "Line1",
+  "line2Name": "Line2",
+  "message": "Added AngularDimension: 45.00deg"
+}
+```
+
+**Example usage:**
+```typescript
+{
+  name: "add_angular_dimension",
+  arguments: {
+    pageName: "Page",
+    viewName: "FrontView",
+    line1Name: "Line1",
+    line2Name: "Line2"
+  }
+}
+```
+
+**Natural language examples:**
+- "Add angle between these lines"
+- "Show this angle as 45 degrees"
+- "Dimension the corner angle"
+
+---
+
+#### Annotation Tools
+
+##### `add_text_annotation(pageName: string, text: string, x: number, y: number)`
+
+Add a text annotation to a TechDraw page.
+
+**Parameters:**
+- `pageName` (required): Name of the TechDraw page
+- `text` (required): Text content to display
+- `x` (required): X coordinate position on the page
+- `y` (required): Y coordinate position on the page
+
+**Response format:**
+```json
+{
+  "success": true,
+  "textName": "Text",
+  "text": "PART-A",
+  "position": {"x": 20, "y": 50},
+  "message": "Added text 'PART-A' at (20, 50)"
+}
+```
+
+**Example usage:**
+```typescript
+{
+  name: "add_text_annotation",
+  arguments: {
+    pageName: "Page",
+    text: "PART-A",
+    x: 20,
+    y: 50
+  }
+}
+
+// Title block text
+{
+  name: "add_text_annotation",
+  arguments: {
+    pageName: "Page",
+    text: "DRAWING TITLE",
+    x: 100,
+    y: 280,
+    name: "Title"
+  }
+}
+```
+
+**Natural language examples:**
+- "Add title 'Part A' here"
+- "Label this view"
+- "Add revision text to the title block"
+
+---
+
+##### `add_balloon(pageName: string, viewName: string, targetPoint: {x: number, y: number}, text?: string)`
+
+Add a balloon annotation (circled number) to identify components.
+
+**Parameters:**
+- `pageName` (required): Name of the TechDraw page
+- `viewName` (required): Name of the view
+- `targetPoint` (required): Target point as `{x, y}` coordinates in the view
+- `text` (optional): Balloon text/number. If omitted, auto-increments
+
+**Response format:**
+```json
+{
+  "success": true,
+  "balloonName": "Balloon",
+  "text": "1",
+  "targetPoint": {"x": 50, "y": 50},
+  "message": "Added balloon '1' at (50, 50)"
+}
+```
+
+**Example usage:**
+```typescript
+{
+  name: "add_balloon",
+  arguments: {
+    pageName: "Page",
+    viewName: "IsoView",
+    targetPoint: {"x": 50, "y": 50}
+  }
+}
+
+// Balloon with custom text
+{
+  name: "add_balloon",
+  arguments: {
+    pageName: "Page",
+    viewName: "IsoView",
+    targetPoint: {"x": 50, "y": 50},
+    text: "A"
+  }
+}
+```
+
+**Natural language examples:**
+- "Add balloon to this component"
+- "Number this part"
+- "Add balloon with text 'A' to the main body"
+
+---
+
+#### Export Tools
+
+##### `export_to_svg(pageName: string, outputPath: string)`
+
+Export a TechDraw page to SVG format.
+
+**Parameters:**
+- `pageName` (required): Name of the TechDraw page to export
+- `outputPath` (required): Full path for the output SVG file
+
+**Response format:**
+```json
+{
+  "success": true,
+  "pageName": "Page",
+  "outputPath": "C:/Drawings/part.svg",
+  "message": "Exported 'Page' to C:/Drawings/part.svg"
+}
+```
+
+**Example usage:**
+```typescript
+{
+  name: "export_to_svg",
+  arguments: {
+    pageName: "Page",
+    outputPath: "C:/Drawings/part.svg"
+  }
+}
+```
+
+**Natural language examples:**
+- "Export to SVG"
+- "Save as vector drawing"
+- "Export the drawing to SVG format"
+
+**Notes:**
+- SVG is scalable vector format, ideal for web or print
+- All views and dimensions are preserved
+
+---
+
+##### `export_to_pdf(pageName: string, outputPath: string)`
+
+Export a TechDraw page to PDF format.
+
+**Parameters:**
+- `pageName` (required): Name of the TechDraw page to export
+- `outputPath` (required): Full path for the output PDF file
+
+**Response format:**
+```json
+{
+  "success": true,
+  "pageName": "Page",
+  "outputPath": "C:/Drawings/part.pdf",
+  "message": "Exported 'Page' to C:/Drawings/part.pdf"
+}
+```
+
+**Example usage:**
+```typescript
+{
+  name: "export_to_pdf",
+  arguments: {
+    pageName: "Page",
+    outputPath: "C:/Drawings/part.pdf"
+  }
+}
+```
+
+**Natural language examples:**
+- "Export to PDF"
+- "Generate PDF of drawing"
+- "Save the drawing as PDF"
+
+**Notes:**
+- PDF is ideal for printing and archival
+- Standard format for manufacturing documentation
+
+---
+
+#### Common TechDraw Workflows
+
+**Workflow 1: Basic Part Drawing**
+
+```
+1. Create drawing page: create_drawing_page({ template: "A4_Landscape" })
+2. Create isometric view: create_isometric_view({ sourceObject: "Body" })
+3. Create front view: create_front_view({ sourceObject: "Body" })
+4. Add linear dimension: add_linear_dimension({ pageName: "Page", viewName: "Front", startPoint: {x: 0, y: 0}, endPoint: {x: 50, y: 0} })
+5. Export to PDF: export_to_pdf({ pageName: "Page", outputPath: "drawing.pdf" })
+```
+
+**Workflow 2: Standard Three-View Projection**
+
+```
+1. Create drawing page: create_drawing_page({})
+2. Create projection group: create_projection_group({ sourceObject: "Body", views: ["Front", "Top", "RightSide"] })
+3. Add dimensions to each view
+4. Export to SVG: export_to_svg({ pageName: "Page", outputPath: "drawing.svg" })
+```
+
+**Workflow 3: Detailed Manufacturing Drawing**
+
+```
+1. Create page with A3 template
+2. Create multiple views (isometric, front, top, side, section)
+3. Add all dimensions (linear, radial, diameter, angular)
+4. Add text annotations for part number, revision, tolerances
+5. Add balloons for bill of materials reference
+6. Export to PDF for manufacturing
 ```
 
 ---
