@@ -50,6 +50,10 @@ import {
   formatPatternCreation,
   formatPatternUpdate,
   formatPatternInfo,
+  formatLoftCreation,
+  formatSweepCreation,
+  formatSurfaceOperation,
+  formatSurfaceInfo,
 } from './result-formatters';
 import {
   validateFilePath,
@@ -200,6 +204,7 @@ export function createAgentTools(freeCADBridge: FreeCADBridge) {
     createPolarPatternTool(freeCADBridge),
     createRectangularPatternTool(freeCADBridge),
     createPathPatternTool(freeCADBridge),
+    createTransformLinkTool(freeCADBridge),
     updateLinearPatternTool(freeCADBridge),
     updatePolarPatternTool(freeCADBridge),
     getPatternInfoTool(freeCADBridge),
@@ -232,6 +237,23 @@ export function createAgentTools(freeCADBridge: FreeCADBridge) {
     // Export tools
     exportToSvgTool(freeCADBridge),
     exportToPdfTool(freeCADBridge),
+    // Surface modeling tools
+    // Loft operations
+    createLoftTool(freeCADBridge),
+    createSectionLoftTool(freeCADBridge),
+    // Sweep operations
+    createSweepTool(freeCADBridge),
+    createPipeTool(freeCADBridge),
+    createMultiSweepTool(freeCADBridge),
+    // Surface operations
+    createRuledSurfaceTool(freeCADBridge),
+    createSurfaceFromEdgesTool(freeCADBridge),
+    extendSurfaceTool(freeCADBridge),
+    trimSurfaceTool(freeCADBridge),
+    // Utilities
+    getSurfaceInfoTool(freeCADBridge),
+    listSurfacesTool(freeCADBridge),
+    validateSurfaceTool(freeCADBridge),
   ];
 }
 
@@ -1576,6 +1598,89 @@ result = handle_create_path_pattern(
     count=params['count'],
     spacing=params.get('spacing'),
     align_to_path=params.get('alignToPath', True),
+    name=params['name']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatPatternCreation(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: create_transform_link
+ *
+ * Create a transform link (3D array/pattern) using MultiTransform.
+ */
+function createTransformLinkTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_transform_link',
+    `Create a transform link (3D array/pattern) using MultiTransform.
+
+Parameters:
+- sourceObject (required): Name of the source feature to pattern
+- direction (required): Direction vector as {x, y, z} or "X", "Y", "Z" for standard axes
+- count (required): Number of instances (including original)
+- spacing (required): Distance between instances in mm
+- name (optional): Name for the pattern. If omitted, auto-generated.
+
+Returns:
+- success: Whether the pattern was created
+- transformName: Internal name of the transform
+- transformLabel: User-friendly label
+- sourceObject: Name of the source feature
+- count: Number of instances
+- spacing: Distance between instances
+- message: Status message
+
+Use this tool to create 3D transform patterns of features using MultiTransform.
+
+Example:
+- Transform of 5 instances: { sourceObject: "Pad", direction: "X", count: 5, spacing: 10 }`,
+    {
+      sourceObject: z.string().describe('Name of the source feature to pattern'),
+      direction: z.union([
+        z.object({ x: z.number(), y: z.number(), z: z.number() }),
+        z.enum(['X', 'Y', 'Z'])
+      ]).describe('Direction vector {x, y, z} or axis name "X", "Y", "Z"'),
+      count: z.number().describe('Number of instances including original'),
+      spacing: z.number().describe('Distance between instances in mm'),
+      name: z.string().optional().describe('Name for the pattern'),
+    },
+    async (input) => {
+      const { sourceObject, direction, count, spacing, name } = input;
+
+      const code = `
+from llm_bridge.pattern_handlers import handle_create_transform_link
+import json
+params = json.loads('${JSON.stringify({ sourceObject, direction, count, spacing, name: name || null })}')
+result = handle_create_transform_link(
+    source_object=params['sourceObject'],
+    direction=params['direction'],
+    count=params['count'],
+    spacing=params['spacing'],
     name=params['name']
 )
 print(json.dumps(result))
@@ -9104,6 +9209,903 @@ print(json.dumps(result))
             {
               type: 'text',
               text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+// ============================================================================
+// Surface Modeling Tools
+// ============================================================================
+
+/**
+ * Tool: create_loft
+ *
+ * Create a loft surface between two or more profile sketches.
+ */
+function createLoftTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_loft',
+    `Create a loft surface between two or more profile sketches.
+
+Parameters:
+- profiles (required): Array of object names (sketches or wires) to loft between
+- solid (optional): Whether to create a solid (true) or surface (false). Default: true
+- closed (optional): Whether to close the loft back to the first profile. Default: false
+- name (optional): Name for the loft. If omitted, auto-generated.
+
+Returns:
+- success: Whether the loft was created
+- loftName: Internal name of the loft
+- loftLabel: User-friendly label
+- profileCount: Number of profiles used
+- solid: Whether solid mode was used
+- message: Status message
+
+Use this tool to create smooth surfaces that transition between multiple profile shapes. Common for creating bottles, aircraft fuselages, ship hulls, and organic shapes.
+
+Example:
+- Loft between two circles: { profiles: ["Sketch001", "Sketch002"], solid: true }
+- Multi-profile loft: { profiles: ["Circle1", "Circle2", "Circle3"], solid: true }
+- Closed loft: { profiles: ["Profile1", "Profile2", "Profile3"], closed: true }`,
+    {
+      profiles: z.array(z.string()).describe('Array of object names to loft between'),
+      solid: z.boolean().optional().default(true).describe('Create solid (true) or surface (false)'),
+      closed: z.boolean().optional().default(false).describe('Close the loft back to first profile'),
+      name: z.string().optional().describe('Name for the loft'),
+    },
+    async (input) => {
+      const { profiles, solid, closed, name } = input;
+
+      const code = \`
+from llm_bridge.surface_handlers import handle_create_loft
+import json
+params = json.loads('\${JSON.stringify({ profiles, solid, closed, name: name || null }).replace(/'/g, "\\'")}')
+result = handle_create_loft(
+    profiles=params['profiles'],
+    solid=params.get('solid', True),
+    closed=params.get('closed', False),
+    name=params['name']
+)
+print(json.dumps(result))
+\`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatLoftCreation(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : \`Error: \${parsed.error}\`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: \`Tool execution error: \${error instanceof Error ? error.message : String(error)}\`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: create_section_loft
+ *
+ * Create a section loft (sweep along a path with multiple section profiles).
+ */
+function createSectionLoftTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_section_loft',
+    \`Create a section loft - sweep multiple profiles along a path.
+
+Parameters:
+- profiles (required): Array of object names (sketches or wires) for sections
+- path (required): Name of the path object (wire or edge) to sweep along
+- solid (optional): Whether to create a solid (true) or surface (false). Default: true
+- name (optional): Name for the section loft. If omitted, auto-generated.
+
+Returns:
+- success: Whether the section loft was created
+- loftName: Internal name of the section loft
+- profileCount: Number of section profiles
+- pathName: Name of the sweep path
+- solid: Whether solid mode was used
+- message: Status message
+
+Use this tool to create surfaces that follow a path while transitioning between multiple profile shapes. The profiles are automatically positioned along the path.
+
+Example:
+- Section loft along path: { profiles: ["Circle1", "Square", "Circle2"], path: "PathWire", solid: true }\`,
+    {
+      profiles: z.array(z.string()).describe('Array of section profile objects'),
+      path: z.string().describe('Path object to sweep along'),
+      solid: z.boolean().optional().default(true).describe('Create solid (true) or surface (false)'),
+      name: z.string().optional().describe('Name for the section loft'),
+    },
+    async (input) => {
+      const { profiles, path, solid, name } = input;
+
+      const code = \`
+from llm_bridge.surface_handlers import handle_create_section_loft
+import json
+params = json.loads('\${JSON.stringify({ profiles, path, solid, name: name || null }).replace(/'/g, "\\'")}')
+result = handle_create_section_loft(
+    profiles=params['profiles'],
+    path=params['path'],
+    solid=params.get('solid', True),
+    name=params['name']
+)
+print(json.dumps(result))
+\`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatLoftCreation(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : \`Error: \${parsed.error}\`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: \`Tool execution error: \${error instanceof Error ? error.message : String(error)}\`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: create_sweep
+ *
+ * Sweep a profile along a path to create a surface or solid.
+ */
+function createSweepTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_sweep',
+    \`Sweep a profile (sketch or wire) along a path to create a surface or solid.
+
+Parameters:
+- profile (required): Name of the profile object to sweep (sketch or closed wire)
+- path (required): Name of the path object (wire or edge) to sweep along
+- solid (optional): Whether to create a solid (true) or surface (false). Default: true
+- frenet (optional): Use Frenet frame calculation for orientation. Default: true
+- name (optional): Name for the sweep. If omitted, auto-generated.
+
+Returns:
+- success: Whether the sweep was created
+- sweepName: Internal name of the sweep
+- sweepLabel: User-friendly label
+- profileName: Name of the swept profile
+- pathName: Name of the sweep path
+- solid: Whether solid mode was used
+- frenet: Whether Frenet frame was used
+- message: Status message
+
+Use this tool to create tubes, pipes, and extruded shapes that follow curved paths. Common for creating cable routes, pipes, and extruded profiles along curves.
+
+Example:
+- Sweep circle along path: { profile: "CircleSketch", path: "PathWire", solid: true }
+- Surface sweep: { profile: "LineSketch", path: "Curve", solid: false }\`,
+    {
+      profile: z.string().describe('Profile object to sweep'),
+      path: z.string().describe('Path object to sweep along'),
+      solid: z.boolean().optional().default(true).describe('Create solid (true) or surface (false)'),
+      frenet: z.boolean().optional().default(true).describe('Use Frenet frame calculation'),
+      name: z.string().optional().describe('Name for the sweep'),
+    },
+    async (input) => {
+      const { profile, path, solid, frenet, name } = input;
+
+      const code = \`
+from llm_bridge.surface_handlers import handle_create_sweep
+import json
+params = json.loads('\${JSON.stringify({ profile, path, solid, frenet, name: name || null }).replace(/'/g, "\\'")}')
+result = handle_create_sweep(
+    profile=params['profile'],
+    path=params['path'],
+    solid=params.get('solid', True),
+    frenet=params.get('frenet', True),
+    name=params['name']
+)
+print(json.dumps(result))
+\`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatSweepCreation(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : \`Error: \${parsed.error}\`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: \`Tool execution error: \${error instanceof Error ? error.message : String(error)}\`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: create_pipe
+ *
+ * Create a pipe surface using the Part::Pipe feature.
+ */
+function createPipeTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_pipe',
+    \`Create a pipe surface - similar to sweep but with different fillet handling.
+
+Parameters:
+- profile (required): Name of the profile object to sweep
+- path (required): Name of the path object to sweep along
+- solid (optional): Whether to create a solid. Default: true
+- name (optional): Name for the pipe. If omitted, auto-generated.
+
+Returns:
+- success: Whether the pipe was created
+- pipeName: Internal name of the pipe
+- profileName: Name of the swept profile
+- pathName: Name of the sweep path
+- message: Status message
+
+Use this tool to create pipes with smooth transitions. The pipe feature handles corner fillets differently than sweep.
+
+Example:
+- Create pipe: { profile: "CircleSketch", path: "PathWire" }
+- Solid pipe: { profile: "Circle", path: "SpiralPath", solid: true }\`,
+    {
+      profile: z.string().describe('Profile object to sweep'),
+      path: z.string().describe('Path object to sweep along'),
+      solid: z.boolean().optional().default(true).describe('Create solid (true) or surface (false)'),
+      name: z.string().optional().describe('Name for the pipe'),
+    },
+    async (input) => {
+      const { profile, path, solid, name } = input;
+
+      const code = \`
+from llm_bridge.surface_handlers import handle_create_pipe
+import json
+params = json.loads('\${JSON.stringify({ profile, path, solid, name: name || null }).replace(/'/g, "\\'")}')
+result = handle_create_pipe(
+    profile=params['profile'],
+    path=params['path'],
+    solid=params.get('solid', True),
+    name=params['name']
+)
+print(json.dumps(result))
+\`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatSweepCreation(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : \`Error: \${parsed.error}\`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: \`Tool execution error: \${error instanceof Error ? error.message : String(error)}\`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: create_multisweep
+ *
+ * Create a multi-section sweep with multiple profiles at different positions.
+ */
+function createMultiSweepTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_multisweep',
+    \`Create a multi-section sweep - sweep multiple profile sections along a path.
+
+Parameters:
+- profiles (required): Array of profile objects at different positions along the path
+- path (required): Name of the path object to sweep along
+- solid (optional): Whether to create a solid. Default: true
+- name (optional): Name for the multi-sweep. If omitted, auto-generated.
+
+Returns:
+- success: Whether the multi-sweep was created
+- sweepName: Internal name of the multi-sweep
+- profileCount: Number of profile sections
+- pathName: Name of the sweep path
+- solid: Whether solid mode was used
+- message: Status message
+
+Use this tool to create complex surfaces that transition between multiple different profile shapes along a path. The profiles should be ordered from start to end of the path.
+
+Example:
+- Multi-section sweep: { profiles: ["Circle", "Square", "Hexagon"], path: "PathWire" }\`,
+    {
+      profiles: z.array(z.string()).describe('Array of profile objects along the path'),
+      path: z.string().describe('Path object to sweep along'),
+      solid: z.boolean().optional().default(true).describe('Create solid (true) or surface (false)'),
+      name: z.string().optional().describe('Name for the multi-sweep'),
+    },
+    async (input) => {
+      const { profiles, path, solid, name } = input;
+
+      const code = \`
+from llm_bridge.surface_handlers import handle_create_multisweep
+import json
+params = json.loads('\${JSON.stringify({ profiles, path, solid, name: name || null }).replace(/'/g, "\\'")}')
+result = handle_create_multisweep(
+    profiles=params['profiles'],
+    path=params['path'],
+    solid=params.get('solid', True),
+    name=params['name']
+)
+print(json.dumps(result))
+\`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatSweepCreation(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : \`Error: \${parsed.error}\`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: \`Tool execution error: \${error instanceof Error ? error.message : String(error)}\`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: create_ruled_surface
+ *
+ * Create a ruled surface between two curves or edges.
+ */
+function createRuledSurfaceTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_ruled_surface',
+    \`Create a ruled surface between two curves, edges, or wires.
+
+Parameters:
+- curve1 (required): First curve, edge, or wire
+- curve2 (required): Second curve, edge, or wire
+- name (optional): Name for the ruled surface. If omitted, auto-generated.
+
+Returns:
+- success: Whether the ruled surface was created
+- surfaceName: Internal name of the ruled surface
+- curve1Name: Name of first curve
+- curve2Name: Name of second curve
+- message: Status message
+
+Use this tool to create a surface by interpolating straight lines between two boundary curves. Common for creating developable surfaces like cones and cylinders.
+
+Example:
+- Ruled surface between two edges: { curve1: "Edge1", curve2: "Edge2" }
+- Between two sketches: { curve1: "Sketch001", curve2: "Sketch002" }\`,
+    {
+      curve1: z.string().describe('First curve, edge, or wire'),
+      curve2: z.string().describe('Second curve, edge, or wire'),
+      name: z.string().optional().describe('Name for the ruled surface'),
+    },
+    async (input) => {
+      const { curve1, curve2, name } = input;
+
+      const code = \`
+from llm_bridge.surface_handlers import handle_create_ruled_surface
+import json
+params = json.loads('\${JSON.stringify({ curve1, curve2, name: name || null }).replace(/'/g, "\\'")}')
+result = handle_create_ruled_surface(
+    curve1=params['curve1'],
+    curve2=params['curve2'],
+    name=params['name']
+)
+print(json.dumps(result))
+\`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatSurfaceOperation(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : \`Error: \${parsed.error}\`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: \`Tool execution error: \${error instanceof Error ? error.message : String(error)}\`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: create_surface_from_edges
+ *
+ * Create a surface by filling a set of edges or wires.
+ */
+function createSurfaceFromEdgesTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_surface_from_edges',
+    \`Create a surface by filling a set of connected edges or wires.
+
+Parameters:
+- edges (required): Array of edge or wire object names that form a closed boundary
+- name (optional): Name for the surface. If omitted, auto-generated.
+
+Returns:
+- success: Whether the surface was created
+- surfaceName: Internal name of the surface
+- edgeCount: Number of edges used
+- message: Status message
+
+Use this tool to create a surface that fills a boundary defined by edges. Common for closing gaps in models or creating planar surfaces from boundary edges.
+
+Example:
+- Fill with edges: { edges: ["Edge1", "Edge2", "Edge3", "Edge4"] }
+- Fill with wire: { edges: ["Wire1"] }\`,
+    {
+      edges: z.array(z.string()).describe('Array of edge or wire objects forming closed boundary'),
+      name: z.string().optional().describe('Name for the surface'),
+    },
+    async (input) => {
+      const { edges, name } = input;
+
+      const code = \`
+from llm_bridge.surface_handlers import handle_create_surface_from_edges
+import json
+params = json.loads('\${JSON.stringify({ edges, name: name || null }).replace(/'/g, "\\'")}')
+result = handle_create_surface_from_edges(
+    edges=params['edges'],
+    name=params['name']
+)
+print(json.dumps(result))
+\`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatSurfaceOperation(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : \`Error: \${parsed.error}\`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: \`Tool execution error: \${error instanceof Error ? error.message : String(error)}\`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: extend_surface
+ *
+ * Extend an existing surface by adding material along its edges.
+ */
+function extendSurfaceTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'extend_surface',
+    \`Extend an existing surface by adding material along its boundary edges.
+
+Parameters:
+- surfaceName (required): Name of the surface to extend
+- distance (required): Distance to extend in mm (number or string with units)
+- direction (optional): "edge" to extend along specific edge, or "normal" to extend perpendicularly. Default: "normal"
+- name (optional): Name for the extended surface. If omitted, modifies existing surface.
+
+Returns:
+- success: Whether the surface was extended
+- surfaceName: Name of the (modified) surface
+- distance: Extension distance
+- direction: Extension direction
+- message: Status message
+
+Use this tool to extend surfaces for creating blanks, flanges, or to prepare surfaces for joining.
+
+Example:
+- Extend by 10mm: { surfaceName: "Surface001", distance: "10mm" }
+- Extend along edge: { surfaceName: "Surface001", distance: "5mm", direction: "edge" }\`,
+    {
+      surfaceName: z.string().describe('Name of the surface to extend'),
+      distance: z.union([z.string(), z.number()]).describe('Distance to extend (number or string with units)'),
+      direction: z.enum(['edge', 'normal']).optional().default('normal').describe('Extension direction'),
+      name: z.string().optional().describe('Name for the extended surface'),
+    },
+    async (input) => {
+      const { surfaceName, distance, direction, name } = input;
+
+      const code = \`
+from llm_bridge.surface_handlers import handle_extend_surface
+import json
+params = json.loads('\${JSON.stringify({ surfaceName, distance, direction, name: name || null }).replace(/'/g, "\\'")}')
+result = handle_extend_surface(
+    surface_name=params['surfaceName'],
+    distance=params['distance'],
+    direction=params.get('direction', 'normal'),
+    name=params['name']
+)
+print(json.dumps(result))
+\`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatSurfaceOperation(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : \`Error: \${parsed.error}\`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: \`Tool execution error: \${error instanceof Error ? error.message : String(error)}\`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: trim_surface
+ *
+ * Trim a surface using trimming tools.
+ */
+function trimSurfaceTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'trim_surface',
+    \`Trim a surface using a tool surface or a set of trimming curves.
+
+Parameters:
+- surfaceName (required): Name of the surface to trim
+- tool (required): Tool surface or array of curves to trim with
+- name (optional): Name for the trimmed surface. If omitted, modifies existing surface.
+
+Returns:
+- success: Whether the surface was trimmed
+- surfaceName: Name of the (modified) surface
+- toolName: Name of the trimming tool
+- message: Status message
+
+Use this tool to cut away portions of a surface using other surfaces or curves as trimming boundaries.
+
+Example:
+- Trim with surface: { surfaceName: "Surface001", tool: "TrimSurface" }
+- Trim with curves: { surfaceName: "Surface001", tool: ["Curve1", "Curve2"] }\`,
+    {
+      surfaceName: z.string().describe('Name of the surface to trim'),
+      tool: z.union([z.string(), z.array(z.string())]).describe('Tool surface or array of trimming curves'),
+      name: z.string().optional().describe('Name for the trimmed surface'),
+    },
+    async (input) => {
+      const { surfaceName, tool, name } = input;
+
+      const code = \`
+from llm_bridge.surface_handlers import handle_trim_surface
+import json
+params = json.loads('\${JSON.stringify({ surfaceName, tool, name: name || null }).replace(/'/g, "\\'")}')
+result = handle_trim_surface(
+    surface_name=params['surfaceName'],
+    tool=params['tool'],
+    name=params['name']
+)
+print(json.dumps(result))
+\`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatSurfaceOperation(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : \`Error: \${parsed.error}\`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: \`Tool execution error: \${error instanceof Error ? error.message : String(error)}\`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: get_surface_info
+ *
+ * Get detailed information about a surface.
+ */
+function getSurfaceInfoTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'get_surface_info',
+    \`Get detailed information about a surface including its properties and geometry.
+
+Parameters:
+- surfaceName (required): Name of the surface to query
+
+Returns:
+- success: Whether the query was successful
+- surfaceName: Name of the surface
+- surfaceType: Type of surface
+- area: Surface area in mm²
+- volume: Volume if solid (mm³)
+- centerOfMass: Center point coordinates
+- curvature: Curvature information (min, max, gaussian, mean)
+- message: Status message
+
+Use this tool to inspect surface properties before performing further operations.
+
+Example:
+- Get surface info: { surfaceName: "Loft001" }\`,
+    {
+      surfaceName: z.string().describe('Name of the surface to query'),
+    },
+    async (input) => {
+      const { surfaceName } = input;
+
+      const code = \`
+from llm_bridge.surface_handlers import handle_get_surface_info
+import json
+params = json.loads('\${JSON.stringify({ surfaceName }).replace(/'/g, "\\'")}')
+result = handle_get_surface_info(surface_name=params['surfaceName'])
+print(json.dumps(result))
+\`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatSurfaceInfo(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : \`Error: \${parsed.error}\`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: \`Tool execution error: \${error instanceof Error ? error.message : String(error)}\`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: list_surfaces
+ *
+ * List all surface objects in the active document.
+ */
+function listSurfacesTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'list_surfaces',
+    \`List all surface objects in the active FreeCAD document.
+
+Returns:
+- success: Whether the query was successful
+- surfaceCount: Number of surfaces found
+- surfaces: Array of surface objects with name, type, and properties
+- message: Status message
+
+Use this tool to see all available surfaces before querying or modifying them.
+
+Example:
+- List all surfaces: {}\`,
+    {
+      // No parameters needed
+    },
+    async () => {
+      const code = \`
+from llm_bridge.surface_handlers import handle_list_surfaces
+import json
+result = handle_list_surfaces()
+print(json.dumps(result))
+\`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+
+        if (parsed.success) {
+          let output = "Surfaces: " + (parsed.surfaceCount || 0) + "\\n\\n";
+          if (parsed.surfaces && parsed.surfaces.length > 0) {
+            output += formatTableRow(['Name', 'Type', 'Area (mm²)']);
+            output += "\\n" + "─".repeat(60) + "\\n";
+            for (const surf of parsed.surfaces) {
+              output += formatTableRow([
+                surf.name || '-',
+                surf.surfaceType || '-',
+                surf.area !== undefined ? surf.area.toFixed(2) : '-'
+              ]);
+              output += "\\n";
+            }
+          } else {
+            output += "(No surfaces found)";
+          }
+          return {
+            content: [
+              {
+                type: 'text',
+                text: output,
+              },
+            ],
+          };
+        } else {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: "Error: " + parsed.error,
+              },
+            ],
+          };
+        }
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: "Tool execution error: " + (error instanceof Error ? error.message : String(error)),
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: validate_surface
+ *
+ * Validate surface geometry for defects.
+ */
+function validateSurfaceTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'validate_surface',
+    \`Validate surface geometry for defects, gaps, or irregularities.
+
+Parameters:
+- surfaceName (required): Name of the surface to validate
+
+Returns:
+- success: Whether the validation was performed
+- surfaceName: Name of the validated surface
+- isValid: Whether the surface is valid
+- issues: Array of detected issues (type, description, location)
+- issueCount: Number of issues found
+- message: Status message
+
+Use this tool to check surface quality before exporting or manufacturing. Common issues include gaps, overlaps, and geometric irregularities.
+
+Example:
+- Validate surface: { surfaceName: "Loft001" }\`,
+    {
+      surfaceName: z.string().describe('Name of the surface to validate'),
+    },
+    async (input) => {
+      const { surfaceName } = input;
+
+      const code = \`
+from llm_bridge.surface_handlers import handle_validate_surface
+import json
+params = json.loads('\${JSON.stringify({ surfaceName }).replace(/'/g, "\\'")}')
+result = handle_validate_surface(surface_name=params['surfaceName'])
+print(json.dumps(result))
+\`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatSurfaceInfo(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : \`Error: \${parsed.error}\`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: \`Tool execution error: \${error instanceof Error ? error.message : String(error)}\`,
             },
           ],
         };
