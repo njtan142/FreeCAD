@@ -99,6 +99,15 @@ import {
   formatPathDressup,
   formatGCodeExport,
   formatPathSimulation,
+  formatUndoResult,
+  formatRedoResult,
+  formatUndoStackSize,
+  formatVisibilityChange,
+  formatVisibleObjectsList,
+  formatSelectionChange,
+  formatMeasurement,
+  formatDistanceMeasurement,
+  formatAngleMeasurement,
 } from './result-formatters';
 import {
   validateFilePath,
@@ -444,6 +453,31 @@ export function createAgentTools(freeCADBridge: FreeCADBridge) {
     // G-code and simulation
     exportGCodeTool(freeCADBridge),
     simulatePathTool(freeCADBridge),
+    // Undo/Redo tools
+    createUndoTool(freeCADBridge),
+    createRedoTool(freeCADBridge),
+    getUndoStackSizeTool(freeCADBridge),
+    // Visibility management tools
+    showObjectTool(freeCADBridge),
+    hideObjectTool(freeCADBridge),
+    toggleVisibilityTool(freeCADBridge),
+    showAllObjectsTool(freeCADBridge),
+    hideAllObjectsTool(freeCADBridge),
+    getVisibleObjectsTool(freeCADBridge),
+    setObjectVisibilityTool(freeCADBridge),
+    // Selection tools
+    selectObjectTool(freeCADBridge),
+    deselectObjectTool(freeCADBridge),
+    selectAllObjectsTool(freeCADBridge),
+    clearSelectionTool(freeCADBridge),
+    isObjectSelectedTool(freeCADBridge),
+    // Measurement tools
+    measureDistanceTool(freeCADBridge),
+    measureObjectDistanceTool(freeCADBridge),
+    measureAngleTool(freeCADBridge),
+    measureLengthTool(freeCADBridge),
+    measureAreaTool(freeCADBridge),
+    getMeasureInfoTool(freeCADBridge),
   ];
 }
 
@@ -17043,6 +17077,1163 @@ print(json.dumps(result))
         const result = await freeCADBridge.executePython(code);
         const parsed = parseLastJsonLine(result.output);
         const formatted = formatPathSimulation(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+// ============================================================================
+// Undo/Redo Tools
+// ============================================================================
+
+function createUndoTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'undo',
+    `Undo the last operation in the FreeCAD document.
+
+Returns:
+- success: Whether the undo was successful
+- undoneObject: Name of the object that was undone (if any)
+- message: Status message
+
+Use this tool when you make a mistake and need to revert the last change.`,
+    {
+      // No parameters needed
+    },
+    async () => {
+      const code = `
+from llm_bridge.workflow_handlers import handle_undo
+import json
+result = handle_undo()
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatUndoResult(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function createRedoTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'redo',
+    `Redo the last undone operation in the FreeCAD document.
+
+Returns:
+- success: Whether the redo was successful
+- redoneObject: Name of the object that was redone (if any)
+- message: Status message
+
+Use this tool when you want to reapply a change that was previously undone.`,
+    {
+      // No parameters needed
+    },
+    async () => {
+      const code = `
+from llm_bridge.workflow_handlers import handle_redo
+import json
+result = handle_redo()
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatRedoResult(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function getUndoStackSizeTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'get_undo_stack_size',
+    `Get the current size of the undo and redo stacks.
+
+Returns:
+- success: Whether the query was successful
+- undoSize: Number of operations in the undo stack
+- redoSize: Number of operations in the redo stack
+- canUndo: Whether undo is available
+- canRedo: Whether redo is available
+- message: Status message
+
+Use this tool to check if undo/redo is available before attempting operations.`,
+    {
+      // No parameters needed
+    },
+    async () => {
+      const code = `
+from llm_bridge.workflow_handlers import handle_get_undo_stack_size
+import json
+result = handle_get_undo_stack_size()
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatUndoStackSize(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+// ============================================================================
+// Visibility Tools
+// ============================================================================
+
+function showObjectTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'show_object',
+    `Show a hidden object in the FreeCAD viewport.
+
+Parameters:
+- objectName (required): Name of the object to show
+
+Returns:
+- success: Whether the operation was successful
+- objectName: Name of the object
+- visible: Always true for this operation
+- message: Status message
+
+Use this tool to make a hidden object visible again.`,
+    {
+      objectName: z.string().describe('Name of the object to show'),
+    },
+    async (input) => {
+      const { objectName } = input;
+
+      const code = `
+from llm_bridge.workflow_handlers import handle_show_object
+import json
+params = json.loads('${JSON.stringify({ objectName })}')
+result = handle_show_object(object_name=params['objectName'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatVisibilityChange(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function hideObjectTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'hide_object',
+    `Hide an object in the FreeCAD viewport.
+
+Parameters:
+- objectName (required): Name of the object to hide
+
+Returns:
+- success: Whether the operation was successful
+- objectName: Name of the object
+- visible: Always false for this operation
+- message: Status message
+
+Use this tool to hide an object without deleting it.`,
+    {
+      objectName: z.string().describe('Name of the object to hide'),
+    },
+    async (input) => {
+      const { objectName } = input;
+
+      const code = `
+from llm_bridge.workflow_handlers import handle_hide_object
+import json
+params = json.loads('${JSON.stringify({ objectName })}')
+result = handle_hide_object(object_name=params['objectName'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatVisibilityChange(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function toggleVisibilityTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'toggle_object_visibility',
+    `Toggle the visibility of an object in the FreeCAD viewport.
+
+Parameters:
+- objectName (required): Name of the object to toggle
+
+Returns:
+- success: Whether the operation was successful
+- objectName: Name of the object
+- visible: New visibility state after toggle
+- message: Status message
+
+Use this tool to quickly toggle an object's visibility.`,
+    {
+      objectName: z.string().describe('Name of the object to toggle visibility'),
+    },
+    async (input) => {
+      const { objectName } = input;
+
+      const code = `
+from llm_bridge.workflow_handlers import handle_toggle_visibility
+import json
+params = json.loads('${JSON.stringify({ objectName })}')
+result = handle_toggle_visibility(object_name=params['objectName'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatVisibilityChange(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function showAllObjectsTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'show_all_objects',
+    `Show all hidden objects in the FreeCAD viewport.
+
+Returns:
+- success: Whether the operation was successful
+- count: Number of objects shown
+- message: Status message
+
+Use this tool to make all hidden objects visible at once.`,
+    {
+      // No parameters needed
+    },
+    async () => {
+      const code = `
+from llm_bridge.workflow_handlers import handle_show_all
+import json
+result = handle_show_all()
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatVisibilityChange(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function hideAllObjectsTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'hide_all_objects',
+    `Hide all visible objects in the FreeCAD viewport.
+
+Returns:
+- success: Whether the operation was successful
+- count: Number of objects hidden
+- message: Status message
+
+Use this tool to hide all visible objects at once.`,
+    {
+      // No parameters needed
+    },
+    async () => {
+      const code = `
+from llm_bridge.workflow_handlers import handle_hide_all
+import json
+result = handle_hide_all()
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatVisibilityChange(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function getVisibleObjectsTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'get_visible_objects',
+    `Get a list of all currently visible objects in the FreeCAD viewport.
+
+Returns:
+- success: Whether the query was successful
+- count: Number of visible objects
+- objects: Array of visible object info (name, label, type)
+- message: Status message
+
+Use this tool to see which objects are currently visible.`,
+    {
+      // No parameters needed
+    },
+    async () => {
+      const code = `
+from llm_bridge.workflow_handlers import handle_get_visible_objects
+import json
+result = handle_get_visible_objects()
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatVisibleObjectsList(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function setObjectVisibilityTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'set_object_visibility',
+    `Set the visibility of an object to a specific state.
+
+Parameters:
+- objectName (required): Name of the object
+- visible (required): Whether the object should be visible (true) or hidden (false)
+
+Returns:
+- success: Whether the operation was successful
+- objectName: Name of the object
+- visible: The new visibility state
+- message: Status message
+
+Use this tool to explicitly show or hide an object.`,
+    {
+      objectName: z.string().describe('Name of the object'),
+      visible: z.boolean().describe('Whether the object should be visible'),
+    },
+    async (input) => {
+      const { objectName, visible } = input;
+
+      const code = `
+from llm_bridge.workflow_handlers import handle_set_object_visibility
+import json
+params = json.loads('${JSON.stringify({ objectName, visible })}')
+result = handle_set_object_visibility(object_name=params['objectName'], visible=params['visible'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatVisibilityChange(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+// ============================================================================
+// Selection Tools
+// ============================================================================
+
+function selectObjectTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'select_object',
+    `Select an object in the FreeCAD viewport.
+
+Parameters:
+- objectName (required): Name of the object to select
+
+Returns:
+- success: Whether the selection was successful
+- objectName: Name of the selected object
+- selected: Always true for this operation
+- message: Status message
+
+Use this tool to select an object for subsequent operations.`,
+    {
+      objectName: z.string().describe('Name of the object to select'),
+    },
+    async (input) => {
+      const { objectName } = input;
+
+      const code = `
+from llm_bridge.workflow_handlers import handle_select_object
+import json
+params = json.loads('${JSON.stringify({ objectName })}')
+result = handle_select_object(object_name=params['objectName'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatSelectionChange(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function deselectObjectTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'deselect_object',
+    `Deselect an object in the FreeCAD viewport.
+
+Parameters:
+- objectName (required): Name of the object to deselect
+
+Returns:
+- success: Whether the deselection was successful
+- objectName: Name of the deselected object
+- selected: Always false for this operation
+- message: Status message
+
+Use this tool to remove an object from the current selection.`,
+    {
+      objectName: z.string().describe('Name of the object to deselect'),
+    },
+    async (input) => {
+      const { objectName } = input;
+
+      const code = `
+from llm_bridge.workflow_handlers import handle_deselect_object
+import json
+params = json.loads('${JSON.stringify({ objectName })}')
+result = handle_deselect_object(object_name=params['objectName'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatSelectionChange(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function selectAllObjectsTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'select_all_objects',
+    `Select all objects in the FreeCAD viewport.
+
+Returns:
+- success: Whether the selection was successful
+- count: Number of objects selected
+- message: Status message
+
+Use this tool to select all objects at once.`,
+    {
+      // No parameters needed
+    },
+    async () => {
+      const code = `
+from llm_bridge.workflow_handlers import handle_select_all
+import json
+result = handle_select_all()
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatSelectionChange(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function clearSelectionTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'clear_selection',
+    `Clear the current selection in the FreeCAD viewport.
+
+Returns:
+- success: Whether the operation was successful
+- count: Number of objects that were deselected
+- message: Status message
+
+Use this tool to deselect all currently selected objects.`,
+    {
+      // No parameters needed
+    },
+    async () => {
+      const code = `
+from llm_bridge.workflow_handlers import handle_clear_selection
+import json
+result = handle_clear_selection()
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatSelectionChange(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function isObjectSelectedTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'is_object_selected',
+    `Check if a specific object is currently selected.
+
+Parameters:
+- objectName (required): Name of the object to check
+
+Returns:
+- success: Whether the query was successful
+- objectName: Name of the checked object
+- selected: Whether the object is currently selected
+- message: Status message
+
+Use this tool to check the selection state of an object.`,
+    {
+      objectName: z.string().describe('Name of the object to check'),
+    },
+    async (input) => {
+      const { objectName } = input;
+
+      const code = `
+from llm_bridge.workflow_handlers import handle_is_selected
+import json
+params = json.loads('${JSON.stringify({ objectName })}')
+result = handle_is_selected(object_name=params['objectName'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatSelectionChange(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+// ============================================================================
+// Measurement Tools
+// ============================================================================
+
+function measureDistanceTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'measure_distance',
+    `Measure the distance between two points in 3D space.
+
+Parameters:
+- point1 (required): First point as {x, y, z}
+- point2 (required): Second point as {x, y, z}
+
+Returns:
+- success: Whether the measurement was successful
+- measurementType: "distance"
+- value: The distance value
+- point1: First point coordinates
+- point2: Second point coordinates
+- message: Status message
+
+Use this tool to get the distance between two 3D coordinates.`,
+    {
+      point1: z.object({
+        x: z.number(),
+        y: z.number(),
+        z: z.number(),
+      }).describe('First point coordinates'),
+      point2: z.object({
+        x: z.number(),
+        y: z.number(),
+        z: z.number(),
+      }).describe('Second point coordinates'),
+    },
+    async (input) => {
+      const { point1, point2 } = input;
+
+      const code = `
+from llm_bridge.measurement_handlers import handle_measure_distance
+import json
+params = json.loads('${JSON.stringify({ point1, point2 })}')
+result = handle_measure_distance(point1=params['point1'], point2=params['point2'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatDistanceMeasurement(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function measureObjectDistanceTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'measure_object_distance',
+    `Measure the minimum distance between two objects.
+
+Parameters:
+- object1Name (required): Name of the first object
+- object2Name (required): Name of the second object
+
+Returns:
+- success: Whether the measurement was successful
+- measurementType: "object_distance"
+- value: The minimum distance between objects
+- object1: Name of first object
+- object2: Name of second object
+- message: Status message
+
+Use this tool to find the closest points between two 3D objects.`,
+    {
+      object1Name: z.string().describe('Name of the first object'),
+      object2Name: z.string().describe('Name of the second object'),
+    },
+    async (input) => {
+      const { object1Name, object2Name } = input;
+
+      const code = `
+from llm_bridge.measurement_handlers import handle_measure_object_distance
+import json
+params = json.loads('${JSON.stringify({ object1Name, object2Name })}')
+result = handle_measure_object_distance(obj1_name=params['object1Name'], obj2_name=params['object2Name'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatDistanceMeasurement(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function measureAngleTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'measure_angle',
+    `Measure the angle at a vertex formed by three points.
+
+Parameters:
+- point1 (required): First point as {x, y, z}
+- point2 (required): Vertex point as {x, y, z} (the angle is measured here)
+- point3 (required): Third point as {x, y, z}
+
+Returns:
+- success: Whether the measurement was successful
+- measurementType: "angle"
+- value: The angle in degrees
+- point1, point2, point3: The three points
+- vertex: The vertex point (point2)
+- message: Status message
+
+Use this tool to measure the angle between two lines meeting at a point.`,
+    {
+      point1: z.object({
+        x: z.number(),
+        y: z.number(),
+        z: z.number(),
+      }).describe('First point'),
+      point2: z.object({
+        x: z.number(),
+        y: z.number(),
+        z: z.number(),
+      }).describe('Vertex point (angle is measured here)'),
+      point3: z.object({
+        x: z.number(),
+        y: z.number(),
+        z: z.number(),
+      }).describe('Third point'),
+    },
+    async (input) => {
+      const { point1, point2, point3 } = input;
+
+      const code = `
+from llm_bridge.measurement_handlers import handle_measure_angle
+import json
+params = json.loads('${JSON.stringify({ point1, point2, point3 })}')
+result = handle_measure_angle(point1=params['point1'], point2=params['point2'], point3=params['point3'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatAngleMeasurement(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function measureLengthTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'measure_length',
+    `Get the length of a line, wire, or edge object.
+
+Parameters:
+- objectName (required): Name of the line, wire, or edge object
+
+Returns:
+- success: Whether the measurement was successful
+- measurementType: "length"
+- value: The length value in mm
+- objectName: Name of the measured object
+- message: Status message
+
+Use this tool to get the length of linear geometry.`,
+    {
+      objectName: z.string().describe('Name of the line, wire, or edge object'),
+    },
+    async (input) => {
+      const { objectName } = input;
+
+      const code = `
+from llm_bridge.measurement_handlers import handle_measure_length
+import json
+params = json.loads('${JSON.stringify({ objectName })}')
+result = handle_measure_length(object_name=params['objectName'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatMeasurement(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function measureAreaTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'measure_area',
+    `Get the surface area of a face or object.
+
+Parameters:
+- objectName (required): Name of the face or object
+
+Returns:
+- success: Whether the measurement was successful
+- measurementType: "area"
+- value: The area value in mm²
+- objectName: Name of the measured object
+- message: Status message
+
+Use this tool to get the surface area of planar geometry.`,
+    {
+      objectName: z.string().describe('Name of the face or object'),
+    },
+    async (input) => {
+      const { objectName } = input;
+
+      const code = `
+from llm_bridge.measurement_handlers import handle_measure_area
+import json
+params = json.loads('${JSON.stringify({ objectName })}')
+result = handle_measure_area(object_name=params['objectName'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatMeasurement(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function getMeasureInfoTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'get_measure_info',
+    `Get all measurement information for an object.
+
+Parameters:
+- objectName (required): Name of the object to measure
+
+Returns:
+- success: Whether the measurement was successful
+- objectName: Name of the measured object
+- measurements: Object containing available measurements (length, area, volume, etc.)
+- message: Status message
+
+Use this tool to get all available measurements for an object at once.`,
+    {
+      objectName: z.string().describe('Name of the object to get measurements for'),
+    },
+    async (input) => {
+      const { objectName } = input;
+
+      const code = `
+from llm_bridge.measurement_handlers import handle_get_measure_info
+import json
+params = json.loads('${JSON.stringify({ objectName })}')
+result = handle_get_measure_info(object_name=params['objectName'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatMeasurement(parsed.data);
         return {
           content: [
             {

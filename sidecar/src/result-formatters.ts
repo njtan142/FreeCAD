@@ -3515,3 +3515,255 @@ export function formatPathSimulation(data: any): string {
 
   return lines.join('\n');
 }
+
+// ============================================================================
+// Workflow and Measurement Result Formatters
+// ============================================================================
+
+export function formatUndoResult(data: any): string {
+  if (!data) return 'No undo data';
+
+  const lines: string[] = [];
+
+  if (data.success) {
+    lines.push('Undo: Successful');
+    if (data undoneObject) {
+      lines.push(`Undone: ${data.undoneObject}`);
+    }
+  } else {
+    lines.push(`Undo Failed: ${data.error || 'Unknown error'}`);
+  }
+
+  if (data.message) {
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatRedoResult(data: any): string {
+  if (!data) return 'No redo data';
+
+  const lines: string[] = [];
+
+  if (data.success) {
+    lines.push('Redo: Successful');
+    if (data.redoneObject) {
+      lines.push(`Redone: ${data.redoneObject}`);
+    }
+  } else {
+    lines.push(`Redo Failed: ${data.error || 'Unknown error'}`);
+  }
+
+  if (data.message) {
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatUndoStackSize(data: any): string {
+  if (!data) return 'No undo stack data';
+
+  const lines: string[] = [];
+  lines.push(`Undo Stack: ${data.undoSize ?? 0} operations`);
+  lines.push(`Redo Stack: ${data.redoSize ?? 0} operations`);
+
+  if (data.canUndo !== undefined) {
+    lines.push(`Can Undo: ${data.canUndo ? 'Yes' : 'No'}`);
+  }
+  if (data.canRedo !== undefined) {
+    lines.push(`Can Redo: ${data.canRedo ? 'Yes' : 'No'}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatVisibilityChange(data: any): string {
+  if (!data) return 'No visibility data';
+
+  const lines: string[] = [];
+
+  if (data.success) {
+    lines.push(`Object: ${data.objectLabel || data.objectName} (${data.objectName})`);
+    lines.push(`Visibility: ${data.visible ? 'Shown' : 'Hidden'}`);
+  } else {
+    lines.push(`Visibility Change Failed: ${data.error || 'Unknown error'}`);
+  }
+
+  if (data.message) {
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatVisibleObjectsList(data: any): string {
+  if (!data) return 'No visible objects data';
+
+  const lines: string[] = [];
+  lines.push(`Visible Objects: ${data.count || 0}`);
+
+  if (data.objects && data.objects.length > 0) {
+    lines.push('');
+    lines.push(formatTableRow(['Name', 'Label', 'Type']));
+    lines.push('─'.repeat(60));
+
+    for (const obj of data.objects) {
+      lines.push(formatTableRow([
+        obj.name || '-',
+        obj.label || '-',
+        formatType(obj.type)
+      ]));
+    }
+  } else {
+    lines.push('(No visible objects)');
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatSelectionChange(data: any): string {
+  if (!data) return 'No selection data';
+
+  const lines: string[] = [];
+
+  if (data.success) {
+    lines.push(`Object: ${data.objectLabel || data.objectName} (${data.objectName})`);
+    lines.push(`Selected: ${data.selected ? 'Yes' : 'No'}`);
+  } else {
+    lines.push(`Selection Change Failed: ${data.error || 'Unknown error'}`);
+  }
+
+  if (data.message) {
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatMeasurement(data: any): string {
+  if (!data) return 'No measurement data';
+
+  const lines: string[] = [];
+
+  if (data.success) {
+    if (data.measurementType) {
+      lines.push(`Measurement Type: ${data.measurementType}`);
+    }
+
+    if (data.value !== undefined) {
+      const unit = data.unit || 'mm';
+      if (data.measurementType === 'angle') {
+        lines.push(`Value: ${typeof data.value === 'number' ? data.value.toFixed(2) : data.value}°`);
+      } else {
+        lines.push(`Value: ${typeof data.value === 'number' ? data.value.toFixed(4) : data.value} ${unit}`);
+      }
+    }
+
+    if (data.points && data.points.length > 0) {
+      lines.push('');
+      lines.push('Points:');
+      for (let i = 0; i < data.points.length; i++) {
+        const pt = data.points[i];
+        lines.push(`  ${i + 1}: (${pt.x?.toFixed(2) || 0}, ${pt.y?.toFixed(2) || 0}, ${pt.z?.toFixed(2) || 0})`);
+      }
+    }
+
+    if (data.object1 && data.object2) {
+      lines.push(`Objects: ${data.object1} ↔ ${data.object2}`);
+    }
+  } else {
+    lines.push(`Measurement Failed: ${data.error || 'Unknown error'}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatDistanceMeasurement(data: any): string {
+  if (!data) return 'No distance data';
+
+  const lines: string[] = [];
+
+  if (data.success) {
+    if (data.distance !== undefined) {
+      lines.push(`Distance: ${typeof data.distance === 'number' ? data.distance.toFixed(4) : data.distance} mm`);
+    }
+
+    if (data.point1 && data.point2) {
+      lines.push('');
+      lines.push('Point 1: (' + [
+        data.point1.x?.toFixed(2) || 0,
+        data.point1.y?.toFixed(2) || 0,
+        data.point1.z?.toFixed(2) || 0
+      ].join(', ') + ')');
+      lines.push('Point 2: (' + [
+        data.point2.x?.toFixed(2) || 0,
+        data.point2.y?.toFixed(2) || 0,
+        data.point2.z?.toFixed(2) || 0
+      ].join(', ') + ')');
+    }
+
+    if (data.object1 && data.object2) {
+      lines.push('');
+      lines.push(`Between: ${data.object1} ↔ ${data.object2}`);
+    }
+  } else {
+    lines.push(`Distance Measurement Failed: ${data.error || 'Unknown error'}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatAngleMeasurement(data: any): string {
+  if (!data) return 'No angle data';
+
+  const lines: string[] = [];
+
+  if (data.success) {
+    if (data.angle !== undefined) {
+      lines.push(`Angle: ${typeof data.angle === 'number' ? data.angle.toFixed(2) : data.angle}°`);
+    }
+
+    if (data.vertex) {
+      lines.push(`Vertex: (${data.vertex.x?.toFixed(2) || 0}, ${data.vertex.y?.toFixed(2) || 0}, ${data.vertex.z?.toFixed(2) || 0})`);
+    }
+
+    if (data.point1 && data.point2 && data.point3) {
+      lines.push('');
+      lines.push('Points:');
+      lines.push(`  1: (${data.point1.x?.toFixed(2) || 0}, ${data.point1.y?.toFixed(2) || 0}, ${data.point1.z?.toFixed(2) || 0})`);
+      lines.push(`  2: (${data.point2.x?.toFixed(2) || 0}, ${data.point2.y?.toFixed(2) || 0}, ${data.point2.z?.toFixed(2) || 0})`);
+      lines.push(`  3: (${data.point3.x?.toFixed(2) || 0}, ${data.point3.y?.toFixed(2) || 0}, ${data.point3.z?.toFixed(2) || 0})`);
+    }
+  } else {
+    lines.push(`Angle Measurement Failed: ${data.error || 'Unknown error'}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
