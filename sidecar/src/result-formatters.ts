@@ -2305,3 +2305,165 @@ export function formatCollisionResult(data: any): string {
 
   return lines.join('\n');
 }
+
+/**
+ * Format render result
+ */
+export function formatRenderResult(data: any): string {
+  if (!data) return 'No render data';
+
+  const lines: string[] = [];
+
+  if (data.success) {
+    if (data.outputPath) {
+      lines.push(`Rendered to ${data.outputPath}`);
+      if (data.width && data.height) {
+        lines.push(`(${data.width}x${data.height})`);
+      }
+    }
+    if (data.rendererName) {
+      lines.push(`Renderer: ${data.rendererName}`);
+    }
+    if (data.quality) {
+      lines.push(`Quality: ${data.quality}`);
+    }
+  } else {
+    lines.push('Render failed');
+  }
+
+  if (data.message) {
+    lines.push(data.message);
+  }
+
+  return lines.join(' ');
+}
+
+/**
+ * Format view angle result
+ */
+export function formatViewAngle(data: any): string {
+  if (!data) return 'No view data';
+
+  const lines: string[] = [];
+
+  if (data.success) {
+    if (data.viewName) {
+      lines.push(`View set to ${data.viewName}`);
+    } else if (data.position) {
+      lines.push(`Camera position: (${data.position.x}, ${data.position.y}, ${data.position.z})`);
+      if (data.target) {
+        lines.push(`Target: (${data.target.x}, ${data.target.y}, ${data.target.z})`);
+      }
+    } else {
+      lines.push('View updated');
+    }
+  } else {
+    lines.push('Failed to set view');
+  }
+
+  if (data.message) {
+    lines.push(data.message);
+  }
+
+  return lines.join(' ');
+}
+
+/**
+ * Format animation capture result
+ */
+export function formatAnimationCapture(data: any): string {
+  if (!data) return 'No capture data';
+
+  const lines: string[] = [];
+
+  if (data.success) {
+    if (data.outputDir) {
+      lines.push(`Capturing to ${data.outputDir}`);
+    }
+    if (data.fps) {
+      lines.push(`${data.fps} fps`);
+    }
+    if (data.frameNumber !== undefined) {
+      lines.push(`Frame ${data.frameNumber}`);
+    }
+    if (data.totalFrames !== undefined) {
+      lines.push(`${data.totalFrames} frames captured`);
+    }
+  } else {
+    lines.push('Capture failed');
+  }
+
+  if (data.message) {
+    lines.push(data.message);
+  }
+
+  return lines.join(' - ');
+}
+
+/**
+ * Format video export result
+ */
+export function formatVideoExport(data: any): string {
+  if (!data) return 'No export data';
+
+  const lines: string[] = [];
+
+  if (data.success) {
+    if (data.outputPath) {
+      lines.push(`Exported ${data.outputPath}`);
+    }
+    if (data.format) {
+      lines.push(`Format: ${data.format.toUpperCase()}`);
+    }
+    if (data.duration) {
+      lines.push(`${data.duration}s`);
+    }
+    if (data.totalFrames) {
+      lines.push(`${data.totalFrames} frames`);
+    }
+    if (data.fps) {
+      lines.push(`${data.fps} fps`);
+    }
+  } else {
+    lines.push('Export failed');
+  }
+
+  if (data.message) {
+    lines.push(data.message);
+  }
+
+  return lines.join(' | ');
+}
+
+/**
+ * Format material result
+ */
+export function formatMaterialResult(data: any): string {
+  if (!data) return 'No material data';
+
+  const lines: string[] = [];
+
+  if (data.success) {
+    if (data.objectName) {
+      lines.push(`Applied to ${data.objectName}`);
+    }
+    if (data.materialName) {
+      lines.push(`Material: ${data.materialName}`);
+    } else if (data.propertyName) {
+      lines.push(`Set ${data.propertyName}`);
+      if (data.value) {
+        if (data.value.r !== undefined) {
+          lines.push(`Color: (${data.value.r}, ${data.value.g}, ${data.value.b}${data.value.a !== undefined ? `, ${data.value.a}` : ''})`);
+        }
+      }
+    }
+  } else {
+    lines.push('Material application failed');
+  }
+
+  if (data.message) {
+    lines.push(data.message);
+  }
+
+  return lines.join(' ');
+}
