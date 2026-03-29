@@ -8130,7 +8130,360 @@ Imports an OBJ file as a mesh object.
 | STL | 3D printing | Universal support, small file size | No colors/materials |
 | 3MF | Full 3D printing metadata | Preserves colors, materials, metadata | Less universal |
 | OBJ | Exchange with other software | Wide support, includes materials | Larger files |
-| PLY | Point clouds, color data | Good for scanning data | Less common in CAD |
+| PLY | Point clouds, color data | Good for scanning data | Less common in CAD | 
+
+---
+
+### FEA (Finite Element Analysis) Tools
+
+Perform stress analysis, thermal analysis, and other finite element simulations.
+
+#### Analysis Management
+
+##### `create_fea_analysis(analysisName?: string)`
+
+Create a new FEA analysis container.
+
+**Parameters:**
+- `analysisName` (optional): Name for the new analysis
+
+**Returns:**
+- `success`: Whether creation succeeded
+- `analysisName`: Name of the created analysis
+- `analysisLabel`: Label of the analysis
+
+**Example:**
+- Create analysis: `create_fea_analysis({ analysisName: "StaticAnalysis" })`
+
+##### `delete_fea_analysis(analysisName: string)`
+
+Delete an FEA analysis and all its members.
+
+**Parameters:**
+- `analysisName` (required): Name of the analysis to delete
+
+**Example:**
+- Delete: `delete_fea_analysis({ analysisName: "StaticAnalysis" })`
+
+##### `list_fea_analyses()`
+
+List all FEA analyses in the active document.
+
+**Example:**
+- List all: `list_fea_analyses({})`
+
+##### `get_fea_analysis(analysisName: string)`
+
+Get detailed information about an FEA analysis.
+
+**Parameters:**
+- `analysisName` (required): Name of the analysis to query
+
+**Returns:**
+- `meshInfo`: Information about the mesh
+- `memberCount`: Number of members (constraints, solver, etc.)
+- `status`: Analysis status (Ready, Empty)
+
+**Example:**
+- Get info: `get_fea_analysis({ analysisName: "StaticAnalysis" })`
+
+#### Mesh Generation
+
+##### `create_fea_mesh(objectName: string, meshType?: string, maxSize?: number, secondOrder?: boolean)`
+
+Create a FEM mesh from a shape object.
+
+**Parameters:**
+- `objectName` (required): Name of the shape object to mesh
+- `meshType` (optional): Mesh generator type ("netgen" or "gmsh", default "netgen")
+- `maxSize` (optional): Maximum element size (default 1.0)
+- `secondOrder` (optional): Use second order elements (default false)
+
+**Returns:**
+- `meshName`: Name of the created mesh
+- `nodeCount`: Number of nodes
+- `elementCount`: Number of elements
+
+**Example:**
+- Create mesh: `create_fea_mesh({ objectName: "Box" })`
+- Fine mesh: `create_fea_mesh({ objectName: "Box", maxSize: 0.5 })`
+
+##### `refine_fea_mesh(meshName: string, refineLevel: number)`
+
+Refine an existing FEM mesh by increasing density.
+
+**Parameters:**
+- `meshName` (required): Name of the mesh to refine
+- `refineLevel` (required): Refinement level (1 = double, 2 = quadruple, etc.)
+
+**Example:**
+- Refine: `refine_fea_mesh({ meshName: "Box_Mesh", refineLevel: 1 })`
+
+##### `get_fea_mesh_info(meshName: string)`
+
+Get detailed mesh statistics.
+
+**Parameters:**
+- `meshName` (required): Name of the mesh to query
+
+**Returns:**
+- `nodeCount`, `elementCount`: Mesh statistics
+- `elementTypes`: Object with counts of each element type
+
+**Example:**
+- Get info: `get_fea_mesh_info({ meshName: "Box_Mesh" })`
+
+#### Material Assignment
+
+##### `set_fea_material(objectName: string, materialName: string)`
+
+Assign a material preset to an object.
+
+**Parameters:**
+- `objectName` (required): Name of the object
+- `materialName` (required): Material preset name
+
+**Available Materials:**
+| Material | Young's Modulus (MPa) | Poisson's Ratio | Yield Strength (MPa) |
+|----------|----------------------|-----------------|---------------------|
+| Steel | 210,000 | 0.30 | 250 |
+| Aluminum | 70,000 | 0.33 | 270 |
+| Copper | 130,000 | 0.34 | 33 |
+| Brass | 100,000 | 0.34 | 180 |
+| Titanium | 110,000 | 0.34 | 140 |
+| Plastic | 2,200 | 0.35 | 50 |
+
+**Example:**
+- Assign steel: `set_fea_material({ objectName: "Box", materialName: "Steel" })`
+
+##### `get_fea_material(objectName: string)`
+
+Get the current material assignment.
+
+**Parameters:**
+- `objectName` (required): Name of the object to query
+
+**Example:**
+- Get material: `get_fea_material({ objectName: "Box" })`
+
+#### Boundary Conditions
+
+##### `add_fea_fixed_constraint(analysisName: string, faceReferences: string[])`
+
+Add fixed boundary condition (constrains all translations).
+
+**Parameters:**
+- `analysisName` (required): Name of the analysis
+- `faceReferences` (required): List of face references to fix
+
+**Example:**
+- Fix face: `add_fea_fixed_constraint({ analysisName: "StaticAnalysis", faceReferences: ["Face1"] })`
+
+##### `add_fea_force_constraint(analysisName: string, faceReference: string, forceValue: number, forceDirection?: object)`
+
+Apply a concentrated force to a face.
+
+**Parameters:**
+- `analysisName` (required): Name of the analysis
+- `faceReference` (required): Face reference
+- `forceValue` (required): Force in Newtons
+- `forceDirection` (optional): Direction vector {x, y, z}
+
+**Example:**
+- Apply 1000N: `add_fea_force_constraint({ analysisName: "StaticAnalysis", faceReference: "Face1", forceValue: 1000 })`
+
+##### `add_fea_pressure_constraint(analysisName: string, faceReference: string, pressureValue: number)`
+
+Apply uniform pressure to a face.
+
+**Parameters:**
+- `analysisName` (required): Name of the analysis
+- `faceReference` (required): Face reference
+- `pressureValue` (required): Pressure in MPa
+
+**Example:**
+- Apply 10 MPa: `add_fea_pressure_constraint({ analysisName: "StaticAnalysis", faceReference: "Face1", pressureValue: 10 })`
+
+##### `add_fea_displacement_constraint(analysisName: string, faceReference: string, x?: number, y?: number, z?: number)`
+
+Add prescribed displacement boundary condition.
+
+**Parameters:**
+- `analysisName` (required): Name of the analysis
+- `faceReference` (required): Face reference
+- `x`, `y`, `z` (optional): Displacement value (0 = fixed)
+
+**Example:**
+- Fix only Z: `add_fea_displacement_constraint({ analysisName: "StaticAnalysis", faceReference: "Face1", z: 0 })`
+
+##### `add_fea_self_weight(analysisName: string, gravity?: number)`
+
+Add gravitational loading.
+
+**Parameters:**
+- `analysisName` (required): Name of the analysis
+- `gravity` (optional): Gravity in m/s^2 (default 9.81)
+
+**Example:**
+- Add gravity: `add_fea_self_weight({ analysisName: "StaticAnalysis" })`
+
+##### `list_fea_constraints(analysisName: string)`
+
+List all constraints in an analysis.
+
+**Parameters:**
+- `analysisName` (required): Name of the analysis
+
+**Example:**
+- List: `list_fea_constraints({ analysisName: "StaticAnalysis" })`
+
+#### Solver Configuration
+
+##### `set_fea_solver(analysisName: string, solverType?: string)`
+
+Set the solver type for an analysis.
+
+**Parameters:**
+- `analysisName` (required): Name of the analysis
+- `solverType` (optional): "calculix" (default), "elmer", or "z88"
+
+**Example:**
+- Set solver: `set_fea_solver({ analysisName: "StaticAnalysis" })`
+
+##### `configure_fea_solver(analysisName: string, config: object)`
+
+Configure solver parameters.
+
+**Parameters:**
+- `analysisName` (required): Name of the analysis
+- `config` (required): Configuration dictionary
+
+**Example:**
+- Configure: `configure_fea_solver({ analysisName: "StaticAnalysis", config: { analysis_type: "static" } })`
+
+##### `get_fea_solver_status(analysisName: string)`
+
+Get current solver status.
+
+**Parameters:**
+- `analysisName` (required): Name of the analysis
+
+**Example:**
+- Get status: `get_fea_solver_status({ analysisName: "StaticAnalysis" })`
+
+#### Execution
+
+##### `run_fea_analysis(analysisName: string)`
+
+Run the FEA analysis.
+
+**Parameters:**
+- `analysisName` (required): Name of the analysis to run
+
+**Example:**
+- Run: `run_fea_analysis({ analysisName: "StaticAnalysis" })`
+
+##### `stop_fea_analysis(analysisName: string)`
+
+Stop a running analysis.
+
+**Parameters:**
+- `analysisName` (required): Name of the analysis to stop
+
+**Example:**
+- Stop: `stop_fea_analysis({ analysisName: "StaticAnalysis" })`
+
+#### Results
+
+##### `get_fea_displacement(analysisName: string)`
+
+Get displacement results.
+
+**Parameters:**
+- `analysisName` (required): Name of the analysis
+
+**Returns:**
+- `maxDisplacement`: Maximum displacement magnitude
+- `displacements`: Array of displacement vectors
+
+**Example:**
+- Get results: `get_fea_displacement({ analysisName: "StaticAnalysis" })`
+
+##### `get_fea_stress(analysisName: string)`
+
+Get von Mises stress results.
+
+**Parameters:**
+- `analysisName` (required): Name of the analysis
+
+**Returns:**
+- `maxVonMises`: Maximum von Mises stress
+- `stressCount`: Number of stress values
+
+**Example:**
+- Get results: `get_fea_stress({ analysisName: "StaticAnalysis" })`
+
+##### `get_fea_reactions(analysisName: string)`
+
+Get reaction forces at constraints.
+
+**Parameters:**
+- `analysisName` (required): Name of the analysis
+
+**Returns:**
+- `totalForce`: Sum of all reaction forces
+- `reactions`: Array of reaction force vectors
+
+**Example:**
+- Get results: `get_fea_reactions({ analysisName: "StaticAnalysis" })`
+
+#### FEA Workflow Guidance
+
+**Static Stress Analysis Workflow:**
+
+```
+1. Create analysis:
+   create_fea_analysis({ analysisName: "StressAnalysis" })
+
+2. Create mesh from shape:
+   create_fea_mesh({ objectName: "Bracket", maxSize: 2.0 })
+
+3. Assign material:
+   set_fea_material({ objectName: "Bracket", materialName: "Steel" })
+
+4. Add constraints (fixed faces):
+   add_fea_fixed_constraint({ analysisName: "StressAnalysis", faceReferences: ["Face1"] })
+
+5. Add loads (force or pressure):
+   add_fea_force_constraint({ analysisName: "StressAnalysis", faceReference: "Face2", forceValue: 1000 })
+
+6. Configure solver:
+   set_fea_solver({ analysisName: "StressAnalysis", solverType: "calculix" })
+
+7. Run analysis:
+   run_fea_analysis({ analysisName: "StressAnalysis" })
+
+8. Check results:
+   - Displacement: get_fea_displacement({ analysisName: "StressAnalysis" })
+   - Stress: get_fea_stress({ analysisName: "StressAnalysis" })
+   - Reactions: get_fea_reactions({ analysisName: "StressAnalysis" })
+```
+
+**Result Interpretation:**
+
+| Result | What It Shows | Acceptable Range |
+|--------|---------------|------------------|
+| Displacement | How much the part deforms | Depends on design requirements |
+| Von Mises Stress | Combined stress magnitude | Below material yield strength |
+| Reaction Forces | Forces at constraints | Should balance applied loads |
+
+**Common Pitfalls:**
+
+1. **No mesh**: Analysis requires a FEM mesh - use `create_fea_mesh` first
+2. **Unconstrained model**: Parts need fixed constraints to prevent rigid body motion
+3. **Stress concentration**: Sharp corners cause high local stress - use fillets
+4. **Units mismatch**: Ensure force (N) and pressure (MPa) are consistent
+5. **Singular matrix**: Usually caused by improper constraints or unstable model
 
 ---
 
