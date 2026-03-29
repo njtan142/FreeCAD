@@ -259,7 +259,7 @@ def handle_create_fea_mesh(
                 element_count = 0
 
                 if hasattr(shape, "Faces") and shape.Faces:
-                    pass
+                    pass  # Empty mesh fallback - FemMesh() is a valid empty mesh
 
                 mesh_feature.FemMesh = fea_mesh
 
@@ -793,6 +793,9 @@ def handle_add_fea_force_constraint(
 
         constraint.References = [(analysis, [face_name])]
         constraint.ForceScale = force_value
+        constraint.DirectionVector = App.Vector(
+            force_direction["x"], force_direction["y"], force_direction["z"]
+        )
 
         analysis.addObject(constraint)
         doc.recompute()
@@ -1203,8 +1206,8 @@ def handle_run_fea_analysis(analysis_name: str) -> dict:
                 "data": None,
             }
 
-        if hasattr(solver, "execute"):
-            solver.execute()
+        if hasattr(solver, "solve"):
+            solver.solve()
         else:
             return {
                 "success": False,
@@ -1263,10 +1266,15 @@ def handle_stop_fea_analysis(analysis_name: str) -> dict:
                 "data": None,
             }
 
-        if hasattr(solver, "cancel"):
-            solver.cancel()
-        elif hasattr(solver, "stop"):
-            solver.stop()
+        try:
+            from ..femsolver import run as femsolver_run
+
+            machine = femsolver_run.getMachine(solver)
+            machine.reset()
+        except Exception:
+            analysis = solver.getParentGroup()
+            if analysis and solver in analysis.Group:
+                analysis.removeObject(solver)
 
         return {
             "success": True,
@@ -1457,6 +1465,313 @@ def handle_get_fea_reactions(analysis_name: str) -> dict:
         return {"success": False, "error": str(e), "data": None}
 
 
+def handle_remove_fea_constraint(analysis_name: str, constraint_name: str) -> dict:
+    """
+    Remove a constraint from an FEA analysis.
+
+    Args:
+        analysis_name: Name of the analysis object
+        constraint_name: Name of the constraint to remove
+
+    Returns:
+        dict with success status and message
+    """
+    try:
+        analysis, error = _find_analysis_by_name(analysis_name)
+        if error:
+            return error
+
+        doc = analysis.Document
+        constraint = doc.getObject(constraint_name)
+
+        if constraint is None:
+            return {
+                "success": False,
+                "error": f"Constraint '{constraint_name}' not found",
+                "data": None,
+            }
+
+        if not constraint.Name in [obj.Name for obj in analysis.Group]:
+            return {
+                "success": False,
+                "error": f"Constraint '{constraint_name}' is not part of analysis '{analysis_name}'",
+                "data": None,
+            }
+
+        analysis.removeObject(constraint)
+        doc.removeObject(constraint)
+        doc.recompute()
+
+        return {
+            "success": True,
+            "data": {
+                "removedConstraint": constraint_name,
+                "analysisName": analysis_name,
+                "message": f"Removed constraint '{constraint_name}' from analysis '{analysis_name}'",
+            },
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e), "data": None}
+
+
+def handle_check_fea_analysis_status(analysis_name: str) -> dict:
+    """
+    Check the status of an FEA analysis.
+
+    Args:
+        analysis_name: Name of the analysis object
+
+    Returns:
+        dict with success status, analysis status, and message
+    """
+    try:
+        analysis, error = _find_analysis_by_name(analysis_name)
+        if error:
+            return error
+
+        doc = analysis.Document
+
+        status = "Unknown"
+        progress = 0
+        has_solver = False
+        has_mesh = False
+        has_results = False
+        is_running = False
+
+        for obj in analysis.Group:
+            if obj.isDerivedFrom("Fem::Solver"):
+                has_solver = True
+                if hasattr(obj, "Status"):
+                    status_obj = obj.Status
+                    if hasattr(status_obj, "text"):
+                        status = status_obj.text
+                        if "run" in status.lower() or "calcul" in status.lower():
+                            is_running = True
+                    elif hasattr(status_obj, "Progress"):
+                        progress = getattr(status_obj, "Progress", 0)
+                elif hasattr(obj, "State"):
+                    status = str(obj.State)
+                    if "run" in status.lower():
+                        is_running = True
+
+            if obj.isDerivedFrom("Fem::FemMeshObject"):
+                has_mesh = True
+
+            if obj.isDerivedFrom("Fem::FemResult"):
+                has_results = True
+
+        if is_running:
+            overall_status = "Running"
+        elif has_results:
+            overall_status = "Completed"
+        elif has_solver and has_mesh:
+            overall_status = "Ready to run"
+        elif has_mesh:
+            overall_status = "Missing solver"
+        else:
+            overall_status = "Not configured"
+
+        return {
+            "success": True,
+            "data": {
+                "analysisName": analysis_name,
+                "status": overall_status,
+                "solverStatus": status,
+                "progress": progress,
+                "hasMesh": has_mesh,
+                "hasSolver": has_solver,
+                "hasResults": has_results,
+                "isRunning": is_running,
+                "message": f"Analysis '{analysis_name}' status: {overall_status}",
+            },
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e), "data": None}
+
+
+def handle_get_fea_strain(analysis_name: str) -> dict:
+    """
+    Get strain results.
+
+    Args:
+        analysis_name: Name of the analysis object
+
+    Returns:
+        dict with success status, strain data, and message
+    """
+    try:
+        analysis, error = _find_analysis_by_name(analysis_name)
+        if error:
+            return error
+
+        result_obj = None
+        for obj in analysis.Group:
+            if obj.isDerivedFrom("Fem::FemResult"):
+                if hasattr(obj, "StrainVectors") or hasattr(obj, "Peeq"):
+                    result_obj = obj
+                    break
+
+        if result_obj is None:
+            return {
+                "success": False,
+                "error": f"No strain results found in analysis '{analysis_name}'. Run analysis first.",
+                "data": None,
+            }
+
+        strains = []
+        if hasattr(result_obj, "StrainVectors"):
+            strain_vectors = result_obj.StrainVectors
+            for vec in strain_vectors:
+                strains.append({"x": vec.x, "y": vec.y, "z": vec.z})
+
+        max_strain = 0.0
+        min_strain = 0.0
+        if hasattr(result_obj, "Peeq"):
+            max_strain = result_obj.Peeq
+        elif hasattr(result_obj, "MaxStrain"):
+            max_strain = result_obj.MaxStrain
+
+        return {
+            "success": True,
+            "data": {
+                "analysisName": analysis_name,
+                "resultName": result_obj.Name,
+                "strainCount": len(strains),
+                "strains": strains[:100],
+                "maxStrain": max_strain,
+                "minStrain": min_strain,
+                "message": f"Found {len(strains)} strain result(s), max equivalent strain: {max_strain}",
+            },
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e), "data": None}
+
+
+def handle_get_fea_result_summary(analysis_name: str) -> dict:
+    """
+    Get a comprehensive summary of all FEA results.
+
+    Args:
+        analysis_name: Name of the analysis object
+
+    Returns:
+        dict with success status and comprehensive results summary
+    """
+    try:
+        analysis, error = _find_analysis_by_name(analysis_name)
+        if error:
+            return error
+
+        result_obj = None
+        for obj in analysis.Group:
+            if obj.isDerivedFrom("Fem::FemResult"):
+                result_obj = obj
+                break
+
+        if result_obj is None:
+            return {
+                "success": False,
+                "error": f"No results found in analysis '{analysis_name}'. Run analysis first.",
+                "data": None,
+            }
+
+        summary = {
+            "analysisName": analysis_name,
+            "resultName": result_obj.Name,
+        }
+
+        if hasattr(result_obj, "MaxDisp"):
+            summary["maxDisplacement"] = result_obj.MaxDisp
+        elif hasattr(result_obj, "U"):
+            u_data = result_obj.U
+            if hasattr(u_data, "getData"):
+                disp_values = [
+                    abs(d[0]) + abs(d[1]) + abs(d[2]) for d in u_data.getData()
+                ]
+                summary["maxDisplacement"] = max(disp_values) if disp_values else 0
+
+        if hasattr(result_obj, "vonMises"):
+            summary["maxVonMisesStress"] = result_obj.vonMises
+        elif hasattr(result_obj, "MaxStress"):
+            summary["maxVonMisesStress"] = result_obj.MaxStress
+
+        if hasattr(result_obj, "Peeq"):
+            summary["maxEquivalentStrain"] = result_obj.Peeq
+
+        if hasattr(result_obj, "Reaction Forces"):
+            reaction_data = result_obj["Reaction Forces"]
+            if hasattr(reaction_data, "getData"):
+                reactions = reaction_data.getData()
+                if reactions:
+                    total = {"x": 0, "y": 0, "z": 0}
+                    for r in reactions:
+                        total["x"] += r[0]
+                        total["y"] += r[1]
+                        total["z"] += r[2]
+                    summary["totalReactionForce"] = total
+
+        if hasattr(result_obj, "Time"):
+            summary["analysisTime"] = result_obj.Time
+
+        mesh_obj = None
+        for obj in analysis.Group:
+            if obj.isDerivedFrom("Fem::FemMeshObject"):
+                mesh_obj = obj
+                break
+
+        if mesh_obj:
+            if hasattr(mesh_obj, "Mesh"):
+                mesh = mesh_obj.Mesh
+                summary["meshNodeCount"] = mesh.CountNodes
+                summary["meshElementCount"] = mesh.CountElements
+
+        material_props = None
+        for obj in analysis.Group:
+            if obj.isDerivedFrom("Fem::Material"):
+                material_props = {
+                    "name": obj.Material.get("Name", "Unknown"),
+                    "youngsModulus": obj.Material.get("YoungsModulus", "Unknown"),
+                    "poissonsRatio": obj.Material.get("PoissonsRatio", "Unknown"),
+                }
+                break
+
+        if material_props:
+            summary["material"] = material_props
+
+        conclusion_parts = []
+        if summary.get("maxDisplacement"):
+            conclusion_parts.append(
+                f"Max displacement: {summary['maxDisplacement']:.4f} mm"
+            )
+        if summary.get("maxVonMisesStress"):
+            conclusion_parts.append(
+                f"Max von Mises stress: {summary['maxVonMisesStress']:.2f} MPa"
+            )
+            if material_props and material_props.get("youngsModulus") != "Unknown":
+                try:
+                    yield_strength = float(material_props["youngsModulus"]) * 0.3
+                    safety_factor = yield_strength / summary["maxVonMisesStress"]
+                    conclusion_parts.append(
+                        f"Estimated safety factor: {safety_factor:.2f}"
+                    )
+                except (ValueError, ZeroDivisionError):
+                    pass
+
+        summary["conclusion"] = (
+            ". ".join(conclusion_parts) if conclusion_parts else "Analysis complete"
+        )
+        summary["message"] = (
+            f"Result summary for '{analysis_name}': {summary['conclusion']}"
+        )
+
+        return {
+            "success": True,
+            "data": summary,
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e), "data": None}
+
+
 __all__ = [
     "handle_create_fea_analysis",
     "handle_delete_fea_analysis",
@@ -1473,12 +1788,16 @@ __all__ = [
     "handle_add_fea_displacement_constraint",
     "handle_add_fea_self_weight",
     "handle_list_fea_constraints",
+    "handle_remove_fea_constraint",
     "handle_set_fea_solver",
     "handle_configure_fea_solver",
     "handle_get_fea_solver_status",
+    "handle_check_fea_analysis_status",
     "handle_run_fea_analysis",
     "handle_stop_fea_analysis",
     "handle_get_fea_displacement",
     "handle_get_fea_stress",
+    "handle_get_fea_strain",
     "handle_get_fea_reactions",
+    "handle_get_fea_result_summary",
 ]

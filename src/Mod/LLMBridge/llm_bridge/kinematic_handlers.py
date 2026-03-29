@@ -549,10 +549,8 @@ def handle_set_joint_value(joint_name, value, unit="auto"):
             else:
                 unit = "mm"
 
-        if unit == "degrees" and joint_type not in ["Revolute", "angular", "Angle"]:
+        if unit == "degrees" and joint_type in ["Revolute", "angular", "Angle"]:
             value = _degrees_to_radians(value)
-        elif unit == "mm" and joint_type in ["Revolute", "angular", "Angle"]:
-            value = _radians_to_degrees(value)
 
         success, message = _set_joint_value_internal(joint_obj, value)
 
@@ -774,6 +772,7 @@ def handle_drive_joint(
                 success, _ = _set_joint_value_internal(joint_obj, value)
                 if success:
                     doc.recompute()
+                App.GuiUpdate()
                 time.sleep(duration / step_count)
 
         elif motion_type == "ease_in_out":
@@ -788,6 +787,7 @@ def handle_drive_joint(
                 success, _ = _set_joint_value_internal(joint_obj, value)
                 if success:
                     doc.recompute()
+                App.GuiUpdate()
                 time.sleep(duration / step_count)
 
         elif motion_type == "sine":
@@ -799,6 +799,7 @@ def handle_drive_joint(
                 success, _ = _set_joint_value_internal(joint_obj, value)
                 if success:
                     doc.recompute()
+                App.GuiUpdate()
                 time.sleep(duration / step_count)
 
         return {
@@ -1092,8 +1093,7 @@ def handle_check_collision(assembly_name, during_motion=False):
                         shape1 = shapes[i].Shape
                         shape2 = shapes[j].Shape
 
-                        intersection = shape1.intersect(shape2)
-                        if intersection and not intersection.IsNull():
+                        if Part.checkIntersection(shape1, shape2):
                             has_collision = True
                             collision_pairs.append(
                                 {
@@ -1113,9 +1113,62 @@ def handle_check_collision(assembly_name, during_motion=False):
         if during_motion and _kinematic_state.get("animation_frames"):
             frame_count = len(_kinematic_state["animation_frames"])
             if frame_count > 1:
-                last_frame = _kinematic_state["animation_frames"][-1]
-                for i in range(len(last_frame.get("joint_states", {}))):
-                    pass
+                original_joint_values = {}
+                for joint_name in _kinematic_state["joint_drives"].keys():
+                    joint_obj = doc.getObject(joint_name)
+                    if joint_obj:
+                        original_joint_values[joint_name] = _get_joint_value_internal(
+                            joint_obj
+                        )
+
+                samples_per_segment = 5
+                for frame_idx in range(frame_count - 1):
+                    frame1 = _kinematic_state["animation_frames"][frame_idx]
+                    frame2 = _kinematic_state["animation_frames"][frame_idx + 1]
+
+                    for sample in range(1, samples_per_segment + 1):
+                        t = sample / float(samples_per_segment)
+                        for joint_name, states1 in frame1.get(
+                            "joint_states", {}
+                        ).items():
+                            states2 = frame2.get("joint_states", {}).get(joint_name)
+                            if states2 is None:
+                                continue
+                            joint_obj = doc.getObject(joint_name)
+                            if joint_obj is None:
+                                continue
+
+                            value = states1 + (states2 - states1) * t
+                            _set_joint_value_internal(joint_obj, value)
+
+                        doc.recompute()
+
+                        for i in range(len(shapes)):
+                            for j in range(i + 1, len(shapes)):
+                                try:
+                                    shape1 = shapes[i].Shape
+                                    shape2 = shapes[j].Shape
+                                    if Part.checkIntersection(shape1, shape2):
+                                        has_collision = True
+                                        collision_pairs.append(
+                                            {
+                                                "object1": shapes[i].Name,
+                                                "object1Label": shapes[i].Label,
+                                                "object2": shapes[j].Name,
+                                                "object2Label": shapes[j].Label,
+                                                "type": "during_motion_collision",
+                                                "frame": frame_idx,
+                                                "sample": sample,
+                                            }
+                                        )
+                                except Exception:
+                                    pass
+
+                for joint_name, value in original_joint_values.items():
+                    joint_obj = doc.getObject(joint_name)
+                    if joint_obj:
+                        _set_joint_value_internal(joint_obj, value)
+                doc.recompute()
 
         return {
             "success": True,

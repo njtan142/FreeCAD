@@ -10,6 +10,7 @@
 
 import FreeCAD as App
 import FreeCADGui as Gui
+import math
 import os
 import time
 import tempfile

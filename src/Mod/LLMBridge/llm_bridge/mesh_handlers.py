@@ -18,7 +18,7 @@ import MeshPart
 import Part
 
 
-def handle_convert_to_mesh(shape_name, mesh_name=None):
+def handle_shape_to_mesh(shape_name, mesh_name=None):
     """
     Convert a shape to a mesh object.
 
@@ -83,7 +83,7 @@ def handle_convert_to_mesh(shape_name, mesh_name=None):
         return {"success": False, "error": str(e), "data": None}
 
 
-def handle_convert_to_shape(mesh_name, shape_name=None):
+def handle_mesh_to_shape(mesh_name, shape_name=None):
     """
     Convert a mesh to a shape (facade/solid).
 
@@ -706,7 +706,7 @@ def handle_mesh_validate(mesh_name):
         return {"success": False, "error": str(e), "data": None}
 
 
-def handle_mesh_is_watertight(mesh_name):
+def handle_check_watertight(mesh_name):
     """
     Check if a mesh is watertight (closed manifold).
 
@@ -1075,9 +1075,150 @@ def handle_mesh_smooth(mesh_name, iterations=1, result_name=None):
         return {"success": False, "error": str(e), "data": None}
 
 
+def handle_repair_mesh(mesh_name: str) -> dict:
+    """
+    Repair mesh by fixing common issues like holes, normals, duplicates.
+
+    Args:
+        mesh_name: Name of the mesh object to repair
+
+    Returns:
+        dict with success status, repair statistics, and message
+    """
+    try:
+        doc = App.ActiveDocument
+        if doc is None:
+            return {"success": False, "error": "No active document", "data": None}
+
+        obj = doc.getObject(mesh_name)
+        if obj is None:
+            return {
+                "success": False,
+                "error": f"Mesh '{mesh_name}' not found",
+                "data": None,
+            }
+        if not hasattr(obj, "Mesh") or obj.Mesh is None:
+            return {
+                "success": False,
+                "error": f"Object '{mesh_name}' is not a mesh",
+                "data": None,
+            }
+
+        mesh = obj.Mesh
+        original_triangles = mesh.countFacets()
+        original_vertices = mesh.countVertices()
+
+        repaired_mesh = mesh.copy()
+        holes_filled = repaired_mesh.fillHoles()
+        repaired_mesh.fixNormals()
+        repaired_mesh.mergeVertices()
+
+        result_feature = doc.addObject("Mesh::Feature", f"{obj.Name}_Repaired")
+        result_feature.Mesh = repaired_mesh
+
+        doc.recompute()
+
+        new_triangles = repaired_mesh.countFacets()
+        new_vertices = repaired_mesh.countVertices()
+        vertices_removed = original_vertices - new_vertices
+
+        return {
+            "success": True,
+            "data": {
+                "resultMesh": result_feature.Name,
+                "resultLabel": result_feature.Label,
+                "holesFilled": holes_filled,
+                "verticesRemoved": vertices_removed,
+                "originalTriangles": original_triangles,
+                "newTriangles": new_triangles,
+                "originalVertices": original_vertices,
+                "newVertices": new_vertices,
+                "sourceMesh": mesh_name,
+                "message": f"Repaired '{mesh_name}': {holes_filled} hole(s) filled, {vertices_removed} duplicate(s) removed -> '{result_feature.Label}'",
+            },
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e), "data": None}
+
+
+def handle_optimize_mesh(mesh_name: str, target_ratio: float = 0.8) -> dict:
+    """
+    Optimize mesh for better performance/quality ratio.
+
+    Args:
+        mesh_name: Name of the mesh object to optimize
+        target_ratio: Target ratio (0.0 to 1.0) for optimization (e.g., 0.8 = reduce to 80%)
+
+    Returns:
+        dict with success status, optimization statistics, and message
+    """
+    try:
+        doc = App.ActiveDocument
+        if doc is None:
+            return {"success": False, "error": "No active document", "data": None}
+
+        obj = doc.getObject(mesh_name)
+        if obj is None:
+            return {
+                "success": False,
+                "error": f"Mesh '{mesh_name}' not found",
+                "data": None,
+            }
+        if not hasattr(obj, "Mesh") or obj.Mesh is None:
+            return {
+                "success": False,
+                "error": f"Object '{mesh_name}' is not a mesh",
+                "data": None,
+            }
+
+        mesh = obj.Mesh
+        original_triangles = mesh.countFacets()
+        original_vertices = mesh.countVertices()
+
+        if target_ratio <= 0 or target_ratio > 1:
+            return {
+                "success": False,
+                "error": "Target ratio must be between 0 and 1 (exclusive of 0)",
+                "data": None,
+            }
+
+        optimized_mesh = mesh.copy()
+        target_triangles = max(3, int(original_triangles * target_ratio))
+        optimized_mesh.decreaseDensity(target_triangles)
+
+        result_feature = doc.addObject("Mesh::Feature", f"{obj.Name}_Optimized")
+        result_feature.Mesh = optimized_mesh
+
+        doc.recompute()
+
+        new_triangles = optimized_mesh.countFacets()
+        new_vertices = optimized_mesh.countVertices()
+        reduction = (
+            1.0 - (new_triangles / original_triangles) if original_triangles > 0 else 0
+        )
+
+        return {
+            "success": True,
+            "data": {
+                "resultMesh": result_feature.Name,
+                "resultLabel": result_feature.Label,
+                "originalTriangles": original_triangles,
+                "newTriangles": new_triangles,
+                "originalVertices": original_vertices,
+                "newVertices": new_vertices,
+                "targetRatio": target_ratio,
+                "actualReduction": reduction,
+                "sourceMesh": mesh_name,
+                "message": f"Optimized '{mesh_name}': {original_triangles} -> {new_triangles} triangles ({reduction * 100:.1f}% reduction) -> '{result_feature.Label}'",
+            },
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e), "data": None}
+
+
 __all__ = [
-    "handle_convert_to_mesh",
-    "handle_convert_to_shape",
+    "handle_shape_to_mesh",
+    "handle_mesh_to_shape",
     "handle_mesh_boolean_union",
     "handle_mesh_boolean_difference",
     "handle_mesh_boolean_intersection",
@@ -1086,9 +1227,11 @@ __all__ = [
     "handle_mesh_fix_normals",
     "handle_mesh_remove_duplicates",
     "handle_mesh_validate",
-    "handle_mesh_is_watertight",
+    "handle_check_watertight",
     "handle_mesh_get_info",
     "handle_mesh_scale",
     "handle_mesh_offset",
     "handle_mesh_smooth",
+    "handle_repair_mesh",
+    "handle_optimize_mesh",
 ]

@@ -243,6 +243,13 @@ from .fea_handlers import (
     handle_add_fea_displacement_constraint,
     handle_add_fea_self_weight,
     handle_list_fea_constraints,
+    handle_remove_fea_constraint,
+    handle_check_fea_analysis_status,
+    handle_get_fea_displacement,
+    handle_get_fea_stress,
+    handle_get_fea_strain,
+    handle_get_fea_reactions,
+    handle_get_fea_result_summary,
 )
 
 __all__ = [
@@ -442,4 +449,11 @@ __all__ = [
     "handle_add_fea_displacement_constraint",
     "handle_add_fea_self_weight",
     "handle_list_fea_constraints",
+    "handle_remove_fea_constraint",
+    "handle_check_fea_analysis_status",
+    "handle_get_fea_displacement",
+    "handle_get_fea_stress",
+    "handle_get_fea_strain",
+    "handle_get_fea_reactions",
+    "handle_get_fea_result_summary",
 ]
