@@ -1887,3 +1887,191 @@ export function formatExportResult(data: any): string {
 
   return lines.join('\n');
 }
+
+// ============================================================================
+// Surface Modeling Result Formatters
+// ============================================================================
+
+/**
+ * Format loft creation result
+ */
+export function formatLoftCreation(data: any): string {
+  if (!data) return 'No loft data';
+
+  const lines: string[] = [];
+  lines.push(`Loft: ${data.loftLabel || data.loftName} (${data.loftName})`);
+
+  if (data.profileCount !== undefined) {
+    lines.push(`Profiles: ${data.profileCount}`);
+  }
+
+  if (data.solid !== undefined) {
+    lines.push(`Solid: ${data.solid ? 'Yes' : 'No'}`);
+  }
+
+  if (data.closed !== undefined) {
+    lines.push(`Closed: ${data.closed ? 'Yes' : 'No'}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Format sweep creation result
+ */
+export function formatSweepCreation(data: any): string {
+  if (!data) return 'No sweep data';
+
+  const lines: string[] = [];
+
+  const resultName = data.sweepName || data.pipeName || data.surfaceName || data.loftName;
+  const resultLabel = data.sweepLabel || data.pipeLabel || data.surfaceLabel || data.loftLabel;
+
+  lines.push(`Surface: ${resultLabel || resultName} (${resultName})`);
+
+  if (data.profileName) {
+    lines.push(`Profile: ${data.profileName}`);
+  }
+
+  if (data.pathName) {
+    lines.push(`Path: ${data.pathName}`);
+  }
+
+  if (data.profileCount !== undefined) {
+    lines.push(`Profiles: ${data.profileCount}`);
+  }
+
+  if (data.solid !== undefined) {
+    lines.push(`Solid: ${data.solid ? 'Yes' : 'No'}`);
+  }
+
+  if (data.frenet !== undefined) {
+    lines.push(`Frenet Frame: ${data.frenet ? 'Yes' : 'No'}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Format surface operation result (ruled, extend, trim, etc.)
+ */
+export function formatSurfaceOperation(data: any): string {
+  if (!data) return 'No surface operation data';
+
+  const lines: string[] = [];
+
+  const resultName = data.surfaceName || data.resultName || data.loftName;
+  const resultLabel = data.surfaceLabel || data.resultLabel || data.loftLabel;
+
+  lines.push(`Surface: ${resultLabel || resultName} (${resultName})`);
+  lines.push(`Type: ${data.operationType || data.surfaceType || 'Surface'}`);
+
+  if (data.curve1Name) {
+    lines.push(`Curve 1: ${data.curve1Name}`);
+  }
+
+  if (data.curve2Name) {
+    lines.push(`Curve 2: ${data.curve2Name}`);
+  }
+
+  if (data.edgeCount !== undefined) {
+    lines.push(`Edges: ${data.edgeCount}`);
+  }
+
+  if (data.distance !== undefined) {
+    lines.push(`Distance: ${typeof data.distance === 'number' ? data.distance.toFixed(2) + ' mm' : data.distance}`);
+  }
+
+  if (data.direction) {
+    lines.push(`Direction: ${data.direction}`);
+  }
+
+  if (data.toolName) {
+    lines.push(`Tool: ${data.toolName}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Format surface info result
+ */
+export function formatSurfaceInfo(data: any): string {
+  if (!data) return 'No surface info data';
+
+  const lines: string[] = [];
+  lines.push(`Surface: ${data.surfaceLabel || data.surfaceName} (${data.surfaceName})`);
+
+  if (data.surfaceType) {
+    lines.push(`Type: ${data.surfaceType}`);
+  }
+
+  if (data.area !== undefined) {
+    lines.push(`Area: ${data.area.toFixed(2)} mm²`);
+  }
+
+  if (data.volume !== undefined) {
+    lines.push(`Volume: ${data.volume.toFixed(2)} mm³`);
+  }
+
+  if (data.centerOfMass) {
+    const com = data.centerOfMass;
+    lines.push(`Center: (${com.x?.toFixed(2) || 0}, ${com.y?.toFixed(2) || 0}, ${com.z?.toFixed(2) || 0})`);
+  }
+
+  if (data.curvature) {
+    lines.push('');
+    lines.push('Curvature:');
+    if (data.curvature.min !== undefined) {
+      lines.push(`  Min: ${data.curvature.min.toFixed(4)}`);
+    }
+    if (data.curvature.max !== undefined) {
+      lines.push(`  Max: ${data.curvature.max.toFixed(4)}`);
+    }
+    if (data.curvature.gaussian !== undefined) {
+      lines.push(`  Gaussian: ${data.curvature.gaussian.toFixed(4)}`);
+    }
+    if (data.curvature.mean !== undefined) {
+      lines.push(`  Mean: ${data.curvature.mean.toFixed(4)}`);
+    }
+  }
+
+  if (data.isValid !== undefined) {
+    lines.push('');
+    lines.push(`Valid: ${data.isValid ? 'Yes' : 'No'}`);
+  }
+
+  if (data.issues && data.issues.length > 0) {
+    lines.push('');
+    lines.push(`Issues Found: ${data.issues.length}`);
+    for (const issue of data.issues) {
+      lines.push(`  - ${issue.type || 'Unknown'}: ${issue.description || 'No description'}`);
+    }
+  }
+
+  if (data.issueCount !== undefined && data.issueCount > 0) {
+    lines.push(`Issue Count: ${data.issueCount}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
