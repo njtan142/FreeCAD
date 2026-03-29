@@ -923,6 +923,14 @@ function formatDimensionValue(value: string | number, dimensionType: string): st
   return `${numValue.toFixed(2)} mm`;
 }
 
+function formatFileSize(bytes: number): string {
+  if (bytes === undefined || bytes === null) return '-';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+}
+
 /**
  * Format shape operation result from boolean operations, heal_shape, etc.
  */
@@ -2466,4 +2474,322 @@ export function formatMaterialResult(data: any): string {
   }
 
   return lines.join(' ');
+}
+
+// ============================================================================
+// Mesh Operation Result Formatters
+// ============================================================================
+
+export function formatMeshConversion(data: any): string {
+  if (!data) return 'No mesh conversion data';
+
+  const lines: string[] = [];
+
+  if (data.success) {
+    if (data.meshName) {
+      lines.push(`Converted to mesh: ${data.meshLabel || data.meshName} (${data.meshName})`);
+    }
+    if (data.shapeName) {
+      lines.push(`From shape: ${data.shapeLabel || data.shapeName} (${data.shapeName})`);
+    }
+    if (data.triangleCount !== undefined) {
+      lines.push(`Triangles: ${data.triangleCount.toLocaleString()}`);
+    }
+    if (data.vertexCount !== undefined) {
+      lines.push(`Vertices: ${data.vertexCount.toLocaleString()}`);
+    }
+    if (data.volume !== undefined) {
+      lines.push(`Volume: ${formatDimensionValue(data.volume, 'volume')}`);
+    }
+  } else {
+    lines.push(`Conversion failed: ${data.error || 'Unknown error'}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatMeshBoolean(data: any): string {
+  if (!data) return 'No mesh boolean data';
+
+  const lines: string[] = [];
+
+  if (data.success) {
+    lines.push(`Boolean operation completed`);
+    if (data.resultMesh) {
+      lines.push(`Result: ${data.resultLabel || data.resultMesh} (${data.resultMesh})`);
+    }
+    if (data.triangleCount !== undefined) {
+      lines.push(`Triangles: ${data.triangleCount.toLocaleString()}`);
+    }
+    if (data.operation) {
+      lines.push(`Operation: ${data.operation}`);
+    }
+  } else {
+    lines.push(`Boolean operation failed: ${data.error || 'Unknown error'}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatMeshDecimation(data: any): string {
+  if (!data) return 'No mesh decimation data';
+
+  const lines: string[] = [];
+
+  if (data.success) {
+    lines.push(`Decimation completed`);
+    if (data.resultMesh) {
+      lines.push(`Result: ${data.resultLabel || data.resultMesh} (${data.resultMesh})`);
+    }
+    if (data.originalTriangles !== undefined && data.newTriangles !== undefined) {
+      lines.push(`Triangles: ${data.originalTriangles.toLocaleString()} → ${data.newTriangles.toLocaleString()}`);
+    }
+    if (data.reduction !== undefined) {
+      lines.push(`Reduction: ${(data.reduction * 100).toFixed(1)}%`);
+    }
+  } else {
+    lines.push(`Decimation failed: ${data.error || 'Unknown error'}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatMeshRepair(data: any): string {
+  if (!data) return 'No mesh repair data';
+
+  const lines: string[] = [];
+
+  if (data.success) {
+    lines.push(`Mesh repair completed`);
+    if (data.repairedMesh) {
+      lines.push(`Result: ${data.repairedLabel || data.repairedMesh} (${data.repairedMesh})`);
+    }
+    if (data.fixesApplied !== undefined) {
+      lines.push(`Fixes applied: ${data.fixesApplied}`);
+    }
+    if (data.holesFilled !== undefined) {
+      lines.push(`Holes filled: ${data.holesFilled}`);
+    }
+    if (data.duplicatesRemoved !== undefined) {
+      lines.push(`Duplicates removed: ${data.duplicatesRemoved}`);
+    }
+    if (data.normalsFixed !== undefined) {
+      lines.push(`Normals fixed: ${data.normalsFixed}`);
+    }
+  } else {
+    lines.push(`Mesh repair failed: ${data.error || 'Unknown error'}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatMeshValidation(data: any): string {
+  if (!data) return 'No mesh validation data';
+
+  const lines: string[] = [];
+
+  lines.push(`Mesh: ${data.meshLabel || data.meshName} (${data.meshName})`);
+  lines.push('');
+
+  if (data.isValid !== undefined) {
+    lines.push(`Valid: ${data.isValid ? 'Yes' : 'No'}`);
+  }
+
+  if (data.isWatertight !== undefined) {
+    lines.push(`Watertight: ${data.isWatertight ? 'Yes' : 'No'}`);
+  }
+
+  if (data.holesCount !== undefined) {
+    lines.push(`Holes: ${data.holesCount}`);
+  }
+
+  if (data.triangleCount !== undefined) {
+    lines.push(`Triangles: ${data.triangleCount.toLocaleString()}`);
+  }
+
+  if (data.issues && data.issues.length > 0) {
+    lines.push('');
+    lines.push('Detected Issues:');
+    for (const issue of data.issues) {
+      lines.push(`  - ${issue.type || 'Unknown'}: ${issue.description || issue.message || 'No description'}`);
+    }
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatMeshInfo(data: any): string {
+  if (!data) return 'No mesh info data';
+
+  const lines: string[] = [];
+  lines.push(`Mesh: ${data.meshLabel || data.meshName} (${data.meshName})`);
+  lines.push('');
+
+  if (data.triangleCount !== undefined) {
+    lines.push(`Triangles: ${data.triangleCount.toLocaleString()}`);
+  }
+
+  if (data.vertexCount !== undefined) {
+    lines.push(`Vertices: ${data.vertexCount.toLocaleString()}`);
+  }
+
+  if (data.area !== undefined) {
+    lines.push(`Surface Area: ${formatDimensionValue(data.area, 'area')}`);
+  }
+
+  if (data.volume !== undefined) {
+    lines.push(`Volume: ${formatDimensionValue(data.volume, 'volume')}`);
+  }
+
+  if (data.bounds) {
+    lines.push('');
+    lines.push('Bounding Box:');
+    if (data.bounds.xMin !== undefined) {
+      lines.push(`  X: ${data.bounds.xMin.toFixed(3)} → ${data.bounds.xMax.toFixed(3)}`);
+      lines.push(`  Y: ${data.bounds.yMin.toFixed(3)} → ${data.bounds.yMax.toFixed(3)}`);
+      lines.push(`  Z: ${data.bounds.zMin.toFixed(3)} → ${data.bounds.zMax.toFixed(3)}`);
+    }
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatMeshScale(data: any): string {
+  if (!data) return 'No mesh scale data';
+
+  const lines: string[] = [];
+
+  if (data.success) {
+    lines.push(`Mesh scaled`);
+    if (data.scaledMesh) {
+      lines.push(`Result: ${data.scaledLabel || data.scaledMesh} (${data.scaledMesh})`);
+    }
+    if (data.scaleFactor !== undefined) {
+      lines.push(`Scale factor: ${data.scaleFactor}`);
+    }
+    if (data.originalSize !== undefined && data.newSize !== undefined) {
+      lines.push(`Size: ${data.originalSize.toFixed(3)} → ${data.newSize.toFixed(3)}`);
+    }
+  } else {
+    lines.push(`Mesh scaling failed: ${data.error || 'Unknown error'}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatMeshOffset(data: any): string {
+  if (!data) return 'No mesh offset data';
+
+  const lines: string[] = [];
+
+  if (data.success) {
+    lines.push(`Mesh offset completed`);
+    if (data.offsetMesh) {
+      lines.push(`Result: ${data.offsetLabel || data.offsetMesh} (${data.offsetMesh})`);
+    }
+    if (data.offsetDistance !== undefined) {
+      lines.push(`Offset distance: ${data.offsetDistance}`);
+    }
+    if (data.triangleCount !== undefined) {
+      lines.push(`Triangles: ${data.triangleCount.toLocaleString()}`);
+    }
+  } else {
+    lines.push(`Mesh offset failed: ${data.error || 'Unknown error'}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatMeshExport(data: any): string {
+  if (!data) return 'No mesh export data';
+
+  const lines: string[] = [];
+
+  if (data.success) {
+    lines.push(`Exported: ${data.meshLabel || data.meshName} (${data.meshName})`);
+    lines.push(`Format: ${data.format?.toUpperCase() || data.outputPath?.split('.').pop()?.toUpperCase() || 'MESH'}`);
+    lines.push(`Path: ${data.outputPath}`);
+    if (data.fileSize !== undefined) {
+      lines.push(`File size: ${formatFileSize(data.fileSize)}`);
+    }
+    if (data.triangleCount !== undefined) {
+      lines.push(`Triangles: ${data.triangleCount.toLocaleString()}`);
+    }
+  } else {
+    lines.push(`Export failed: ${data.error || 'Unknown error'}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatMeshImport(data: any): string {
+  if (!data) return 'No mesh import data';
+
+  const lines: string[] = [];
+
+  if (data.success) {
+    lines.push(`Imported: ${data.meshLabel || data.meshName} (${data.meshName})`);
+    lines.push(`Format: ${data.format?.toUpperCase() || 'MESH'}`);
+    lines.push(`Source: ${data.inputPath}`);
+    if (data.triangleCount !== undefined) {
+      lines.push(`Triangles: ${data.triangleCount.toLocaleString()}`);
+    }
+    if (data.vertexCount !== undefined) {
+      lines.push(`Vertices: ${data.vertexCount.toLocaleString()}`);
+    }
+  } else {
+    lines.push(`Import failed: ${data.error || 'Unknown error'}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
 }
