@@ -25,7 +25,12 @@ def handle_undo():
         if doc.Undo():
             return {
                 "success": True,
-                "data": {"documentName": doc.Name, "message": "Undid last operation"},
+                "data": {
+                    "success": True,
+                    "undoneObject": doc.Name,
+                    "documentName": doc.Name,
+                    "message": "Undid last operation",
+                },
             }
         else:
             return {"success": False, "error": "Nothing to undo", "data": None}
@@ -49,6 +54,8 @@ def handle_redo():
             return {
                 "success": True,
                 "data": {
+                    "success": True,
+                    "redoneObject": doc.Name,
                     "documentName": doc.Name,
                     "message": "Redid last undone operation",
                 },
@@ -71,12 +78,18 @@ def handle_get_undo_stack_size():
         if doc is None:
             return {"success": False, "error": "No active document", "data": None}
 
+        undo_size = doc.UndoSize()
+        redo_size = doc.RedoSize()
         return {
             "success": True,
             "data": {
+                "success": True,
+                "undoSize": undo_size,
+                "redoSize": redo_size,
+                "canUndo": undo_size > 0,
+                "canRedo": redo_size > 0,
                 "documentName": doc.Name,
-                "undoStackSize": doc.UndoSize(),
-                "message": f"Undo stack contains {doc.UndoSize()} operation(s)",
+                "message": f"Undo stack contains {undo_size} operation(s), redo stack contains {redo_size}",
             },
         }
     except Exception as e:
@@ -111,6 +124,7 @@ def handle_show_object(obj_name):
         return {
             "success": True,
             "data": {
+                "success": True,
                 "objectName": obj.Name,
                 "objectLabel": obj.Label,
                 "visible": True,
@@ -150,6 +164,7 @@ def handle_hide_object(obj_name):
         return {
             "success": True,
             "data": {
+                "success": True,
                 "objectName": obj.Name,
                 "objectLabel": obj.Label,
                 "visible": False,
@@ -189,6 +204,7 @@ def handle_toggle_visibility(obj_name):
         return {
             "success": True,
             "data": {
+                "success": True,
                 "objectName": obj.Name,
                 "objectLabel": obj.Label,
                 "visible": obj.ViewObject.Visibility,
@@ -286,9 +302,10 @@ def handle_get_visible_objects():
         return {
             "success": True,
             "data": {
+                "success": True,
+                "count": len(visible_objects),
+                "objects": visible_objects,
                 "documentName": doc.Name,
-                "visibleCount": len(visible_objects),
-                "visibleObjects": visible_objects,
                 "message": f"Found {len(visible_objects)} visible object(s)",
             },
         }
@@ -325,6 +342,7 @@ def handle_set_object_visibility(obj_name, visible):
         return {
             "success": True,
             "data": {
+                "success": True,
                 "objectName": obj.Name,
                 "objectLabel": obj.Label,
                 "visible": obj.ViewObject.Visibility,
