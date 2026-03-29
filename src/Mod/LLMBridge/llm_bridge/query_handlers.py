@@ -369,7 +369,7 @@ def handle_get_document_info() -> dict:
                 "name": doc.Name,
                 "label": doc.Label,
                 "objectCount": len(doc.Objects),
-                "modified": doc.Modified,
+                "modified": doc.isTouched() if hasattr(doc, 'isTouched') else False,
                 "filePath": doc.FileName if hasattr(doc, 'FileName') else None
             }
         }
