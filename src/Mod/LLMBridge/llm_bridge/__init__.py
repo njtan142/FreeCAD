@@ -165,13 +165,14 @@ from .kinematic_handlers import (
     handle_check_dof,
     handle_set_joint_value,
     handle_get_joint_value,
+    handle_get_joint_limits,
     handle_add_drive,
+    handle_drive_joint,
     handle_animate_assembly,
     handle_stop_animation,
     handle_get_animation_state,
     handle_get_kinematic_positions,
     handle_check_collision,
-    handle_get_joint_limits,
 )
 
 __all__ = [
@@ -303,4 +304,17 @@ __all__ = [
     "handle_rebuild_surface",
     "handle_create_blend_surface",
     "handle_create_offset_surface",
+    "handle_initialize_solver",
+    "handle_solve_assembly",
+    "handle_check_dof",
+    "handle_set_joint_value",
+    "handle_get_joint_value",
+    "handle_get_joint_limits",
+    "handle_add_drive",
+    "handle_drive_joint",
+    "handle_animate_assembly",
+    "handle_stop_animation",
+    "handle_get_animation_state",
+    "handle_get_kinematic_positions",
+    "handle_check_collision",
 ]
