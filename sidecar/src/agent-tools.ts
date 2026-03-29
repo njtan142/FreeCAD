@@ -385,10 +385,12 @@ export function createAgentTools(freeCADBridge: FreeCADBridge) {
     addFeaDisplacementConstraintTool(freeCADBridge),
     addFeaSelfWeightTool(freeCADBridge),
     listFeaConstraintsTool(freeCADBridge),
+    removeFeaConstraintTool(freeCADBridge),
     // Solver
     setFeaSolverTool(freeCADBridge),
     configureFeaSolverTool(freeCADBridge),
     getFeaSolverStatusTool(freeCADBridge),
+    checkFeaAnalysisStatusTool(freeCADBridge),
     // Execution
     runFeaAnalysisTool(freeCADBridge),
     stopFeaAnalysisTool(freeCADBridge),
@@ -396,6 +398,8 @@ export function createAgentTools(freeCADBridge: FreeCADBridge) {
     getFeaDisplacementTool(freeCADBridge),
     getFeaStressTool(freeCADBridge),
     getFeaReactionsTool(freeCADBridge),
+    getFeaStrainTool(freeCADBridge),
+    getFeaResultSummaryTool(freeCADBridge),
   ];
 }
 
@@ -14676,6 +14680,133 @@ print(json.dumps(result))
   );
 }
 
+function removeFeaConstraintTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'remove_fea_constraint',
+    `Remove a constraint from an FEA analysis.
+
+Parameters:
+- analysisName (required): Name of the analysis
+- constraintName (required): Name of the constraint to remove
+
+Returns:
+- success: Whether removal succeeded
+- removedConstraint: Name of removed constraint
+- analysisName: Name of the analysis
+- message: Status message
+
+Use this tool to delete a boundary condition or load from an analysis.
+
+Example:
+- Remove constraint: { analysisName: "StaticAnalysis", constraintName: "ConstraintFixed" }`,
+    {
+      analysisName: z.string().describe('Name of the analysis'),
+      constraintName: z.string().describe('Name of the constraint to remove'),
+    },
+    async (input) => {
+      const { analysisName, constraintName } = input;
+
+      const code = `
+from llm_bridge.fea_handlers import handle_remove_fea_constraint
+import json
+params = json.loads('${JSON.stringify({ analysisName, constraintName })}')
+result = handle_remove_fea_constraint(
+    analysis_name=params['analysisName'],
+    constraint_name=params['constraintName']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? parsed.data?.message || 'Constraint removed' : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function checkFeaAnalysisStatusTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'check_fea_analysis_status',
+    `Check the status of an FEA analysis.
+
+Parameters:
+- analysisName (required): Name of the analysis
+
+Returns:
+- success: Whether status check succeeded
+- analysisName: Name of the analysis
+- status: Overall status ("Not configured", "Missing solver", "Ready to run", "Running", "Completed")
+- solverStatus: Current solver status
+- progress: Solver progress (0-100)
+- hasMesh: Whether mesh exists
+- hasSolver: Whether solver exists
+- hasResults: Whether results exist
+- isRunning: Whether analysis is currently running
+- message: Status message
+
+Use this tool to check if an analysis is ready to run or is currently running.
+
+Example:
+- Check status: { analysisName: "StaticAnalysis" }`,
+    {
+      analysisName: z.string().describe('Name of the analysis'),
+    },
+    async (input) => {
+      const { analysisName } = input;
+
+      const code = `
+from llm_bridge.fea_handlers import handle_check_fea_analysis_status
+import json
+params = json.loads('${JSON.stringify({ analysisName })}')
+result = handle_check_fea_analysis_status(
+    analysis_name=params['analysisName']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? parsed.data?.message || 'Status checked' : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
 function setFeaSolverTool(freeCADBridge: FreeCADBridge) {
   return tool(
     'set_fea_solver',
@@ -15155,6 +15286,134 @@ from llm_bridge.fea_handlers import handle_get_fea_reactions
 import json
 params = json.loads('${JSON.stringify({ analysisName })}')
 result = handle_get_fea_reactions(
+    analysis_name=params['analysisName']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatFEAResults(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function getFeaStrainTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'get_fea_strain',
+    `Get strain results from an FEA analysis.
+
+Parameters:
+- analysisName (required): Name of the analysis
+
+Returns:
+- success: Whether retrieval succeeded
+- strainCount: Number of strain values
+- strains: Array of strain vectors (x, y, z components)
+- maxStrain: Maximum equivalent strain (Peeq)
+- minStrain: Minimum strain value
+- message: Status message
+
+Use this tool to retrieve strain results after running an FEA analysis. Strain results show how much the material deforms under load.
+
+Example:
+- Get strain: { analysisName: "StaticAnalysis" }`,
+    {
+      analysisName: z.string().describe('Name of the analysis'),
+    },
+    async (input) => {
+      const { analysisName } = input;
+
+      const code = `
+from llm_bridge.fea_handlers import handle_get_fea_strain
+import json
+params = json.loads('${JSON.stringify({ analysisName })}')
+result = handle_get_fea_strain(
+    analysis_name=params['analysisName']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatFEAResults(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function getFeaResultSummaryTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'get_fea_result_summary',
+    `Get a comprehensive summary of all FEA results.
+
+Parameters:
+- analysisName (required): Name of the analysis
+
+Returns:
+- success: Whether retrieval succeeded
+- maxDisplacement: Maximum displacement (mm)
+- maxVonMisesStress: Maximum von Mises stress (MPa)
+- maxEquivalentStrain: Maximum equivalent strain
+- totalReactionForce: Sum of reaction forces (x, y, z in N)
+- meshNodeCount: Number of mesh nodes
+- meshElementCount: Number of mesh elements
+- material: Material properties used
+- conclusion: Engineering conclusion with safety factor estimate
+- message: Status message
+
+Use this tool to get a complete overview of analysis results including displacement, stress, strain, and reaction forces with engineering interpretation.
+
+Example:
+- Get summary: { analysisName: "StaticAnalysis" }`,
+    {
+      analysisName: z.string().describe('Name of the analysis'),
+    },
+    async (input) => {
+      const { analysisName } = input;
+
+      const code = `
+from llm_bridge.fea_handlers import handle_get_fea_result_summary
+import json
+params = json.loads('${JSON.stringify({ analysisName })}')
+result = handle_get_fea_result_summary(
     analysis_name=params['analysisName']
 )
 print(json.dumps(result))

@@ -2986,10 +2986,10 @@ export function formatFEAResults(data: any): string {
       lines.push(`Min: ${typeof data.minValue === 'number' ? data.minValue.toFixed(4) : data.minValue}`);
     }
     if (data.maxLocation) {
-      lines.push(`Max Location: ${Array.isArray(data.maxLocation) ? data.maxLocation.map(v => v.toFixed(2)).join(', ') : data.maxLocation}`);
+      lines.push(`Max Location: ${Array.isArray(data.maxLocation) ? data.maxLocation.map((v: number) => v.toFixed(2)).join(', ') : data.maxLocation}`);
     }
     if (data.minLocation) {
-      lines.push(`Min Location: ${Array.isArray(data.minLocation) ? data.minLocation.map(v => v.toFixed(2)).join(', ') : data.minLocation}`);
+      lines.push(`Min Location: ${Array.isArray(data.minLocation) ? data.minLocation.map((v: number) => v.toFixed(2)).join(', ') : data.minLocation}`);
     }
     if (data.unit) {
       lines.push(`Unit: ${data.unit}`);
