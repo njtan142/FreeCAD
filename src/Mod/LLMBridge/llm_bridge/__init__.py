@@ -175,6 +175,28 @@ from .kinematic_handlers import (
     handle_check_collision,
 )
 
+from .render_handlers import (
+    handle_set_view_angle,
+    handle_zoom_to_fit,
+    handle_set_view_mode,
+    handle_render_view,
+    handle_set_renderer,
+    handle_set_render_quality,
+    handle_set_material,
+    handle_set_object_color,
+    handle_set_camera_position,
+    handle_configure_lighting,
+)
+
+from .animation_export_handlers import (
+    handle_start_animation_capture,
+    handle_capture_frame,
+    handle_stop_animation_capture,
+    handle_export_animation,
+    handle_create_gif,
+    handle_get_animation_capture_state,
+)
+
 __all__ = [
     "handle_document_overview",
     "handle_object_details",
@@ -317,4 +339,20 @@ __all__ = [
     "handle_get_animation_state",
     "handle_get_kinematic_positions",
     "handle_check_collision",
+    "handle_set_view_angle",
+    "handle_zoom_to_fit",
+    "handle_set_view_mode",
+    "handle_render_view",
+    "handle_set_renderer",
+    "handle_set_render_quality",
+    "handle_set_material",
+    "handle_set_object_color",
+    "handle_set_camera_position",
+    "handle_configure_lighting",
+    "handle_start_animation_capture",
+    "handle_capture_frame",
+    "handle_stop_animation_capture",
+    "handle_export_animation",
+    "handle_create_gif",
+    "handle_get_animation_capture_state",
 ]
