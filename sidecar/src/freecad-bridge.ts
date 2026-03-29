@@ -26,6 +26,7 @@ export class FreeCADBridge {
   private maxReconnectAttempts = 3;
   private reconnectDelay = 1000;
   private pendingRequests = new Map<string, { resolve: (result: ExecuteResult) => void; reject: (error: Error) => void; timeout: NodeJS.Timeout }>();
+  private busyUntilResolved: Promise<void> | null = null;
 
   constructor(config: FreeCADBridgeConfig) {
     this.config = config;
@@ -137,13 +138,24 @@ export class FreeCADBridge {
 
   onMessage?: (message: any) => void;
 
-  async executePython(code: string): Promise<ExecuteResult> {
+  async executePython(code: string, timeoutMs: number = 120000): Promise<ExecuteResult> {
     console.log('[FreeCADBridge] executePython called, connected:', this.isConnected());
     if (!this.isConnected()) {
       await this.connect();
     }
 
-    return new Promise((resolve, reject) => {
+    // Wait for any in-flight request to finish before sending a new one.
+    // This prevents piling up requests when FreeCAD is busy with heavy geometry.
+    if (this.busyUntilResolved) {
+      console.log('[FreeCADBridge] Waiting for previous request to complete...');
+      try {
+        await this.busyUntilResolved;
+      } catch {
+        // Previous request failed/timed out — proceed anyway
+      }
+    }
+
+    const executionPromise = new Promise<ExecuteResult>((resolve, reject) => {
       console.log('[FreeCADBridge] Promise created, waiting for response...');
       if (!this.ws) {
         reject(new Error('Not connected to FreeCAD bridge'));
@@ -154,7 +166,7 @@ export class FreeCADBridge {
       const timeout = setTimeout(() => {
         this.pendingRequests.delete(requestId);
         reject(new Error('Execution timeout'));
-      }, 30000); // 30 second timeout
+      }, timeoutMs);
 
       // Store pending request in Map
       this.pendingRequests.set(requestId, { resolve, reject, timeout });
@@ -170,6 +182,11 @@ export class FreeCADBridge {
       console.log('[FreeCADBridge] Executing Python code...');
       this.ws.send(JSON.stringify(request));
     });
+
+    // Track this as the in-flight request so subsequent calls wait
+    this.busyUntilResolved = executionPromise.then(() => {}, () => {});
+
+    return executionPromise;
   }
 
   async disconnect(): Promise<void> {

@@ -73,6 +73,23 @@ import {
 } from './session-manager';
 import { ChatMessage } from './types';
 
+/**
+ * Parse the last valid JSON line from output that may contain duplicate lines.
+ * FreeCAD's Python bridge sometimes prints multiple JSON lines via stdout.
+ */
+function parseLastJsonLine(output: string | undefined): any {
+  if (!output) return {};
+  const lines = output.trim().split('\n').filter(l => l.trim());
+  for (let i = lines.length - 1; i >= 0; i--) {
+    try {
+      return JSON.parse(lines[i]);
+    } catch {
+      continue;
+    }
+  }
+  return {};
+}
+
 // Global session state (managed externally, passed in when needed)
 let currentSessionId: string | null = null;
 
@@ -432,7 +449,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         
         // Format based on intent
         let formatted: string;
@@ -631,7 +648,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatObjectList(parsed.data);
         return {
           content: [
@@ -691,7 +708,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatObjectProperties(parsed.data);
         return {
           content: [
@@ -743,7 +760,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatSelection(parsed.data);
         return {
           content: [
@@ -797,7 +814,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatDocumentInfo(parsed.data);
         return {
           content: [
@@ -881,7 +898,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         
         if (parsed.success) {
           return {
@@ -978,7 +995,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         
         if (parsed.success) {
           return {
@@ -1084,7 +1101,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         
         if (parsed.success) {
           return {
@@ -1153,7 +1170,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         
         if (parsed.success) {
           let output = `Recent Documents: ${parsed.count}\n\n`;
@@ -1243,7 +1260,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
 
         if (parsed.success) {
           return {
@@ -1342,7 +1359,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatPatternCreation(parsed.data);
         return {
           content: [
@@ -1426,7 +1443,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatPatternCreation(parsed.data);
         return {
           content: [
@@ -1521,7 +1538,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatPatternCreation(parsed.data);
         return {
           content: [
@@ -1605,7 +1622,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatPatternCreation(parsed.data);
         return {
           content: [
@@ -1688,7 +1705,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatPatternCreation(parsed.data);
         return {
           content: [
@@ -1761,7 +1778,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatPatternUpdate(parsed.data);
         return {
           content: [
@@ -1834,7 +1851,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatPatternUpdate(parsed.data);
         return {
           content: [
@@ -1900,7 +1917,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatPatternInfo(parsed.data);
         return {
           content: [
@@ -1962,7 +1979,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
 
         if (parsed.success) {
           return {
@@ -2032,7 +2049,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
 
         if (parsed.success) {
           let output = `Patterns: ${parsed.patternCount || 0}\n\n`;
@@ -2358,7 +2375,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatPropertyChange(parsed.data);
         return {
           content: [
@@ -2417,7 +2434,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatDimensionUpdate(parsed.data);
         return {
           content: [
@@ -2484,7 +2501,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatTransformResult(parsed.data, 'move');
         return {
           content: [
@@ -2551,7 +2568,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatTransformResult(parsed.data, 'rotate');
         return {
           content: [
@@ -2622,7 +2639,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatTransformResult(parsed.data, 'scale');
         return {
           content: [
@@ -2691,7 +2708,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatExpressionResult(parsed.data, 'set');
         return {
           content: [
@@ -2750,7 +2767,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatExpressionResult(parsed.data, 'get');
         return {
           content: [
@@ -2809,7 +2826,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatExpressionResult(parsed.data, 'clear');
         return {
           content: [
@@ -2886,7 +2903,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatSketchResult(parsed.data);
         return {
           content: [
@@ -2965,7 +2982,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatGeometryResult(parsed.data);
         return {
           content: [
@@ -3061,7 +3078,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatConstraintResult(parsed.data);
         return {
           content: [
@@ -3154,7 +3171,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatConstraintResult(parsed.data);
         return {
           content: [
@@ -3228,7 +3245,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatConstraintResult(parsed.data);
         return {
           content: [
@@ -3294,7 +3311,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatSketchGeometry(parsed.data);
         return {
           content: [
@@ -3362,7 +3379,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatConstraintResult(parsed.data);
         return {
           content: [
@@ -3430,7 +3447,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatSketchGeometry(parsed.data);
         return {
           content: [
@@ -3498,7 +3515,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatBodyResult(parsed.data);
         return {
           content: [
@@ -3561,7 +3578,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatBodyResult(parsed.data);
         return {
           content: [
@@ -3618,7 +3635,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatBodyList(parsed.data);
         return {
           content: [
@@ -3688,7 +3705,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatFeatureResult(parsed.data);
         return {
           content: [
@@ -3758,7 +3775,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatFeatureResult(parsed.data);
         return {
           content: [
@@ -3832,7 +3849,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatFeatureResult(parsed.data);
         return {
           content: [
@@ -3907,7 +3924,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatFeatureResult(parsed.data);
         return {
           content: [
@@ -3982,7 +3999,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatFeatureResult(parsed.data);
         return {
           content: [
@@ -4057,7 +4074,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatFeatureResult(parsed.data);
         return {
           content: [
@@ -4132,7 +4149,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatFeatureUpdate(parsed.data);
         return {
           content: [
@@ -4202,7 +4219,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatFeatureResult(parsed.data);
         return {
           content: [
@@ -4267,7 +4284,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatFeatureResult(parsed.data);
         return {
           content: [
@@ -4341,7 +4358,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatShapeResult(parsed.data);
         return {
           content: [
@@ -4415,7 +4432,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatShapeResult(parsed.data);
         return {
           content: [
@@ -4489,7 +4506,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatShapeResult(parsed.data);
         return {
           content: [
@@ -4560,7 +4577,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatShapeResult(parsed.data);
         return {
           content: [
@@ -4630,7 +4647,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatShapeValidation(parsed.data);
         return {
           content: [
@@ -4704,7 +4721,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatShapeResult(parsed.data);
         return {
           content: [
@@ -4773,7 +4790,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatShapeInfo(parsed.data);
         return {
           content: [
@@ -4842,7 +4859,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatAssemblyCreationResult(parsed.data);
         return {
           content: [
@@ -4894,7 +4911,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
 
         if (!parsed.success) {
           return {
@@ -4994,7 +5011,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
 
         if (parsed.success) {
           return {
@@ -5071,7 +5088,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
 
         if (parsed.success) {
           return {
@@ -5148,7 +5165,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatComponentList(parsed.data);
         return {
           content: [
@@ -5226,7 +5243,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatConstraintCreationResult(parsed.data);
         return {
           content: [
@@ -5304,7 +5321,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatConstraintCreationResult(parsed.data);
         return {
           content: [
@@ -5382,7 +5399,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatConstraintCreationResult(parsed.data);
         return {
           content: [
@@ -5464,7 +5481,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatConstraintCreationResult(parsed.data);
         return {
           content: [
@@ -5545,7 +5562,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatConstraintCreationResult(parsed.data);
         return {
           content: [
@@ -5622,7 +5639,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatConstraintCreationResult(parsed.data);
         return {
           content: [
@@ -5699,7 +5716,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatConstraintCreationResult(parsed.data);
         return {
           content: [
@@ -5776,7 +5793,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatConstraintCreationResult(parsed.data);
         return {
           content: [
@@ -5856,7 +5873,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatConstraintCreationResult(parsed.data);
         return {
           content: [
@@ -5931,7 +5948,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatConstraintUpdate(parsed.data);
         return {
           content: [
@@ -5993,7 +6010,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
 
         if (parsed.success) {
           return {
@@ -6069,7 +6086,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatConstraintList(parsed.data);
         return {
           content: [
@@ -6131,7 +6148,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
 
         if (parsed.success) {
           return {
@@ -6204,7 +6221,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
 
         if (parsed.success) {
           return {
@@ -6296,7 +6313,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatPointCreation(parsed.data);
         return {
           content: [
@@ -6374,7 +6391,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatGeometryCreation(parsed.data, 'Line');
         return {
           content: [
@@ -6450,7 +6467,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatGeometryCreation(parsed.data, 'Circle');
         return {
           content: [
@@ -6534,7 +6551,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatGeometryCreation(parsed.data, 'Arc');
         return {
           content: [
@@ -6614,7 +6631,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatGeometryCreation(parsed.data, 'Ellipse');
         return {
           content: [
@@ -6695,7 +6712,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatGeometryCreation(parsed.data, 'Rectangle');
         return {
           content: [
@@ -6777,7 +6794,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatGeometryCreation(parsed.data, 'Polygon');
         return {
           content: [
@@ -6847,7 +6864,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatGeometryCreation(parsed.data, 'BSpline');
         return {
           content: [
@@ -6917,7 +6934,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatGeometryCreation(parsed.data, 'Bezier');
         return {
           content: [
@@ -6991,7 +7008,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatGeometryCreation(parsed.data, 'Wire');
         return {
           content: [
@@ -7073,7 +7090,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatDimensionCreation(parsed.data);
         return {
           content: [
@@ -7143,7 +7160,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatDimensionCreation(parsed.data);
         return {
           content: [
@@ -7215,7 +7232,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatDimensionCreation(parsed.data);
         return {
           content: [
@@ -7296,7 +7313,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatDimensionCreation(parsed.data);
         return {
           content: [
@@ -7373,7 +7390,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatTextCreation(parsed.data);
         return {
           content: [
@@ -7446,7 +7463,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatDimensionCreation(parsed.data);
         return {
           content: [
@@ -7519,7 +7536,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatModificationResult(parsed.data, 'move');
         return {
           content: [
@@ -7595,7 +7612,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatModificationResult(parsed.data, 'rotate');
         return {
           content: [
@@ -7672,7 +7689,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatModificationResult(parsed.data, 'scale');
         return {
           content: [
@@ -7746,7 +7763,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatModificationResult(parsed.data, 'offset');
         return {
           content: [
@@ -7816,7 +7833,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatModificationResult(parsed.data, 'join');
         return {
           content: [
@@ -7888,7 +7905,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatModificationResult(parsed.data, 'split');
         return {
           content: [
@@ -7969,7 +7986,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatPageCreation(parsed.data);
         return {
           content: [
@@ -8028,7 +8045,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
 
         if (parsed.success) {
           let output = `TechDraw Pages: ${parsed.pageCount || 0}\n\n`;
@@ -8117,7 +8134,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
 
         if (parsed.success) {
           return {
@@ -8195,7 +8212,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatPageCreation(parsed.data);
         return {
           content: [
@@ -8272,7 +8289,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatViewCreation(parsed.data);
         return {
           content: [
@@ -8346,7 +8363,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatViewCreation(parsed.data);
         return {
           content: [
@@ -8420,7 +8437,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatViewCreation(parsed.data);
         return {
           content: [
@@ -8494,7 +8511,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatViewCreation(parsed.data);
         return {
           content: [
@@ -8571,7 +8588,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatViewCreation(parsed.data);
         return {
           content: [
@@ -8651,7 +8668,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatViewCreation(parsed.data);
         return {
           content: [
@@ -8729,7 +8746,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatViewCreation(parsed.data);
         return {
           content: [
@@ -8807,7 +8824,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatViewCreation(parsed.data);
         return {
           content: [
@@ -8886,7 +8903,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatTechDrawDimension(parsed.data);
         return {
           content: [
@@ -8958,7 +8975,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatTechDrawDimension(parsed.data);
         return {
           content: [
@@ -9030,7 +9047,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatTechDrawDimension(parsed.data);
         return {
           content: [
@@ -9106,7 +9123,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatTechDrawDimension(parsed.data);
         return {
           content: [
@@ -9183,7 +9200,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatAnnotationCreation(parsed.data);
         return {
           content: [
@@ -9260,7 +9277,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatAnnotationCreation(parsed.data);
         return {
           content: [
@@ -9337,7 +9354,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatAnnotationCreation(parsed.data);
         return {
           content: [
@@ -9418,7 +9435,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatExportResult(parsed.data);
         return {
           content: [
@@ -9499,7 +9516,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatExportResult(parsed.data);
         return {
           content: [
@@ -9581,7 +9598,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatLoftCreation(parsed.data);
         return {
           content: [
@@ -9657,7 +9674,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatLoftCreation(parsed.data);
         return {
           content: [
@@ -9739,7 +9756,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatSweepCreation(parsed.data);
         return {
           content: [
@@ -9815,7 +9832,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatSweepCreation(parsed.data);
         return {
           content: [
@@ -9891,7 +9908,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatSweepCreation(parsed.data);
         return {
           content: [
@@ -9964,7 +9981,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatSurfaceOperation(parsed.data);
         return {
           content: [
@@ -10033,7 +10050,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatSurfaceOperation(parsed.data);
         return {
           content: [
@@ -10109,7 +10126,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatSurfaceOperation(parsed.data);
         return {
           content: [
@@ -10181,7 +10198,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatSurfaceOperation(parsed.data);
         return {
           content: [
@@ -10248,7 +10265,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatSurfaceInfo(parsed.data);
         return {
           content: [
@@ -10305,7 +10322,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
 
         if (parsed.success) {
           let output = "Surfaces: " + (parsed.surfaceCount || 0) + "\\n\\n";
@@ -10396,7 +10413,7 @@ print(json.dumps(result))
 
       try {
         const result = await freeCADBridge.executePython(code);
-        const parsed = JSON.parse(result.output || '{}');
+        const parsed = parseLastJsonLine(result.output);
         const formatted = formatSurfaceInfo(parsed.data);
         return {
           content: [

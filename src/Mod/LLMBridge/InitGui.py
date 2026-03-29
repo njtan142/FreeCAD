@@ -76,6 +76,10 @@ def initialize_panel_bridge():
 
 # Main initialization with error handling
 try:
+    # Initialize the main-thread dispatcher FIRST (must run on GUI thread)
+    from llm_bridge.main_thread import init_dispatcher
+    init_dispatcher()
+
     start_llm_bridge()
     atexit.register(stop_llm_bridge)
 

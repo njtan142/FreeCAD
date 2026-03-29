@@ -329,12 +329,7 @@ export class DockServer {
             mcpServers: {
               'freecad-tools': this.mcpServer,
             },
-            allowedTools: [
-              'mcp__freecad-tools__execute_freecad_python',
-              'mcp__freecad-tools__query_model_state',
-              'mcp__freecad-tools__export_model',
-            ],
-            maxTurns: 10,
+            maxTurns: 30,
           },
         });
         console.log('[DockServer] query() returned, starting iteration...');
@@ -350,6 +345,31 @@ export class DockServer {
             session_id: msg.session_id,
           };
           console.log('[DockServer] SDK message:', JSON.stringify(useful));
+
+          // Log tool use details so we can see what Claude is doing
+          if (msg.type === 'assistant' && msg.message?.content) {
+            for (const block of msg.message.content) {
+              if (block.type === 'tool_use') {
+                console.log(`[Claude] Tool call: ${block.name}`);
+                const inputStr = JSON.stringify(block.input || {});
+                // Log first 500 chars of input to avoid flooding
+                console.log(`[Claude] Tool input: ${inputStr.substring(0, 500)}${inputStr.length > 500 ? '...' : ''}`);
+              } else if (block.type === 'text' && block.text) {
+                console.log(`[Claude] Thinking: ${block.text.substring(0, 200)}${block.text.length > 200 ? '...' : ''}`);
+              }
+            }
+          }
+
+          // Log tool results
+          if (msg.type === 'user' && msg.message?.content) {
+            for (const block of msg.message.content) {
+              if (block.type === 'tool_result') {
+                const contentStr = JSON.stringify(block.content || '');
+                console.log(`[Claude] Tool result (${block.is_error ? 'ERROR' : 'ok'}): ${contentStr.substring(0, 300)}${contentStr.length > 300 ? '...' : ''}`);
+              }
+            }
+          }
+
           if (message.type === 'result') {
             if (message.subtype === 'success' && message.is_error !== true) {
               fullResponse += (message as any).result || '';

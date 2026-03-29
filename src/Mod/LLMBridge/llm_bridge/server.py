@@ -11,6 +11,7 @@ import threading
 import FreeCAD as App
 
 from .executor import execute_code
+from .main_thread import run_on_main_thread
 from . import query_handlers  # noqa: F401 - Import for availability via WebSocket
 from . import file_handlers  # noqa: F401 - Import for availability via WebSocket
 from . import property_handlers  # noqa: F401 - Import for availability via WebSocket
@@ -146,11 +147,14 @@ class BridgeServer:
                 "stderr": "",
             }
 
-        # Execute code in a thread pool to avoid blocking the asyncio loop
+        # Dispatch code to the main GUI thread (required for Part ops
+        # and document recompute) and wait from a thread-pool thread so
+        # we don't block the asyncio event loop.
         try:
             loop = asyncio.get_running_loop()
+            future = run_on_main_thread(lambda: execute_code(code))
             result = await loop.run_in_executor(
-                None, lambda: execute_code(code)
+                None, lambda: future.result(timeout=300)
             )
             result["id"] = msg_id
             return result
