@@ -4,8 +4,8 @@
  * Defines the contract for all LLM agent backends (Claude, OpenCode, etc.)
  */
 
-import { ToolCall } from './types';
-export { ToolCall };
+import { ToolCall, BackendConfig, MCPTool } from './types';
+export { ToolCall, BackendConfig, MCPTool };
 
 export interface MessageContext {
   sessionId?: string;
@@ -17,26 +17,6 @@ export interface MessageContext {
     modified: boolean;
     objectCount: number;
   };
-}
-
-export interface MCPTool {
-  name: string;
-  description: string;
-  inputSchema: {
-    type: 'object';
-    properties?: Record<string, any>;
-    required?: string[];
-  };
-}
-
-export interface BackendConfig {
-  apiKey?: string;
-  baseUrl?: string;
-  model?: string;
-  temperature?: number;
-  maxTokens?: number;
-  sessionDir?: string;
-  dangerouslySkipPermissions?: boolean;
 }
 
 export interface AgentResponse {

@@ -27,6 +27,19 @@ export interface BackendConfig {
 }
 
 /**
+ * MCP Tool format for backend communication
+ */
+export interface MCPTool {
+  name: string;
+  description: string;
+  inputSchema: {
+    type: 'object';
+    properties?: Record<string, any>;
+    required?: string[];
+  };
+}
+
+/**
  * Represents the result of a tool execution
  */
 export interface ToolResult {

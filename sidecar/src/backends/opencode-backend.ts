@@ -39,13 +39,18 @@ export class OpenCodeBackend implements AgentBackend {
     const fullMessage = contextMessage ? `${contextMessage}\n\n${message}` : message;
 
     return new Promise((resolve, reject) => {
-      const args = this.buildArgs(fullMessage, translatedTools);
+      const args = this.buildArgs();
 
       console.log('[OpenCodeBackend] Spawning opencode with args:', args);
 
+      const env = { ...process.env };
+      if (this.config.apiKey) {
+        env.OPENAI_API_KEY = this.config.apiKey;
+      }
+
       const proc = spawn('opencode', args, {
         stdio: ['pipe', 'pipe', 'pipe'],
-        env: { ...process.env },
+        env,
       });
 
       this.process = proc;
@@ -87,6 +92,15 @@ export class OpenCodeBackend implements AgentBackend {
         }
       });
 
+      const input = JSON.stringify({
+        message: fullMessage,
+        tools: translatedTools,
+      }) + '\n';
+
+      proc.stdin?.write(input, () => {
+        proc.stdin?.end();
+      });
+
       setTimeout(() => {
         if (!resolved) {
           proc.kill();
@@ -100,7 +114,7 @@ export class OpenCodeBackend implements AgentBackend {
     });
   }
 
-  private buildArgs(message: string, tools: any): string[] {
+  private buildArgs(): string[] {
     const args: string[] = [];
 
     if (this.config.model) {
@@ -111,10 +125,6 @@ export class OpenCodeBackend implements AgentBackend {
       args.push('--base-url', this.config.baseUrl);
     }
 
-    if (this.config.apiKey) {
-      args.push('--api-key', this.config.apiKey);
-    }
-
     if (this.config.temperature !== undefined) {
       args.push('--temperature', String(this.config.temperature));
     }
@@ -122,10 +132,6 @@ export class OpenCodeBackend implements AgentBackend {
     if (this.config.maxTokens) {
       args.push('--max-tokens', String(this.config.maxTokens));
     }
-
-    args.push('--tools', JSON.stringify(tools));
-
-    args.push(message);
 
     return args;
   }

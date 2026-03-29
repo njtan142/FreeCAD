@@ -1,0 +1,1 @@
+{"version":3,"file":"backend-config.d.ts","sourceRoot":"","sources":["../src/backend-config.ts"],"names":[],"mappings":"AAAA;;;;GAIG;AAEH,OAAO,EAAE,aAAa,EAAE,MAAM,iBAAiB,CAAC;AAEhD,wBAAgB,gBAAgB,CAAC,WAAW,EAAE,MAAM,GAAG,aAAa,CAQnE;AA0CD,wBAAgB,kBAAkB,IAAI,MAAM,CAAC,MAAM,EAAE,MAAM,CAAC,CA8B3D;AAED,wBAAgB,qBAAqB,CAAC,WAAW,EAAE,MAAM,EAAE,MAAM,EAAE,aAAa,GAAG,MAAM,EAAE,CAU1F"}

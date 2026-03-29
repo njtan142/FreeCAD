@@ -2,18 +2,20 @@
  * Dock Widget WebSocket Server
  *
  * Listens for incoming messages from the FreeCAD LLM dock widget.
- * Forwards chat messages to Claude Agent SDK and returns responses.
+ * Forwards chat messages to the configured agent backend and returns responses.
  */
 
 import WebSocket, { WebSocketServer } from 'ws';
-import { query, createSdkMcpServer } from '@anthropic-ai/claude-agent-sdk';
+import { createSdkMcpServer } from '@anthropic-ai/claude-agent-sdk';
 import { FreeCADBridge } from './freecad-bridge';
 import { createAgentTools, setCurrentSessionId, getCurrentSessionId } from './agent-tools';
 import { createSession, loadSession, addMessage } from './session-manager';
 import { getContextInjectionPrompt, createContextMessage, shouldInjectContext } from './context-injector';
-import { ChatMessage } from './types';
+import { ChatMessage, MCPTool } from './types';
 
 import { ContextInjectionConfig } from './types';
+import { backendRegistry } from './backend-registry';
+import { MessageContext } from './agent-backend';
 
 export interface DockServerConfig {
   port: number;
@@ -45,14 +47,28 @@ export class DockServer {
 
   constructor(config: DockServerConfig) {
     this.config = config;
-    // Create agent tools with FreeCAD bridge integration
     this.tools = createAgentTools(config.freeCADBridge);
-    // Create MCP server with the tools
     this.mcpServer = createSdkMcpServer({
       name: 'freecad-tools',
       version: '1.0.0',
       tools: this.tools,
     });
+  }
+
+  private getBackendTools(): MCPTool[] {
+    return this.tools.map((tool) => ({
+      name: tool.name,
+      description: tool.description || '',
+      inputSchema: tool.inputSchema as MCPTool['inputSchema'],
+    }));
+  }
+
+  private buildMessageContext(sessionId: string): MessageContext {
+    return {
+      sessionId,
+      documentInfo: this.config.freeCADBridge.getDocumentInfo?.() ?? undefined,
+      selectedObjects: this.config.freeCADBridge.getSelectedObjects?.() ?? undefined,
+    };
   }
 
   async start(): Promise<void> {
@@ -244,9 +260,8 @@ export class DockServer {
   }
 
   private async handleChatMessage(client: WebSocket, content: string): Promise<void> {
-    console.log('[DockServer] Processing chat message via Claude Agent SDK...');
+    console.log('[DockServer] Processing chat message via backend abstraction...');
 
-    // Ensure we have a session
     if (!this.conversationState.sessionId) {
       const session = createSession('Untitled Session');
       this.conversationState.sessionId = session.id;
@@ -256,151 +271,82 @@ export class DockServer {
 
     const sessionId = this.conversationState.sessionId!;
 
-    // Persist user message
     const userMessage: ChatMessage = {
       role: 'user',
       content: content,
       timestamp: Date.now(),
     };
     
-    // Add message to conversation state and persist asynchronously
     this.conversationState.messages.push(userMessage);
     addMessage(sessionId, userMessage).catch((err) => {
       console.error('[DockServer] Failed to persist user message:', err);
     });
 
-    // Send acknowledgment
     this.sendToClient(client, {
       type: 'response',
-      content: 'Processing your request with Claude...',
+      content: 'Processing your request...',
       timestamp: Date.now(),
     });
 
-    console.log('[DockServer] About to enter try block');
     try {
-      console.log('[DockServer] Inside try block, checking FreeCAD bridge...');
-      console.log('[DockServer] Bridge connected:', this.config.freeCADBridge.isConnected());
-      // Check if FreeCAD bridge is connected
       if (!this.config.freeCADBridge.isConnected()) {
-        // Attempt to connect
         await this.config.freeCADBridge.connect();
       }
 
-      // Build context injection prompt if enabled and appropriate
       let contextPrompt = '';
       const lastMessage = this.conversationState.messages.length > 0
         ? this.conversationState.messages[this.conversationState.messages.length - 1]
         : undefined;
 
-      console.log('[DockServer] Checking shouldInjectContext...');
-      console.log('[DockServer] lastMessage:', lastMessage);
       if (shouldInjectContext(lastMessage)) {
-        console.log('[DockServer] Calling getContextInjectionPrompt...');
         contextPrompt = await getContextInjectionPrompt(
           this.config.freeCADBridge,
           this.config.contextInjection
         );
-        console.log('[DockServer] getContextInjectionPrompt returned, context length:', contextPrompt.length);
-
-        // Warn if bridge not connected but context was requested
-        if (!this.config.freeCADBridge.isConnected() && contextPrompt === '') {
-          console.warn('[DockServer] FreeCAD bridge not connected, context injection skipped');
-        }
       }
 
-      // Build the full prompt with context
-      console.log('[DockServer] Building full prompt, contextPrompt length:', contextPrompt.length);
       const fullPrompt = contextPrompt
         ? `${createContextMessage(contextPrompt)}\n\nUser: ${content}`
         : content;
-      console.log('[DockServer] Full prompt built, length:', fullPrompt.length);
 
-      // Use Claude Agent SDK to process the message
-      // Claude will decide which tool to call based on the user's request
-      let fullResponse = '';
-      let queryError: string | undefined;
-
-      // Note: API key must be set via ANTHROPIC_API_KEY environment variable
-      console.log('[DockServer] Starting query() call...');
-      try {
-        const queryGenerator = query({
-          prompt: fullPrompt,
-          options: {
-            mcpServers: {
-              'freecad-tools': this.mcpServer,
-            },
-            maxTurns: 30,
-          },
-        });
-        console.log('[DockServer] query() returned, starting iteration...');
-
-        for await (const message of queryGenerator) {
-          const msg = message as any;
-          const useful = {
-            type: msg.type,
-            subtype: msg.subtype,
-            is_error: msg.is_error,
-            result: msg.result,
-            error: msg.error,
-            session_id: msg.session_id,
-          };
-          console.log('[DockServer] SDK message:', JSON.stringify(useful));
-
-          // Log tool use details so we can see what Claude is doing
-          if (msg.type === 'assistant' && msg.message?.content) {
-            for (const block of msg.message.content) {
-              if (block.type === 'tool_use') {
-                console.log(`[Claude] Tool call: ${block.name}`);
-                const inputStr = JSON.stringify(block.input || {});
-                // Log first 500 chars of input to avoid flooding
-                console.log(`[Claude] Tool input: ${inputStr.substring(0, 500)}${inputStr.length > 500 ? '...' : ''}`);
-              } else if (block.type === 'text' && block.text) {
-                console.log(`[Claude] Thinking: ${block.text.substring(0, 200)}${block.text.length > 200 ? '...' : ''}`);
-              }
-            }
-          }
-
-          // Log tool results
-          if (msg.type === 'user' && msg.message?.content) {
-            for (const block of msg.message.content) {
-              if (block.type === 'tool_result') {
-                const contentStr = JSON.stringify(block.content || '');
-                console.log(`[Claude] Tool result (${block.is_error ? 'ERROR' : 'ok'}): ${contentStr.substring(0, 300)}${contentStr.length > 300 ? '...' : ''}`);
-              }
-            }
-          }
-
-          if (message.type === 'result') {
-            if (message.subtype === 'success' && message.is_error !== true) {
-              fullResponse += (message as any).result || '';
-            } else {
-              queryError = `Query failed: ${(message as any).result || (message as any).errors?.join(', ') || message.subtype}`;
-            }
-          }
-        }
-        console.log('[DockServer] Query iteration completed normally');
-      } catch (error) {
-        if (!queryError) {
-          queryError = error instanceof Error ? error.message : 'Unknown query error';
-        }
+      const backend = backendRegistry.getCurrent();
+      if (!backend) {
+        throw new Error('No backend configured');
       }
 
-      console.log('[DockServer] About to send response, queryError:', queryError);
-      if (queryError) {
-        console.error('[DockServer] Query error:', queryError);
+      const context = this.buildMessageContext(sessionId);
+      const tools = this.getBackendTools();
+      let fullResponse = '';
+
+      console.log(`[DockServer] Using backend: ${backend.name}`);
+      
+      const response = await backend.sendMessage(
+        fullPrompt,
+        context,
+        tools,
+        (chunk: string) => {
+          fullResponse += chunk;
+          this.sendToClient(client, {
+            type: 'response',
+            content: chunk,
+            timestamp: Date.now(),
+          });
+        }
+      );
+
+      if (response.error) {
+        console.error('[DockServer] Backend error:', response.error);
         this.sendToClient(client, {
           type: 'error',
-          content: `Error: ${queryError}`,
+          content: `Error: ${response.error}`,
           timestamp: Date.now(),
         });
-        console.log('[DockServer] Error response sent to client');
         return;
       }
 
-      // Persist assistant response
       const assistantMessage: ChatMessage = {
         role: 'assistant',
-        content: fullResponse || 'Request processed successfully',
+        content: response.content || 'Request processed successfully',
         timestamp: Date.now(),
       };
       
@@ -409,16 +355,14 @@ export class DockServer {
         console.error('[DockServer] Failed to persist assistant message:', err);
       });
 
-      // Send final response
       this.sendToClient(client, {
         type: 'response',
-        content: fullResponse || 'Request processed successfully',
+        content: response.content || 'Request processed successfully',
         timestamp: Date.now(),
       });
     } catch (error) {
-      console.error('[DockServer] Error processing via Claude Agent:', error);
+      console.error('[DockServer] Error processing message:', error);
       
-      // Persist error message
       const errorMessage: ChatMessage = {
         role: 'assistant',
         content: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`,

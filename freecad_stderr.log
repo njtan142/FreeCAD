@@ -1,0 +1,10 @@
+✨ Pixi task (install-debug): cmake --install build/debug
+
+✨ Pixi task (freecad-debug): .pixi/envs/default/Library/bin/FreeCAD.exe
+LLMDockWidget: constructor start
+LLMDockWidget: calling setupUI
+LLMDockWidget: calling setupSessionUI
+LLMDockWidget: deferring Python bridge init
+LLMDockWidget: constructor done
+Cannot find icon: applications-chat
+LLMDockWidget: setupPythonBridge start

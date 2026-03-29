@@ -4,7 +4,7 @@
  * Loads and manages backend-specific configuration from environment variables.
  */
 
-import { BackendConfig } from './agent-backend';
+import { BackendConfig } from './types';
 
 export function getBackendConfig(backendName: string): BackendConfig {
   switch (backendName) {
@@ -71,7 +71,7 @@ export function loadOpenCodeConfig(): Record<string, string> {
       Object.assign(config, fileConfig);
     }
   } catch (err) {
-    // Config file doesn't exist or is invalid, ignore
+    console.warn('[BackendConfig] Failed to load opencode config from home directory:', err instanceof Error ? err.message : err);
   }
 
   try {
@@ -82,7 +82,7 @@ export function loadOpenCodeConfig(): Record<string, string> {
       Object.assign(config, fileConfig);
     }
   } catch (err) {
-    // Config file doesn't exist or is invalid, ignore
+    console.warn('[BackendConfig] Failed to load local opencode config:', err instanceof Error ? err.message : err);
   }
 
   return config;

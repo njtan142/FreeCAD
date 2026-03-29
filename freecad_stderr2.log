@@ -1,0 +1,15 @@
+LLMDockWidget: constructor start
+LLMDockWidget: calling setupUI
+LLMDockWidget: calling setupSessionUI
+LLMDockWidget: deferring Python bridge init
+LLMDockWidget: constructor done
+Cannot find icon: applications-chat
+LLMDockWidget: setupPythonBridge start
+LLMDockWidget: acquiring GIL
+LLMDockWidget: GIL acquired
+LLMDockWidget: importing llm_bridge.llm_panel_bridge
+LLMDockWidget: module imported successfully
+LLMDockWidget: calling initialize()
+LLMDockWidget: initialize() succeeded
+LLMDockWidget: setupPythonBridge complete
+SidecarClient: Listen error - no close frame received or sent

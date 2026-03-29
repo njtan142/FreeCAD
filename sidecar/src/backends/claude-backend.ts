@@ -6,8 +6,6 @@
  */
 
 import { spawn, ChildProcess } from 'child_process';
-import * as fs from 'fs';
-import * as path from 'path';
 import { AgentBackend, BackendConfig, AgentResponse, MessageContext, MCPTool } from '../agent-backend';
 import { ToolCall } from '../types';
 
@@ -17,7 +15,6 @@ export class ClaudeBackend implements AgentBackend {
 
   private process: ChildProcess | null = null;
   private config: BackendConfig = {};
-  private mcpConfigPath: string = '';
   private sessionId: string = '';
 
   async initialize(config: BackendConfig): Promise<void> {
@@ -34,25 +31,6 @@ export class ClaudeBackend implements AgentBackend {
     return `freecad-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   }
 
-  private createMcpConfig(tools: MCPTool[]): string {
-    const toolCommands = tools.reduce((acc, tool) => {
-      acc[`freecad_${tool.name}`] = {
-        command: 'npx',
-        args: ['ts-node', path.join(__dirname, 'mcp-tool-wrapper.ts'), tool.name],
-      };
-      return acc;
-    }, {} as Record<string, { command: string; args: string[] }>);
-
-    const config = {
-      mcpServers: toolCommands,
-    };
-
-    const configPath = path.join(this.config.sessionDir || process.cwd(), '.freecad-mcp.json');
-    fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
-    console.log('[ClaudeBackend] MCP config written to:', configPath);
-    return configPath;
-  }
-
   async sendMessage(
     message: string,
     context: MessageContext,
@@ -65,7 +43,6 @@ export class ClaudeBackend implements AgentBackend {
         '--input-format', 'stream-json',
         '--output-format', 'stream-json',
         '--session-id', this.sessionId,
-        '--mcp-config', this.mcpConfigPath || this.createMcpConfig(tools),
         '--no-session-persistence',
       ];
 
