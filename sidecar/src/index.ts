@@ -5,6 +5,10 @@
  * It runs two WebSocket servers:
  * - Dock widget server (port 8765): Receives chat messages from FreeCAD's LLM dock widget
  * - FreeCAD bridge client (port 8766): Sends Python code to FreeCAD's Python bridge
+ * 
+ * Authentication:
+ * - Uses Claude Code CLI credentials if available (no API key needed)
+ * - Falls back to ANTHROPIC_API_KEY if Claude Code not logged in
  */
 
 import { createSdkMcpServer } from '@anthropic-ai/claude-agent-sdk';
@@ -14,6 +18,7 @@ import { createAgentTools, setCurrentSessionId } from './agent-tools';
 import { createSession, loadSession, listSessions } from './session-manager';
 import { getContextInjectionPrompt, createContextMessage } from './context-injector';
 import { ContextInjectionConfig } from './types';
+import { execSync } from 'child_process';
 
 // Parse command-line arguments
 function parseArgs() {
@@ -44,12 +49,23 @@ function parseArgs() {
   return parsed;
 }
 
+// Check if Claude Code CLI is available and logged in
+function isClaudeCodeAvailable(): boolean {
+  try {
+    execSync('claude --version', { stdio: 'pipe' });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 // Configuration via environment variables
 const config = {
   dockServerPort: parseInt(process.env.DOCK_SERVER_PORT || '8765', 10),
   freeCADBridgePort: parseInt(process.env.FREECAD_BRIDGE_PORT || '8766', 10),
   freeCADBridgeHost: process.env.FREECAD_BRIDGE_HOST || 'localhost',
   claudeApiKey: process.env.ANTHROPIC_API_KEY || '',
+  useClaudeCodeCLI: process.env.USE_CLAUDE_CODE_CLI === 'true' || false,
   contextInjection: {
     queryBeforeOperations: true,
     includeSelectedObjects: true,
@@ -92,8 +108,22 @@ async function main() {
     console.log('[Sidecar] Context injection: disabled');
   }
 
-  if (!config.claudeApiKey) {
-    console.warn('[Sidecar] Warning: ANTHROPIC_API_KEY not set. Claude Agent SDK will not be able to connect.');
+  // Check auth method
+  const hasClaudeCode = isClaudeCodeAvailable();
+  const hasApiKey = !!config.claudeApiKey;
+  
+  if (!hasClaudeCode && !hasApiKey) {
+    console.warn('[Sidecar] Warning: No authentication available.');
+    console.warn('[Sidecar] Either:');
+    console.warn('[Sidecar]   1. Install Claude Code CLI and log in (USE_CLAUDE_CODE_CLI=true)');
+    console.warn('[Sidecar]   2. Set ANTHROPIC_API_KEY environment variable');
+  } else if (hasClaudeCode) {
+    console.log('[Sidecar] Using Claude Code CLI authentication (no API key needed)');
+    if (config.useClaudeCodeCLI) {
+      console.log('[Sidecar] Note: Set USE_CLAUDE_CODE_CLI=false to use API key instead');
+    }
+  } else {
+    console.log('[Sidecar] Using ANTHROPIC_API_KEY authentication');
   }
 
   // Initialize FreeCAD bridge (WebSocket client to Python bridge)

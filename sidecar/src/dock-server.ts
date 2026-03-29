@@ -110,7 +110,12 @@ export class DockServer {
 
   private handleMessage(client: WebSocket, data: WebSocket.Data): void {
     try {
-      const message: DockMessage = JSON.parse(data.toString());
+      const raw = JSON.parse(data.toString());
+      // Accept both "content" and "message" fields from clients
+      const message: DockMessage = {
+        ...raw,
+        content: raw.content ?? raw.message ?? '',
+      };
       console.log(`[DockServer] Received message type: ${message.type}`);
 
       switch (message.type) {
