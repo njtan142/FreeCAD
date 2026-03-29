@@ -8,8 +8,22 @@
  * Represents a tool call made during conversation
  */
 export interface ToolCall {
+  id?: string;
   name: string;
   arguments: any;
+}
+
+/**
+ * Backend configuration
+ */
+export interface BackendConfig {
+  apiKey?: string;
+  baseUrl?: string;
+  model?: string;
+  temperature?: number;
+  maxTokens?: number;
+  sessionDir?: string;
+  dangerouslySkipPermissions?: boolean;
 }
 
 /**
