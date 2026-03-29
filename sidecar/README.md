@@ -6054,6 +6054,601 @@ Export a TechDraw page to PDF format.
 
 ---
 
+### Surface Modeling Tools
+
+The surface modeling tools enable creation of complex 3D surfaces using loft, sweep, and other surface operations. Surface modeling is essential for organic shapes, smooth transitions, and geometries that cannot be achieved with simple extrusion or padding.
+
+**Surface Modeling Overview:**
+
+- **Loft** - Creates surfaces by connecting profile curves between two or more cross-sections
+- **Sweep** - Creates surfaces by sweeping a profile along a path
+- **Ruled Surface** - Creates surfaces between two curves or edges
+- **Blend Surface** - Creates smooth transitions between two existing surfaces
+- **Offset Surface** - Creates a parallel surface at a specified distance
+
+---
+
+#### Loft Tools
+
+##### `create_loft(profiles: string[], solid?: boolean, closed?: boolean, name?: string)`
+
+Create a surface loft between two or more profile curves.
+
+**Parameters:**
+- `profiles` (required): Array of object names (sketches or wires) to loft between, in order
+- `solid` (optional): If `true`, creates a solid. Default: `true`
+- `closed` (optional): If `true`, closes the loft back to the first profile. Default: `false`
+- `name` (optional): Name for the loft. If omitted, auto-generated
+
+**Response format:**
+```json
+{
+  "success": true,
+  "loftName": "Loft",
+  "profileCount": 3,
+  "solid": true,
+  "isClosed": false,
+  "message": "Created Loft 'Loft' with 3 profiles, solid mode"
+}
+```
+
+**Example usage:**
+```typescript
+// Loft between two profiles
+{
+  name: "create_loft",
+  arguments: {
+    profiles: ["Sketch001", "Sketch002"]
+  }
+}
+
+// Multi-section loft with 3 profiles
+{
+  name: "create_loft",
+  arguments: {
+    profiles: ["CircleSketch", "EllipseSketch", "RectangleSketch"],
+    solid: true
+  }
+}
+
+// Closed loft (e.g., for bottle shapes)
+{
+  name: "create_loft",
+  arguments: {
+    profiles: ["TopProfile", "MiddleProfile", "BottomProfile"],
+    solid: true,
+    closed: true
+  }
+}
+```
+
+**Natural language examples:**
+- "Loft between these two sketches"
+- "Create a loft through these three profiles"
+- "Make a closed loft for a bottle shape"
+- "Create a solid loft connecting the circles"
+
+**Notes:**
+- Profiles should be ordered from start to end
+- All profiles must be compatible (same number of edges for solid mode)
+- Open profiles create surfaces; closed profiles can create solids
+
+---
+
+##### `get_loft_info(loftName: string)`
+
+Get detailed information about a loft.
+
+**Parameters:**
+- `loftName` (required): Name of the loft to query
+
+**Response format:**
+```json
+{
+  "success": true,
+  "loftName": "Loft",
+  "profileCount": 3,
+  "solid": true,
+  "isClosed": false,
+  "profiles": ["Sketch001", "Sketch002", "Sketch003"],
+  "message": "Loft info: 3 profiles, solid mode, not closed"
+}
+```
+
+**Example usage:**
+```typescript
+{
+  name: "get_loft_info",
+  arguments: {
+    loftName: "Loft001"
+  }
+}
+```
+
+**Natural language examples:**
+- "Show loft details"
+- "What profiles does this loft use?"
+
+---
+
+#### Sweep Tools
+
+##### `create_sweep(profile: string, path: string, solid?: boolean, frenet?: boolean, name?: string)`
+
+Sweep a profile along a path to create a surface or solid.
+
+**Parameters:**
+- `profile` (required): Name of the profile (sketch or wire) to sweep
+- `path` (required): Name of the path (sketch, wire, or edge) to sweep along
+- `solid` (optional): If `true`, creates a solid. Default: `true`
+- `frenet` (optional): If `true`, uses Frenet frame calculation for orientation. Default: `true`
+- `name` (optional): Name for the sweep. If omitted, auto-generated
+
+**Response format:**
+```json
+{
+  "success": true,
+  "sweepName": "Sweep",
+  "profile": "CircleSketch",
+  "path": "PathSketch",
+  "solid": true,
+  "frenet": true,
+  "message": "Created Sweep 'Sweep' along path, solid mode, Frenet frame"
+}
+```
+
+**Example usage:**
+```typescript
+// Basic sweep along a path
+{
+  name: "create_sweep",
+  arguments: {
+    profile: "CircleSketch",
+    path: "PathSketch"
+  }
+}
+
+// Sweep without Frenet frame (constant orientation)
+{
+  name: "create_sweep",
+  arguments: {
+    profile: "RectangleSketch",
+    path: "PathSketch",
+    frenet: false
+  }
+}
+
+// Create surface (not solid)
+{
+  name: "create_sweep",
+  arguments: {
+    profile: "CircleSketch",
+    path: "PathSketch",
+    solid: false
+  }
+}
+```
+
+**Natural language examples:**
+- "Sweep this circle along the path"
+- "Sweep the profile along the curve"
+- "Create a pipe using this circle and path"
+- "Sweep with constant orientation (no Frenet)"
+
+**Notes:**
+- Profile is the cross-section shape
+- Path defines the trajectory the profile follows
+- Frenet frame rotates the profile to follow the path curvature
+- Non-Frenet keeps the profile orientation constant
+
+---
+
+##### `create_multi_section_sweep(profiles: string[], path: string, solid?: boolean, name?: string)`
+
+Sweep through multiple profile sections along a single path.
+
+**Parameters:**
+- `profiles` (required): Array of profile names in order along the path
+- `path` (required): Name of the path to sweep along
+- `solid` (optional): If `true`, creates a solid. Default: `true`
+- `name` (optional): Name for the sweep
+
+**Response format:**
+```json
+{
+  "success": true,
+  "sweepName": "MultiSweep",
+  "profileCount": 4,
+  "path": "PathSketch",
+  "solid": true,
+  "message": "Created Multi-section Sweep with 4 profiles along path"
+}
+```
+
+**Example usage:**
+```typescript
+// Sweep through multiple sections
+{
+  name: "create_multi_section_sweep",
+  arguments: {
+    profiles: ["SmallCircle", "MediumCircle", "LargeCircle", "MediumCircle"],
+    path: "VerticalPath"
+  }
+}
+```
+
+**Natural language examples:**
+- "Sweep through these sections along the path"
+- "Multi-section sweep with different sized circles"
+- "Create a tapered pipe through these profiles"
+
+---
+
+##### `get_sweep_info(sweepName: string)`
+
+Get detailed information about a sweep.
+
+**Parameters:**
+- `sweepName` (required): Name of the sweep to query
+
+**Response format:**
+```json
+{
+  "success": true,
+  "sweepName": "Sweep",
+  "profile": "CircleSketch",
+  "path": "PathSketch",
+  "solid": true,
+  "frenet": true,
+  "message": "Sweep info: CircleSketch along PathSketch"
+}
+```
+
+**Example usage:**
+```typescript
+{
+  name: "get_sweep_info",
+  arguments: {
+    sweepName: "Sweep001"
+  }
+}
+```
+
+**Natural language examples:**
+- "Show sweep details"
+- "What path does this sweep follow?"
+
+---
+
+#### Surface Analysis Tools
+
+##### `analyze_surface(surfaceName: string)`
+
+Analyze surface curvature and geometric properties.
+
+**Parameters:**
+- `surfaceName` (required): Name of the surface to analyze
+
+**Response format:**
+```json
+{
+  "success": true,
+  "surfaceName": "Loft",
+  "curvatureMin": -0.05,
+  "curvatureMax": 0.12,
+  "gaussian": -0.002,
+  "mean": 0.03,
+  "message": "Surface analysis: Gaussian curvature -0.05 to 0.12, mean 0.03"
+}
+```
+
+**Example usage:**
+```typescript
+{
+  name: "analyze_surface",
+  arguments: {
+    surfaceName: "Loft001"
+  }
+}
+```
+
+**Natural language examples:**
+- "Analyze surface curvature"
+- "Show curvature data for this surface"
+- "What are the curvature values?"
+
+**Curvature types returned:**
+- **Min/Max curvature**: Principal curvatures at each point
+- **Gaussian curvature**: Product of principal curvatures (positive = elliptic, negative = hyperbolic, zero = developable)
+- **Mean curvature**: Average of principal curvatures (zero = minimal surface)
+
+---
+
+##### `validate_surface(surfaceName: string)`
+
+Validate surface integrity and detect defects.
+
+**Parameters:**
+- `surfaceName` (required): Name of the surface to validate
+
+**Response format:**
+```json
+{
+  "success": true,
+  "surfaceName": "Loft",
+  "isValid": true,
+  "issues": [],
+  "message": "Surface valid: no issues found"
+}
+```
+
+**Example usage:**
+```typescript
+{
+  name: "validate_surface",
+  arguments: {
+    surfaceName: "Sweep001"
+  }
+}
+```
+
+**Natural language examples:**
+- "Validate this surface"
+- "Check for defects in this surface"
+- "Is this surface valid?"
+
+**Detected issues:**
+- `SelfIntersections` - Surface intersects itself
+- `InvalidGeometry` - Contains invalid control points
+- `DiscontinuousSurface` - Surface is not continuous
+- `DegeneratePatches` - Contains zero-area patches
+
+---
+
+#### Surface Utilities
+
+##### `create_ruled_surface(curve1: string, curve2: string, name?: string)`
+
+Create a ruled surface between two curves or edges.
+
+**Parameters:**
+- `curve1` (required): Name of first curve or edge
+- `curve2` (required): Name of second curve or edge
+- `name` (optional): Name for the ruled surface
+
+**Response format:**
+```json
+{
+  "success": true,
+  "ruledName": "RuledSurface",
+  "curve1": "Edge1",
+  "curve2": "Edge2",
+  "message": "Created ruled surface between Edge1 and Edge2"
+}
+```
+
+**Example usage:**
+```typescript
+{
+  name: "create_ruled_surface",
+  arguments: {
+    curve1: "Sketch001.Edge1",
+    curve2: "Sketch002.Edge1"
+  }
+}
+```
+
+**Natural language examples:**
+- "Create a ruled surface between these edges"
+- "Make a surface connecting these two curves"
+- "Ruled surface between the two sketch edges"
+
+---
+
+##### `create_offset_surface(surfaceName: string, distance: number | string, name?: string)`
+
+Create an offset (parallel) surface at a specified distance.
+
+**Parameters:**
+- `surfaceName` (required): Name of the source surface
+- `distance` (required): Offset distance. Can be numeric (mm) or string with units ("2mm", "0.1in")
+- `name` (optional): Name for the offset surface
+
+**Response format:**
+```json
+{
+  "success": true,
+  "offsetName": "Offset",
+  "source": "Loft",
+  "distance": "2.00mm",
+  "message": "Created offset surface 'Offset' at 2.00mm distance"
+}
+```
+
+**Example usage:**
+```typescript
+// Offset by 2mm
+{
+  name: "create_offset_surface",
+  arguments: {
+    surfaceName: "Loft001",
+    distance: 2
+  }
+}
+
+// Offset with units
+{
+  name: "create_offset_surface",
+  arguments: {
+    surfaceName: "Sweep",
+    distance: "0.5mm"
+  }
+}
+```
+
+**Natural language examples:**
+- "Create a 2mm offset of this surface"
+- "Offset surface outward by 3mm"
+- "Make a parallel surface 1mm away"
+
+**Notes:**
+- Positive distance expands outward
+- Negative distance contracts inward
+
+---
+
+##### `rebuild_surface(surfaceName: string, tolerance?: number | string)`
+
+Rebuild a surface with a new tolerance for improved precision.
+
+**Parameters:**
+- `surfaceName` (required): Name of the surface to rebuild
+- `tolerance` (optional): Rebuild tolerance. Can be numeric (mm) or string with units. Default: `0.1mm`
+
+**Response format:**
+```json
+{
+  "success": true,
+  "surfaceName": "Loft",
+  "newTolerance": "0.01mm",
+  "message": "Rebuilt surface with tolerance 0.01mm"
+}
+```
+
+**Example usage:**
+```typescript
+// Rebuild with tighter tolerance
+{
+  name: "rebuild_surface",
+  arguments: {
+    surfaceName: "Loft001",
+    tolerance: "0.01mm"
+  }
+}
+```
+
+**Natural language examples:**
+- "Rebuild with tighter tolerance"
+- "Improve surface precision to 0.01mm"
+- "Rebuild this surface with 0.05mm tolerance"
+
+---
+
+##### `get_surface_info(surfaceName: string)`
+
+Get detailed information about a surface.
+
+**Parameters:**
+- `surfaceName` (required): Name of the surface to query
+
+**Response format:**
+```json
+{
+  "success": true,
+  "surfaceName": "Loft",
+  "surfaceType": "Loft",
+  "area": 1250.00,
+  "bounds": {
+    "minX": 0, "minY": 0, "minZ": 0,
+    "maxX": 100, "maxY": 50, "maxZ": 200
+  },
+  "message": "Surface info retrieved successfully"
+}
+```
+
+**Example usage:**
+```typescript
+{
+  name: "get_surface_info",
+  arguments: {
+    surfaceName: "Sweep001"
+  }
+}
+```
+
+**Natural language examples:**
+- "Get surface information"
+- "Show details about this surface"
+- "What is the area of this loft?"
+
+---
+
+#### Loft vs Sweep vs Ruled Surfaces
+
+| Surface Type | Use Case | Profile Required | Path Required |
+|--------------|----------|-----------------|---------------|
+| **Loft** | Smooth transitions between cross-sections | Multiple profiles | No |
+| **Sweep** | Pipe-like shapes following a trajectory | One profile | Yes |
+| **Ruled** | Simple surface between two edges | Two curves | No |
+
+**When to use each:**
+
+- **Loft**: When you have multiple cross-sections (e.g., circles of different sizes transitioning into each other)
+- **Sweep**: When you have one profile that follows a path (e.g., a circle sweeping along a curved pipe)
+- **Ruled**: When you want a simple linear interpolation between two edges
+
+---
+
+#### Common Surface Workflows
+
+**Workflow 1: Basic Loft**
+
+```
+1. Create first profile sketch: create_sketch({ name: "Profile1" })
+2. Add geometry to first profile: add_geometry({ sketchName: "Profile1", ... })
+3. Create second profile sketch: create_sketch({ name: "Profile2" })
+4. Add geometry to second profile
+5. Create loft: create_loft({ profiles: ["Profile1", "Profile2"] })
+```
+
+**Workflow 2: Sweep with Path**
+
+```
+1. Create profile sketch (circle): create_sketch({ name: "CircleProfile" })
+2. Add circle geometry: add_geometry({ sketchName: "CircleProfile", geometryType: "circle", ... })
+3. Create path sketch: create_sketch({ name: "Path" })
+4. Add path geometry (line or curve): add_geometry({ sketchName: "Path", ... })
+5. Create sweep: create_sweep({ profile: "CircleProfile", path: "Path" })
+```
+
+**Workflow 3: Bottle Shape (Closed Loft)**
+
+```
+1. Create base profile sketch
+2. Add closed circle/ellipse geometry
+3. Create intermediate profile sketches at different heights
+4. Create top profile sketch
+5. Create closed loft: create_loft({ profiles: [...], closed: true })
+```
+
+**Workflow 4: Multi-Section Sweep (Airplane Wing)**
+
+```
+1. Create root airfoil profile
+2. Create tip airfoil profile
+3. Create sweep path (straight or curved line)
+4. Create multi-section sweep: create_multi_section_sweep({ profiles: ["Root", "Tip"], path: "WingPath" })
+```
+
+**Workflow 5: Surface Analysis and Refinement**
+
+```
+1. Create surface: create_loft({ profiles: [...] })
+2. Analyze curvature: analyze_surface({ surfaceName: "Loft" })
+3. Validate surface: validate_surface({ surfaceName: "Loft" })
+4. If issues found, rebuild with tighter tolerance: rebuild_surface({ surfaceName: "Loft", tolerance: "0.01mm" })
+```
+
+**Workflow 6: Offset Surface (Thicken Shell)**
+
+```
+1. Create base surface: create_sweep({ profile: "Profile", path: "Path" })
+2. Validate surface: validate_surface({ surfaceName: "Sweep" })
+3. Create offset: create_offset_surface({ surfaceName: "Sweep", distance: 2 })
+```
+
+---
+
 ### Export Tool (Legacy)
 
 #### `export_model(filePath: string, format: string)`
