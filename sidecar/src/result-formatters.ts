@@ -607,6 +607,56 @@ export function formatColumnWidth(data: any): string {
   return lines.join('\n');
 }
 
+export function formatRowHeight(data: any): string {
+  if (!data) return 'No row height data';
+
+  const lines: string[] = [];
+
+  if (data.success) {
+    lines.push(`Row ${data.row} in ${data.spreadsheet}`);
+    lines.push(`Height: ${data.height} points`);
+  } else {
+    lines.push(`Set Row Height Failed: ${data.error || 'Unknown error'}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatCellBackground(data: any): string {
+  if (!data) return 'No cell background data';
+
+  const lines: string[] = [];
+
+  if (data.success) {
+    lines.push(`Cell ${data.address} in ${data.spreadsheet}`);
+    if (data.color) {
+      const color = data.color;
+      if (typeof color === 'object' && 'r' in color) {
+        const r = Math.round(color.r * 255);
+        const g = Math.round(color.g * 255);
+        const b = Math.round(color.b * 255);
+        lines.push(`Color: rgb(${r}, ${g}, ${b})`);
+      } else {
+        lines.push(`Color: ${JSON.stringify(data.color)}`);
+      }
+    }
+  } else {
+    lines.push(`Set Cell Background Failed: ${data.error || 'Unknown error'}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
 
 /**
  * Format dimension update result from update_dimensions
