@@ -16,6 +16,21 @@ exports.formatDocumentInfo = formatDocumentInfo;
 exports.formatTableRow = formatTableRow;
 exports.truncateOutput = truncateOutput;
 exports.formatPropertyChange = formatPropertyChange;
+exports.formatSpreadsheetCreate = formatSpreadsheetCreate;
+exports.formatSpreadsheetDelete = formatSpreadsheetDelete;
+exports.formatSpreadsheetRename = formatSpreadsheetRename;
+exports.formatSpreadsheetList = formatSpreadsheetList;
+exports.formatSpreadsheetInfo = formatSpreadsheetInfo;
+exports.formatCellValue = formatCellValue;
+exports.formatCellExpression = formatCellExpression;
+exports.formatAliasList = formatAliasList;
+exports.formatBomGeneration = formatBomGeneration;
+exports.formatBomData = formatBomData;
+exports.formatParametricTable = formatParametricTable;
+exports.formatTableLookup = formatTableLookup;
+exports.formatColumnWidth = formatColumnWidth;
+exports.formatRowHeight = formatRowHeight;
+exports.formatCellBackground = formatCellBackground;
 exports.formatDimensionUpdate = formatDimensionUpdate;
 exports.formatTransformResult = formatTransformResult;
 exports.formatExpressionResult = formatExpressionResult;
@@ -97,6 +112,58 @@ exports.formatPathOperation = formatPathOperation;
 exports.formatPathDressup = formatPathDressup;
 exports.formatGCodeExport = formatGCodeExport;
 exports.formatPathSimulation = formatPathSimulation;
+exports.formatUndoResult = formatUndoResult;
+exports.formatRedoResult = formatRedoResult;
+exports.formatUndoStackSize = formatUndoStackSize;
+exports.formatVisibilityChange = formatVisibilityChange;
+exports.formatVisibleObjectsList = formatVisibleObjectsList;
+exports.formatSelectionChange = formatSelectionChange;
+exports.formatMeasurement = formatMeasurement;
+exports.formatDistanceMeasurement = formatDistanceMeasurement;
+exports.formatAngleMeasurement = formatAngleMeasurement;
+exports.formatSiteCreation = formatSiteCreation;
+exports.formatBuildingCreation = formatBuildingCreation;
+exports.formatBuildingPartCreation = formatBuildingPartCreation;
+exports.formatBuildingLevel = formatBuildingLevel;
+exports.formatBuildingHierarchy = formatBuildingHierarchy;
+exports.formatWallCreation = formatWallCreation;
+exports.formatWindowCreation = formatWindowCreation;
+exports.formatDoorCreation = formatDoorCreation;
+exports.formatRoofCreation = formatRoofCreation;
+exports.formatStairsCreation = formatStairsCreation;
+exports.formatCurtainWallCreation = formatCurtainWallCreation;
+exports.formatSpaceCreation = formatSpaceCreation;
+exports.formatColumnCreation = formatColumnCreation;
+exports.formatBeamCreation = formatBeamCreation;
+exports.formatSlabCreation = formatSlabCreation;
+exports.formatFrameCreation = formatFrameCreation;
+exports.formatTrussCreation = formatTrussCreation;
+exports.formatFenceCreation = formatFenceCreation;
+exports.formatEquipmentCreation = formatEquipmentCreation;
+exports.formatPipeCreation = formatPipeCreation;
+exports.formatPipeConnectorCreation = formatPipeConnectorCreation;
+exports.formatPanelCreation = formatPanelCreation;
+exports.formatAxisCreation = formatAxisCreation;
+exports.formatGridCreation = formatGridCreation;
+exports.formatSectionPlaneCreation = formatSectionPlaneCreation;
+exports.formatScheduleCreation = formatScheduleCreation;
+exports.formatIfcProperties = formatIfcProperties;
+exports.formatMaterialAssignment = formatMaterialAssignment;
+exports.formatQuickWall = formatQuickWall;
+exports.formatQuickWindow = formatQuickWindow;
+exports.formatQuickDoor = formatQuickDoor;
+exports.formatQuickFloor = formatQuickFloor;
+exports.formatErrorParse = formatErrorParse;
+exports.formatErrorCategory = formatErrorCategory;
+exports.formatTracebackInfo = formatTracebackInfo;
+exports.formatErrorContext = formatErrorContext;
+exports.formatRecoverySuggestions = formatRecoverySuggestions;
+exports.formatValidationResult = formatValidationResult;
+exports.formatCommonErrors = formatCommonErrors;
+exports.formatOperationHistory = formatOperationHistory;
+exports.formatLastError = formatLastError;
+exports.formatUndoStrategy = formatUndoStrategy;
+exports.formatSafeRetryResult = formatSafeRetryResult;
 /**
  * Format a query result, handling errors and data formatting
  */
@@ -345,6 +412,325 @@ function formatPropertyChange(data) {
     }
     else if (data.afterValue !== undefined) {
         lines.push(`Set to: ${data.afterValue}`);
+    }
+    if (data.message) {
+        lines.push('');
+        lines.push(data.message);
+    }
+    return lines.join('\n');
+}
+function formatSpreadsheetCreate(data) {
+    if (!data)
+        return 'No spreadsheet data';
+    const lines = [];
+    if (data.success) {
+        lines.push(`Spreadsheet created: ${data.objectLabel || data.objectName}`);
+        if (data.objectType) {
+            lines.push(`Type: ${data.objectType}`);
+        }
+    }
+    else {
+        lines.push(`Create Spreadsheet Failed: ${data.error || 'Unknown error'}`);
+    }
+    if (data.message) {
+        lines.push('');
+        lines.push(data.message);
+    }
+    return lines.join('\n');
+}
+function formatSpreadsheetDelete(data) {
+    if (!data)
+        return 'No spreadsheet data';
+    const lines = [];
+    if (data.success) {
+        lines.push(`Deleted spreadsheet: ${data.deletedSpreadsheet}`);
+    }
+    else {
+        lines.push(`Delete Spreadsheet Failed: ${data.error || 'Unknown error'}`);
+    }
+    if (data.message) {
+        lines.push('');
+        lines.push(data.message);
+    }
+    return lines.join('\n');
+}
+function formatSpreadsheetRename(data) {
+    if (!data)
+        return 'No spreadsheet data';
+    const lines = [];
+    if (data.success) {
+        lines.push(`Renamed: ${data.oldName} → ${data.newName}`);
+    }
+    else {
+        lines.push(`Rename Spreadsheet Failed: ${data.error || 'Unknown error'}`);
+    }
+    if (data.message) {
+        lines.push('');
+        lines.push(data.message);
+    }
+    return lines.join('\n');
+}
+function formatSpreadsheetList(data) {
+    if (!data)
+        return 'No spreadsheet data';
+    const lines = [];
+    if (data.success) {
+        lines.push(`Found ${data.count} spreadsheet(s):`);
+        if (data.spreadsheets && Array.isArray(data.spreadsheets)) {
+            for (const ss of data.spreadsheets) {
+                lines.push(`  • ${ss.label} (${ss.name})`);
+            }
+        }
+    }
+    else {
+        lines.push(`List Spreadsheets Failed: ${data.error || 'Unknown error'}`);
+    }
+    if (data.message) {
+        lines.push('');
+        lines.push(data.message);
+    }
+    return lines.join('\n');
+}
+function formatSpreadsheetInfo(data) {
+    if (!data)
+        return 'No spreadsheet data';
+    const lines = [];
+    if (data.success) {
+        lines.push(`Spreadsheet: ${data.label || data.name}`);
+        lines.push(`Type: ${data.type}`);
+        if (data.usedRange) {
+            lines.push(`Used Range: ${JSON.stringify(data.usedRange)}`);
+        }
+        lines.push(`Aliases: ${data.aliasCount || 0}`);
+    }
+    else {
+        lines.push(`Get Spreadsheet Info Failed: ${data.error || 'Unknown error'}`);
+    }
+    if (data.message) {
+        lines.push('');
+        lines.push(data.message);
+    }
+    return lines.join('\n');
+}
+function formatCellValue(data) {
+    if (!data)
+        return 'No cell data';
+    const lines = [];
+    if (data.success) {
+        lines.push(`Cell ${data.address} in ${data.spreadsheet}`);
+        lines.push(`Value: ${data.value}`);
+        if (data.hasExpression && data.expression) {
+            lines.push(`Formula: ${data.expression}`);
+        }
+    }
+    else {
+        lines.push(`Get Cell Failed: ${data.error || 'Unknown error'}`);
+    }
+    if (data.message) {
+        lines.push('');
+        lines.push(data.message);
+    }
+    return lines.join('\n');
+}
+function formatCellExpression(data) {
+    if (!data)
+        return 'No cell data';
+    const lines = [];
+    if (data.success) {
+        lines.push(`Cell ${data.address} in ${data.spreadsheet}`);
+        lines.push(`Formula: ${data.expression || '(none)'}`);
+        lines.push(`Computed Value: ${data.computedValue}`);
+    }
+    else {
+        lines.push(`Get Cell Expression Failed: ${data.error || 'Unknown error'}`);
+    }
+    if (data.message) {
+        lines.push('');
+        lines.push(data.message);
+    }
+    return lines.join('\n');
+}
+function formatAliasList(data) {
+    if (!data)
+        return 'No alias data';
+    const lines = [];
+    if (data.success) {
+        lines.push(`Aliases in ${data.spreadsheet} (${data.count}):`);
+        if (data.aliases && Array.isArray(data.aliases)) {
+            for (const alias of data.aliases) {
+                lines.push(`  • ${alias.alias} → ${alias.address} = ${alias.value}`);
+            }
+        }
+    }
+    else {
+        lines.push(`List Aliases Failed: ${data.error || 'Unknown error'}`);
+    }
+    if (data.message) {
+        lines.push('');
+        lines.push(data.message);
+    }
+    return lines.join('\n');
+}
+function formatBomGeneration(data) {
+    if (!data)
+        return 'No BOM data';
+    const lines = [];
+    if (data.success) {
+        lines.push(`BOM Generated: ${data.itemCount} item(s)`);
+        lines.push(`Format: ${data.format}`);
+        if (data.groupedByType) {
+            lines.push('Grouped by type');
+        }
+        if (data.bom && Array.isArray(data.bom) && data.bom.length > 0) {
+            lines.push('');
+            lines.push('Items:');
+            for (let i = 0; i < Math.min(data.bom.length, 10); i++) {
+                const item = data.bom[i];
+                lines.push(`  ${i + 1}. ${item.label || item.name} (${item.type})`);
+            }
+            if (data.bom.length > 10) {
+                lines.push(`  ... and ${data.bom.length - 10} more`);
+            }
+        }
+    }
+    else {
+        lines.push(`Generate BOM Failed: ${data.error || 'Unknown error'}`);
+    }
+    if (data.message) {
+        lines.push('');
+        lines.push(data.message);
+    }
+    return lines.join('\n');
+}
+function formatBomData(data) {
+    if (!data)
+        return 'No BOM data';
+    const lines = [];
+    if (data.success) {
+        lines.push(`Extracted data from ${data.itemCount} object(s):`);
+        if (data.items && Array.isArray(data.items)) {
+            for (const item of data.items) {
+                lines.push(`  • ${item.label || item.name || item.sourceObject}`);
+            }
+        }
+        if (data.errors && data.errors.length > 0) {
+            lines.push('');
+            lines.push('Errors:');
+            for (const err of data.errors) {
+                lines.push(`  • ${err.object}: ${err.error}`);
+            }
+        }
+    }
+    else {
+        lines.push(`Get BOM Data Failed: ${data.error || 'Unknown error'}`);
+    }
+    if (data.message) {
+        lines.push('');
+        lines.push(data.message);
+    }
+    return lines.join('\n');
+}
+function formatParametricTable(data) {
+    if (!data)
+        return 'No table data';
+    const lines = [];
+    if (data.success) {
+        lines.push(`Parametric table created in ${data.spreadsheet}`);
+        lines.push(`Range: ${data.startAddress}:${data.endAddress}`);
+        lines.push(`Size: ${data.rowCount} rows × ${data.columnCount} columns`);
+        if (data.headers) {
+            lines.push(`Headers: ${data.headers.join(', ')}`);
+        }
+    }
+    else {
+        lines.push(`Create Parametric Table Failed: ${data.error || 'Unknown error'}`);
+    }
+    if (data.message) {
+        lines.push('');
+        lines.push(data.message);
+    }
+    return lines.join('\n');
+}
+function formatTableLookup(data) {
+    if (!data)
+        return 'No lookup data';
+    const lines = [];
+    if (data.success) {
+        lines.push(`Lookup: ${data.lookupColumn} = ${data.lookupValue}`);
+        lines.push(`Found at row ${data.foundRow}, address ${data.resultAddress}`);
+        lines.push(`Result: ${data.resultValue}`);
+        if (data.rowData) {
+            lines.push('');
+            lines.push('Row data:');
+            for (const [key, val] of Object.entries(data.rowData)) {
+                lines.push(`  ${key}: ${val}`);
+            }
+        }
+    }
+    else {
+        lines.push(`Table Lookup Failed: ${data.error || 'Unknown error'}`);
+    }
+    if (data.message) {
+        lines.push('');
+        lines.push(data.message);
+    }
+    return lines.join('\n');
+}
+function formatColumnWidth(data) {
+    if (!data)
+        return 'No width data';
+    const lines = [];
+    if (data.success) {
+        lines.push(`Column ${data.column} in ${data.spreadsheet}`);
+        lines.push(`Width: ${data.width} points`);
+    }
+    else {
+        lines.push(`Set Column Width Failed: ${data.error || 'Unknown error'}`);
+    }
+    if (data.message) {
+        lines.push('');
+        lines.push(data.message);
+    }
+    return lines.join('\n');
+}
+function formatRowHeight(data) {
+    if (!data)
+        return 'No row height data';
+    const lines = [];
+    if (data.success) {
+        lines.push(`Row ${data.row} in ${data.spreadsheet}`);
+        lines.push(`Height: ${data.height} points`);
+    }
+    else {
+        lines.push(`Set Row Height Failed: ${data.error || 'Unknown error'}`);
+    }
+    if (data.message) {
+        lines.push('');
+        lines.push(data.message);
+    }
+    return lines.join('\n');
+}
+function formatCellBackground(data) {
+    if (!data)
+        return 'No cell background data';
+    const lines = [];
+    if (data.success) {
+        lines.push(`Cell ${data.address} in ${data.spreadsheet}`);
+        if (data.color) {
+            const color = data.color;
+            if (typeof color === 'object' && 'r' in color) {
+                const r = Math.round(color.r * 255);
+                const g = Math.round(color.g * 255);
+                const b = Math.round(color.b * 255);
+                lines.push(`Color: rgb(${r}, ${g}, ${b})`);
+            }
+            else {
+                lines.push(`Color: ${JSON.stringify(data.color)}`);
+            }
+        }
+    }
+    else {
+        lines.push(`Set Cell Background Failed: ${data.error || 'Unknown error'}`);
     }
     if (data.message) {
         lines.push('');
@@ -3157,6 +3543,1249 @@ function formatPathSimulation(data) {
     }
     else {
         lines.push(`Simulation Error: ${data.error || 'Unknown error'}`);
+    }
+    if (data.message) {
+        lines.push('');
+        lines.push(data.message);
+    }
+    return lines.join('\n');
+}
+// ============================================================================
+// Workflow and Measurement Result Formatters
+// ============================================================================
+function formatUndoResult(data) {
+    if (!data)
+        return 'No undo data';
+    const lines = [];
+    if (data.success) {
+        lines.push('Undo: Successful');
+        if (data.undoneObject) {
+            lines.push(`Undone: ${data.undoneObject}`);
+        }
+    }
+    else {
+        lines.push(`Undo Failed: ${data.error || 'Unknown error'}`);
+    }
+    if (data.message) {
+        lines.push(data.message);
+    }
+    return lines.join('\n');
+}
+function formatRedoResult(data) {
+    if (!data)
+        return 'No redo data';
+    const lines = [];
+    if (data.success) {
+        lines.push('Redo: Successful');
+        if (data.redoneObject) {
+            lines.push(`Redone: ${data.redoneObject}`);
+        }
+    }
+    else {
+        lines.push(`Redo Failed: ${data.error || 'Unknown error'}`);
+    }
+    if (data.message) {
+        lines.push(data.message);
+    }
+    return lines.join('\n');
+}
+function formatUndoStackSize(data) {
+    if (!data)
+        return 'No undo stack data';
+    const lines = [];
+    lines.push(`Undo Stack: ${data.undoSize ?? 0} operations`);
+    lines.push(`Redo Stack: ${data.redoSize ?? 0} operations`);
+    if (data.canUndo !== undefined) {
+        lines.push(`Can Undo: ${data.canUndo ? 'Yes' : 'No'}`);
+    }
+    if (data.canRedo !== undefined) {
+        lines.push(`Can Redo: ${data.canRedo ? 'Yes' : 'No'}`);
+    }
+    if (data.message) {
+        lines.push('');
+        lines.push(data.message);
+    }
+    return lines.join('\n');
+}
+function formatVisibilityChange(data) {
+    if (!data)
+        return 'No visibility data';
+    const lines = [];
+    if (data.success) {
+        lines.push(`Object: ${data.objectLabel || data.objectName} (${data.objectName})`);
+        lines.push(`Visibility: ${data.visible ? 'Shown' : 'Hidden'}`);
+    }
+    else {
+        lines.push(`Visibility Change Failed: ${data.error || 'Unknown error'}`);
+    }
+    if (data.message) {
+        lines.push(data.message);
+    }
+    return lines.join('\n');
+}
+function formatVisibleObjectsList(data) {
+    if (!data)
+        return 'No visible objects data';
+    const lines = [];
+    lines.push(`Visible Objects: ${data.count || 0}`);
+    if (data.objects && data.objects.length > 0) {
+        lines.push('');
+        lines.push(formatTableRow(['Name', 'Label', 'Type']));
+        lines.push('─'.repeat(60));
+        for (const obj of data.objects) {
+            lines.push(formatTableRow([
+                obj.name || '-',
+                obj.label || '-',
+                formatType(obj.type)
+            ]));
+        }
+    }
+    else {
+        lines.push('(No visible objects)');
+    }
+    if (data.message) {
+        lines.push('');
+        lines.push(data.message);
+    }
+    return lines.join('\n');
+}
+function formatSelectionChange(data) {
+    if (!data)
+        return 'No selection data';
+    const lines = [];
+    if (data.success) {
+        lines.push(`Object: ${data.objectLabel || data.objectName} (${data.objectName})`);
+        lines.push(`Selected: ${data.selected ? 'Yes' : 'No'}`);
+    }
+    else {
+        lines.push(`Selection Change Failed: ${data.error || 'Unknown error'}`);
+    }
+    if (data.message) {
+        lines.push(data.message);
+    }
+    return lines.join('\n');
+}
+function formatMeasurement(data) {
+    if (!data)
+        return 'No measurement data';
+    const lines = [];
+    if (data.success) {
+        if (data.measurementType) {
+            lines.push(`Measurement Type: ${data.measurementType}`);
+        }
+        if (data.value !== undefined) {
+            const unit = data.unit || 'mm';
+            if (data.measurementType === 'angle') {
+                lines.push(`Value: ${typeof data.value === 'number' ? data.value.toFixed(2) : data.value}°`);
+            }
+            else {
+                lines.push(`Value: ${typeof data.value === 'number' ? data.value.toFixed(4) : data.value} ${unit}`);
+            }
+        }
+        if (data.points && data.points.length > 0) {
+            lines.push('');
+            lines.push('Points:');
+            for (let i = 0; i < data.points.length; i++) {
+                const pt = data.points[i];
+                lines.push(`  ${i + 1}: (${pt.x?.toFixed(2) || 0}, ${pt.y?.toFixed(2) || 0}, ${pt.z?.toFixed(2) || 0})`);
+            }
+        }
+        if (data.object1 && data.object2) {
+            lines.push(`Objects: ${data.object1} ↔ ${data.object2}`);
+        }
+    }
+    else {
+        lines.push(`Measurement Failed: ${data.error || 'Unknown error'}`);
+    }
+    if (data.message) {
+        lines.push('');
+        lines.push(data.message);
+    }
+    return lines.join('\n');
+}
+function formatDistanceMeasurement(data) {
+    if (!data)
+        return 'No distance data';
+    const lines = [];
+    if (data.success) {
+        if (data.distance !== undefined) {
+            lines.push(`Distance: ${typeof data.distance === 'number' ? data.distance.toFixed(4) : data.distance} mm`);
+        }
+        if (data.point1 && data.point2) {
+            lines.push('');
+            lines.push('Point 1: (' + [
+                data.point1.x?.toFixed(2) || 0,
+                data.point1.y?.toFixed(2) || 0,
+                data.point1.z?.toFixed(2) || 0
+            ].join(', ') + ')');
+            lines.push('Point 2: (' + [
+                data.point2.x?.toFixed(2) || 0,
+                data.point2.y?.toFixed(2) || 0,
+                data.point2.z?.toFixed(2) || 0
+            ].join(', ') + ')');
+        }
+        if (data.object1 && data.object2) {
+            lines.push('');
+            lines.push(`Between: ${data.object1} ↔ ${data.object2}`);
+        }
+    }
+    else {
+        lines.push(`Distance Measurement Failed: ${data.error || 'Unknown error'}`);
+    }
+    if (data.message) {
+        lines.push('');
+        lines.push(data.message);
+    }
+    return lines.join('\n');
+}
+function formatAngleMeasurement(data) {
+    if (!data)
+        return 'No angle data';
+    const lines = [];
+    if (data.success) {
+        if (data.angle !== undefined) {
+            lines.push(`Angle: ${typeof data.angle === 'number' ? data.angle.toFixed(2) : data.angle}°`);
+        }
+        if (data.vertex) {
+            lines.push(`Vertex: (${data.vertex.x?.toFixed(2) || 0}, ${data.vertex.y?.toFixed(2) || 0}, ${data.vertex.z?.toFixed(2) || 0})`);
+        }
+        if (data.point1 && data.point2 && data.point3) {
+            lines.push('');
+            lines.push('Points:');
+            lines.push(`  1: (${data.point1.x?.toFixed(2) || 0}, ${data.point1.y?.toFixed(2) || 0}, ${data.point1.z?.toFixed(2) || 0})`);
+            lines.push(`  2: (${data.point2.x?.toFixed(2) || 0}, ${data.point2.y?.toFixed(2) || 0}, ${data.point2.z?.toFixed(2) || 0})`);
+            lines.push(`  3: (${data.point3.x?.toFixed(2) || 0}, ${data.point3.y?.toFixed(2) || 0}, ${data.point3.z?.toFixed(2) || 0})`);
+        }
+    }
+    else {
+        lines.push(`Angle Measurement Failed: ${data.error || 'Unknown error'}`);
+    }
+    if (data.message) {
+        lines.push('');
+        lines.push(data.message);
+    }
+    return lines.join('\n');
+}
+// ============================================================================
+// BIM/Arch Workbench Formatters
+// ============================================================================
+function formatSiteCreation(data) {
+    if (!data)
+        return 'No site data';
+    const lines = [];
+    lines.push(`Created Site: ${data.objectLabel || data.objectName} (${data.objectName})`);
+    lines.push(`Type: ${data.ifcType || 'Site'}`);
+    if (data.latitude !== undefined && data.longitude !== undefined) {
+        lines.push(`Location: ${data.latitude}, ${data.longitude}`);
+    }
+    if (data.terrainHeight !== undefined) {
+        lines.push(`Terrain Height: ${data.terrainHeight.toFixed(2)} mm`);
+    }
+    if (data.message) {
+        lines.push('');
+        lines.push(data.message);
+    }
+    return lines.join('\n');
+}
+function formatBuildingCreation(data) {
+    if (!data)
+        return 'No building data';
+    const lines = [];
+    lines.push(`Created Building: ${data.objectLabel || data.objectName} (${data.objectName})`);
+    lines.push(`Type: ${data.ifcType || 'Building'}`);
+    if (data.childrenCount !== undefined) {
+        lines.push(`Children: ${data.childrenCount} object(s)`);
+    }
+    if (data.message) {
+        lines.push('');
+        lines.push(data.message);
+    }
+    return lines.join('\n');
+}
+function formatBuildingPartCreation(data) {
+    if (!data)
+        return 'No building part data';
+    const lines = [];
+    lines.push(`Created Building Part: ${data.objectLabel || data.objectName} (${data.objectName})`);
+    lines.push(`Type: ${data.ifcType || 'BuildingPart'}`);
+    if (data.childrenCount !== undefined) {
+        lines.push(`Children: ${data.childrenCount} object(s)`);
+    }
+    if (data.message) {
+        lines.push('');
+        lines.push(data.message);
+    }
+    return lines.join('\n');
+}
+function formatBuildingLevel(data) {
+    if (!data)
+        return 'No building level data';
+    const lines = [];
+    lines.push(`Created Building Level: ${data.objectLabel || data.objectName} (${data.objectName})`);
+    if (data.elevation !== undefined) {
+        lines.push(`Elevation: ${data.elevation.toFixed(2)} mm`);
+    }
+    if (data.message) {
+        lines.push('');
+        lines.push(data.message);
+    }
+    return lines.join('\n');
+}
+function formatBuildingHierarchy(data) {
+    if (!data)
+        return 'No hierarchy data';
+    const lines = [];
+    lines.push('Building Hierarchy:');
+    function formatNode(node, indent = 0) {
+        const prefix = '  '.repeat(indent);
+        const nodeType = node.ifcType || node.type || 'Unknown';
+        lines.push(`${prefix}${nodeType}: ${node.name || node.objectLabel || node.objectName || 'Unnamed'}`);
+        if (node.children && Array.isArray(node.children)) {
+            for (const child of node.children) {
+                formatNode(child, indent + 1);
+            }
+        }
+    }
+    if (data.hierarchy && Array.isArray(data.hierarchy)) {
+        for (const node of data.hierarchy) {
+            formatNode(node, 0);
+        }
+    }
+    if (data.message) {
+        lines.push('');
+        lines.push(data.message);
+    }
+    return lines.join('\n');
+}
+function formatWallCreation(data) {
+    if (!data)
+        return 'No wall data';
+    const lines = [];
+    lines.push(`Created Wall: ${data.objectLabel || data.objectName} (${data.objectName})`);
+    if (data.dimensions) {
+        const { length, width, height } = data.dimensions;
+        lines.push(`Dimensions: ${(length || 0).toFixed(2)} x ${(width || 0).toFixed(2)} x ${(height || 0).toFixed(2)} mm`);
+    }
+    if (data.ifcType) {
+        lines.push(`IFC Type: ${data.ifcType}`);
+    }
+    if (data.message) {
+        lines.push('');
+        lines.push(data.message);
+    }
+    return lines.join('\n');
+}
+function formatWindowCreation(data) {
+    if (!data)
+        return 'No window data';
+    const lines = [];
+    lines.push(`Created Window: ${data.objectLabel || data.objectName} (${data.objectName})`);
+    if (data.dimensions) {
+        const { width, height } = data.dimensions;
+        lines.push(`Dimensions: ${(width || 0).toFixed(2)} x ${(height || 0).toFixed(2)} mm`);
+    }
+    if (data.ifcType) {
+        lines.push(`IFC Type: ${data.ifcType}`);
+    }
+    if (data.message) {
+        lines.push('');
+        lines.push(data.message);
+    }
+    return lines.join('\n');
+}
+function formatDoorCreation(data) {
+    if (!data)
+        return 'No door data';
+    const lines = [];
+    lines.push(`Created Door: ${data.objectLabel || data.objectName} (${data.objectName})`);
+    if (data.dimensions) {
+        const { width, height } = data.dimensions;
+        lines.push(`Dimensions: ${(width || 0).toFixed(2)} x ${(height || 0).toFixed(2)} mm`);
+    }
+    if (data.ifcType) {
+        lines.push(`IFC Type: ${data.ifcType}`);
+    }
+    if (data.message) {
+        lines.push('');
+        lines.push(data.message);
+    }
+    return lines.join('\n');
+}
+function formatRoofCreation(data) {
+    if (!data)
+        return 'No roof data';
+    const lines = [];
+    lines.push(`Created Roof: ${data.objectLabel || data.objectName} (${data.objectName})`);
+    if (data.angles) {
+        lines.push(`Angles: ${data.angles.join(', ')}°`);
+    }
+    if (data.ifcType) {
+        lines.push(`IFC Type: ${data.ifcType}`);
+    }
+    if (data.message) {
+        lines.push('');
+        lines.push(data.message);
+    }
+    return lines.join('\n');
+}
+function formatStairsCreation(data) {
+    if (!data)
+        return 'No stairs data';
+    const lines = [];
+    lines.push(`Created Stairs: ${data.objectLabel || data.objectName} (${data.objectName})`);
+    if (data.dimensions) {
+        const { length, width, height } = data.dimensions;
+        lines.push(`Dimensions: ${(length || 0).toFixed(2)} x ${(width || 0).toFixed(2)} x ${(height || 0).toFixed(2)} mm`);
+    }
+    if (data.numberOfSteps !== undefined) {
+        lines.push(`Number of Steps: ${data.numberOfSteps}`);
+    }
+    if (data.message) {
+        lines.push('');
+        lines.push(data.message);
+    }
+    return lines.join('\n');
+}
+function formatCurtainWallCreation(data) {
+    if (!data)
+        return 'No curtain wall data';
+    const lines = [];
+    lines.push(`Created Curtain Wall: ${data.objectLabel || data.objectName} (${data.objectName})`);
+    if (data.ifcType) {
+        lines.push(`IFC Type: ${data.ifcType}`);
+    }
+    if (data.message) {
+        lines.push('');
+        lines.push(data.message);
+    }
+    return lines.join('\n');
+}
+function formatSpaceCreation(data) {
+    if (!data)
+        return 'No space data';
+    const lines = [];
+    lines.push(`Created Space: ${data.objectLabel || data.objectName} (${data.objectName})`);
+    if (data.ifcType) {
+        lines.push(`IFC Type: ${data.ifcType}`);
+    }
+    if (data.message) {
+        lines.push('');
+        lines.push(data.message);
+    }
+    return lines.join('\n');
+}
+function formatColumnCreation(data) {
+    if (!data)
+        return 'No column data';
+    const lines = [];
+    lines.push(`Created Column: ${data.objectLabel || data.objectName} (${data.objectName})`);
+    if (data.dimensions) {
+        const { width, height } = data.dimensions;
+        lines.push(`Dimensions: ${(width || 0).toFixed(2)} x ${(height || 0).toFixed(2)} mm`);
+    }
+    if (data.ifcType) {
+        lines.push(`IFC Type: ${data.ifcType}`);
+    }
+    if (data.message) {
+        lines.push('');
+        lines.push(data.message);
+    }
+    return lines.join('\n');
+}
+function formatBeamCreation(data) {
+    if (!data)
+        return 'No beam data';
+    const lines = [];
+    lines.push(`Created Beam: ${data.objectLabel || data.objectName} (${data.objectName})`);
+    if (data.dimensions) {
+        const { width, height, length } = data.dimensions;
+        lines.push(`Dimensions: ${(width || 0).toFixed(2)} x ${(height || 0).toFixed(2)} x ${(length || 0).toFixed(2)} mm`);
+    }
+    if (data.ifcType) {
+        lines.push(`IFC Type: ${data.ifcType}`);
+    }
+    if (data.message) {
+        lines.push('');
+        lines.push(data.message);
+    }
+    return lines.join('\n');
+}
+function formatSlabCreation(data) {
+    if (!data)
+        return 'No slab data';
+    const lines = [];
+    lines.push(`Created Slab: ${data.objectLabel || data.objectName} (${data.objectName})`);
+    if (data.thickness !== undefined) {
+        lines.push(`Thickness: ${data.thickness.toFixed(2)} mm`);
+    }
+    if (data.ifcType) {
+        lines.push(`IFC Type: ${data.ifcType}`);
+    }
+    if (data.message) {
+        lines.push('');
+        lines.push(data.message);
+    }
+    return lines.join('\n');
+}
+function formatFrameCreation(data) {
+    if (!data)
+        return 'No frame data';
+    const lines = [];
+    lines.push(`Created Frame: ${data.objectLabel || data.objectName} (${data.objectName})`);
+    if (data.ifcType) {
+        lines.push(`IFC Type: ${data.ifcType}`);
+    }
+    if (data.message) {
+        lines.push('');
+        lines.push(data.message);
+    }
+    return lines.join('\n');
+}
+function formatTrussCreation(data) {
+    if (!data)
+        return 'No truss data';
+    const lines = [];
+    lines.push(`Created Truss: ${data.objectLabel || data.objectName} (${data.objectName})`);
+    if (data.dimensions) {
+        const { length, height } = data.dimensions;
+        lines.push(`Dimensions: ${(length || 0).toFixed(2)} x ${(height || 0).toFixed(2)} mm`);
+    }
+    if (data.ifcType) {
+        lines.push(`IFC Type: ${data.ifcType}`);
+    }
+    if (data.message) {
+        lines.push('');
+        lines.push(data.message);
+    }
+    return lines.join('\n');
+}
+function formatFenceCreation(data) {
+    if (!data)
+        return 'No fence data';
+    const lines = [];
+    lines.push(`Created Fence: ${data.objectLabel || data.objectName} (${data.objectName})`);
+    if (data.dimensions) {
+        const { length, height } = data.dimensions;
+        lines.push(`Dimensions: ${(length || 0).toFixed(2)} x ${(height || 0).toFixed(2)} mm`);
+    }
+    if (data.ifcType) {
+        lines.push(`IFC Type: ${data.ifcType}`);
+    }
+    if (data.message) {
+        lines.push('');
+        lines.push(data.message);
+    }
+    return lines.join('\n');
+}
+function formatEquipmentCreation(data) {
+    if (!data)
+        return 'No equipment data';
+    const lines = [];
+    lines.push(`Created Equipment: ${data.objectLabel || data.objectName} (${data.objectName})`);
+    if (data.ifcType) {
+        lines.push(`IFC Type: ${data.ifcType}`);
+    }
+    if (data.message) {
+        lines.push('');
+        lines.push(data.message);
+    }
+    return lines.join('\n');
+}
+function formatPipeCreation(data) {
+    if (!data)
+        return 'No pipe data';
+    const lines = [];
+    lines.push(`Created Pipe: ${data.objectLabel || data.objectName} (${data.objectName})`);
+    if (data.radius !== undefined) {
+        lines.push(`Radius: ${data.radius.toFixed(2)} mm`);
+    }
+    if (data.diameter !== undefined) {
+        lines.push(`Diameter: ${data.diameter.toFixed(2)} mm`);
+    }
+    if (data.length !== undefined) {
+        lines.push(`Length: ${data.length.toFixed(2)} mm`);
+    }
+    if (data.ifcType) {
+        lines.push(`IFC Type: ${data.ifcType}`);
+    }
+    if (data.message) {
+        lines.push('');
+        lines.push(data.message);
+    }
+    return lines.join('\n');
+}
+function formatPipeConnectorCreation(data) {
+    if (!data)
+        return 'No pipe connector data';
+    const lines = [];
+    lines.push(`Created Pipe Connector: ${data.objectLabel || data.objectName} (${data.objectName})`);
+    if (data.connectedObjects && Array.isArray(data.connectedObjects)) {
+        lines.push(`Connected Objects: ${data.connectedObjects.length}`);
+    }
+    if (data.ifcType) {
+        lines.push(`IFC Type: ${data.ifcType}`);
+    }
+    if (data.message) {
+        lines.push('');
+        lines.push(data.message);
+    }
+    return lines.join('\n');
+}
+function formatPanelCreation(data) {
+    if (!data)
+        return 'No panel data';
+    const lines = [];
+    lines.push(`Created Panel: ${data.objectLabel || data.objectName} (${data.objectName})`);
+    if (data.ifcType) {
+        lines.push(`IFC Type: ${data.ifcType}`);
+    }
+    if (data.message) {
+        lines.push('');
+        lines.push(data.message);
+    }
+    return lines.join('\n');
+}
+function formatAxisCreation(data) {
+    if (!data)
+        return 'No axis data';
+    const lines = [];
+    lines.push(`Created Axis: ${data.objectLabel || data.objectName} (${data.objectName})`);
+    if (data.numberOfAxes !== undefined) {
+        lines.push(`Number of Axes: ${data.numberOfAxes}`);
+    }
+    if (data.spacing !== undefined) {
+        lines.push(`Spacing: ${data.spacing.toFixed(2)} mm`);
+    }
+    if (data.ifcType) {
+        lines.push(`IFC Type: ${data.ifcType}`);
+    }
+    if (data.message) {
+        lines.push('');
+        lines.push(data.message);
+    }
+    return lines.join('\n');
+}
+function formatGridCreation(data) {
+    if (!data)
+        return 'No grid data';
+    const lines = [];
+    lines.push(`Created Grid: ${data.objectLabel || data.objectName} (${data.objectName})`);
+    if (data.ifcType) {
+        lines.push(`IFC Type: ${data.ifcType}`);
+    }
+    if (data.message) {
+        lines.push('');
+        lines.push(data.message);
+    }
+    return lines.join('\n');
+}
+function formatSectionPlaneCreation(data) {
+    if (!data)
+        return 'No section plane data';
+    const lines = [];
+    lines.push(`Created Section Plane: ${data.objectLabel || data.objectName} (${data.objectName})`);
+    if (data.objectsCount !== undefined) {
+        lines.push(`Objects in Section: ${data.objectsCount}`);
+    }
+    if (data.ifcType) {
+        lines.push(`IFC Type: ${data.ifcType}`);
+    }
+    if (data.message) {
+        lines.push('');
+        lines.push(data.message);
+    }
+    return lines.join('\n');
+}
+function formatScheduleCreation(data) {
+    if (!data)
+        return 'No schedule data';
+    const lines = [];
+    lines.push(`Created Schedule: ${data.objectLabel || data.objectName} (${data.objectName})`);
+    if (data.ifcType) {
+        lines.push(`IFC Type: ${data.ifcType}`);
+    }
+    if (data.message) {
+        lines.push('');
+        lines.push(data.message);
+    }
+    return lines.join('\n');
+}
+function formatIfcProperties(data) {
+    if (!data)
+        return 'No IFC properties data';
+    const lines = [];
+    if (data.objectName && data.objectLabel) {
+        lines.push(`Object: ${data.objectLabel} (${data.objectName})`);
+    }
+    if (data.ifcType) {
+        lines.push(`IFC Type: ${data.ifcType}`);
+    }
+    if (data.oldIfcType && data.newIfcType) {
+        lines.push(`IFC Type changed: ${data.oldIfcType} → ${data.newIfcType}`);
+    }
+    if (data.properties && typeof data.properties === 'object') {
+        lines.push('');
+        lines.push('Properties:');
+        for (const [key, value] of Object.entries(data.properties)) {
+            lines.push(`  ${key}: ${value}`);
+        }
+    }
+    if (data.propertyName && data.propertyValue !== undefined) {
+        lines.push('');
+        lines.push(`Property: ${data.propertyName} = ${data.propertyValue}`);
+    }
+    if (data.message) {
+        lines.push('');
+        lines.push(data.message);
+    }
+    return lines.join('\n');
+}
+function formatMaterialAssignment(data) {
+    if (!data)
+        return 'No material data';
+    const lines = [];
+    if (data.objectName && data.objectLabel) {
+        lines.push(`Object: ${data.objectLabel} (${data.objectName})`);
+    }
+    if (data.material) {
+        lines.push(`Material: ${data.material.name || 'Unknown'}`);
+        if (data.material.type) {
+            lines.push(`Type: ${data.material.type}`);
+        }
+        if (data.material.color) {
+            lines.push(`Color: ${Array.isArray(data.material.color) ? data.material.color.join(', ') : data.material.color}`);
+        }
+    }
+    else {
+        lines.push('Material: None');
+    }
+    if (data.message) {
+        lines.push('');
+        lines.push(data.message);
+    }
+    return lines.join('\n');
+}
+function formatQuickWall(data) {
+    if (!data)
+        return 'No quick wall data';
+    const lines = [];
+    lines.push(`Created Quick Wall: ${data.objectLabel || data.objectName} (${data.objectName})`);
+    if (data.dimensions) {
+        const { length, width, height } = data.dimensions;
+        lines.push(`Dimensions: ${(length || 0).toFixed(2)} x ${(width || 0).toFixed(2)} x ${(height || 0).toFixed(2)} mm`);
+    }
+    if (data.ifcType) {
+        lines.push(`IFC Type: ${data.ifcType}`);
+    }
+    if (data.message) {
+        lines.push('');
+        lines.push(data.message);
+    }
+    return lines.join('\n');
+}
+function formatQuickWindow(data) {
+    if (!data)
+        return 'No quick window data';
+    const lines = [];
+    lines.push(`Created Quick Window: ${data.objectLabel || data.objectName} (${data.objectName})`);
+    if (data.hostWall) {
+        lines.push(`Host Wall: ${data.hostWall}`);
+    }
+    if (data.dimensions) {
+        const { width, height } = data.dimensions;
+        lines.push(`Dimensions: ${(width || 0).toFixed(2)} x ${(height || 0).toFixed(2)} mm`);
+    }
+    if (data.ifcType) {
+        lines.push(`IFC Type: ${data.ifcType}`);
+    }
+    if (data.message) {
+        lines.push('');
+        lines.push(data.message);
+    }
+    return lines.join('\n');
+}
+function formatQuickDoor(data) {
+    if (!data)
+        return 'No quick door data';
+    const lines = [];
+    lines.push(`Created Quick Door: ${data.objectLabel || data.objectName} (${data.objectName})`);
+    if (data.hostWall) {
+        lines.push(`Host Wall: ${data.hostWall}`);
+    }
+    if (data.dimensions) {
+        const { width, height } = data.dimensions;
+        lines.push(`Dimensions: ${(width || 0).toFixed(2)} x ${(height || 0).toFixed(2)} mm`);
+    }
+    if (data.ifcType) {
+        lines.push(`IFC Type: ${data.ifcType}`);
+    }
+    if (data.message) {
+        lines.push('');
+        lines.push(data.message);
+    }
+    return lines.join('\n');
+}
+function formatQuickFloor(data) {
+    if (!data)
+        return 'No quick floor data';
+    const lines = [];
+    lines.push(`Created Floor: ${data.objectLabel || data.objectName} (${data.objectName})`);
+    if (data.parentBuilding) {
+        lines.push(`Parent Building: ${data.parentBuilding}`);
+    }
+    if (data.objectsCount !== undefined) {
+        lines.push(`Objects: ${data.objectsCount}`);
+    }
+    if (data.ifcType) {
+        lines.push(`IFC Type: ${data.ifcType}`);
+    }
+    if (data.message) {
+        lines.push('');
+        lines.push(data.message);
+    }
+    return lines.join('\n');
+}
+// ============================================================================
+// Error Handling and Recovery Result Formatters
+// ============================================================================
+function formatErrorParse(data) {
+    if (!data)
+        return 'No error data';
+    const lines = [];
+    if (data.success) {
+        lines.push('Error parsed successfully');
+        if (data.error_type) {
+            lines.push(`Error Type: ${data.error_type}`);
+        }
+        if (data.message) {
+            lines.push(`Message: ${data.message}`);
+        }
+        if (data.stack_trace) {
+            lines.push('');
+            lines.push('Stack Trace:');
+            lines.push(data.stack_trace);
+        }
+    }
+    else {
+        lines.push('Failed to parse error');
+        if (data.error) {
+            lines.push(`Error: ${data.error}`);
+        }
+    }
+    if (data.message) {
+        lines.push('');
+        lines.push(data.message);
+    }
+    return lines.join('\n');
+}
+function formatErrorCategory(data) {
+    if (!data)
+        return 'No error category data';
+    const lines = [];
+    if (data.success) {
+        lines.push(`Category: ${data.category || 'Unknown'}`);
+        if (data.subcategory) {
+            lines.push(`Subcategory: ${data.subcategory}`);
+        }
+        lines.push('');
+        lines.push('Characteristics:');
+        if (data.characteristics && Array.isArray(data.characteristics)) {
+            for (const char of data.characteristics) {
+                lines.push(`  - ${char}`);
+            }
+        }
+        if (data.is_recoverable !== undefined) {
+            lines.push(`Recoverable: ${data.is_recoverable ? 'Yes' : 'No'}`);
+        }
+    }
+    else {
+        lines.push('Failed to categorize error');
+        if (data.error) {
+            lines.push(`Error: ${data.error}`);
+        }
+    }
+    if (data.message) {
+        lines.push('');
+        lines.push(data.message);
+    }
+    return lines.join('\n');
+}
+function formatTracebackInfo(data) {
+    if (!data)
+        return 'No traceback data';
+    const lines = [];
+    if (data.success) {
+        lines.push('Traceback Information:');
+        lines.push('─'.repeat(60));
+        if (data.frames && Array.isArray(data.frames) && data.frames.length > 0) {
+            lines.push('');
+            lines.push('Call Stack:');
+            for (let i = 0; i < data.frames.length; i++) {
+                const frame = data.frames[i];
+                lines.push(`  ${i + 1}. ${frame.file || 'Unknown'}:${frame.line || '?'}`);
+                if (frame.function) {
+                    lines.push(`     Function: ${frame.function}`);
+                }
+            }
+        }
+        if (data.exception_type) {
+            lines.push('');
+            lines.push(`Exception: ${data.exception_type}`);
+        }
+        if (data.exception_message) {
+            lines.push(`Message: ${data.exception_message}`);
+        }
+        if (data.most_relevant_frame) {
+            const frame = data.most_relevant_frame;
+            lines.push('');
+            lines.push('Most Relevant Frame:');
+            lines.push(`  File: ${frame.file || 'Unknown'}`);
+            lines.push(`  Line: ${frame.line || '?'}`);
+            lines.push(`  Function: ${frame.function || 'Unknown'}`);
+            if (frame.code) {
+                lines.push(`  Code: ${frame.code}`);
+            }
+        }
+    }
+    else {
+        lines.push('Failed to extract traceback info');
+        if (data.error) {
+            lines.push(`Error: ${data.error}`);
+        }
+    }
+    if (data.message) {
+        lines.push('');
+        lines.push(data.message);
+    }
+    return lines.join('\n');
+}
+function formatErrorContext(data) {
+    if (!data)
+        return 'No error context data';
+    const lines = [];
+    if (data.success) {
+        lines.push('Error Context Analysis:');
+        lines.push('─'.repeat(60));
+        if (data.operation) {
+            lines.push(`Operation: ${data.operation}`);
+        }
+        if (data.object_name) {
+            lines.push(`Object: ${data.object_name}`);
+        }
+        if (data.workbench) {
+            lines.push(`Workbench: ${data.workbench}`);
+        }
+        lines.push('');
+        lines.push('Recent Actions:');
+        if (data.recent_actions && Array.isArray(data.recent_actions)) {
+            for (const action of data.recent_actions.slice(0, 5)) {
+                lines.push(`  - ${action}`);
+            }
+        }
+        if (data.related_objects && Array.isArray(data.related_objects)) {
+            lines.push('');
+            lines.push('Related Objects:');
+            for (const obj of data.related_objects) {
+                lines.push(`  - ${obj}`);
+            }
+        }
+        if (data.possible_causes && Array.isArray(data.possible_causes)) {
+            lines.push('');
+            lines.push('Possible Causes:');
+            for (const cause of data.possible_causes) {
+                lines.push(`  - ${cause}`);
+            }
+        }
+    }
+    else {
+        lines.push('Failed to analyze error context');
+        if (data.error) {
+            lines.push(`Error: ${data.error}`);
+        }
+    }
+    if (data.message) {
+        lines.push('');
+        lines.push(data.message);
+    }
+    return lines.join('\n');
+}
+function formatRecoverySuggestions(data) {
+    if (!data)
+        return 'No recovery suggestions data';
+    const lines = [];
+    if (data.success) {
+        lines.push('Recovery Suggestions:');
+        lines.push('─'.repeat(60));
+        if (data.can_retry !== undefined) {
+            lines.push(`Can Retry: ${data.can_retry ? 'Yes' : 'No'}`);
+        }
+        if (data.suggestions && Array.isArray(data.suggestions)) {
+            lines.push('');
+            lines.push('Suggested Actions:');
+            for (let i = 0; i < data.suggestions.length; i++) {
+                const suggestion = data.suggestions[i];
+                lines.push(`  ${i + 1}. ${suggestion.action || suggestion}`);
+                if (suggestion.description) {
+                    lines.push(`     ${suggestion.description}`);
+                }
+            }
+        }
+        if (data.recovery_priority && Array.isArray(data.recovery_priority)) {
+            lines.push('');
+            lines.push('Priority Order:');
+            for (const priority of data.recovery_priority) {
+                lines.push(`  - ${priority}`);
+            }
+        }
+        if (data.alternative_approaches && Array.isArray(data.alternative_approaches)) {
+            lines.push('');
+            lines.push('Alternative Approaches:');
+            for (const alt of data.alternative_approaches) {
+                lines.push(`  - ${alt}`);
+            }
+        }
+    }
+    else {
+        lines.push('Failed to get recovery suggestions');
+        if (data.error) {
+            lines.push(`Error: ${data.error}`);
+        }
+    }
+    if (data.message) {
+        lines.push('');
+        lines.push(data.message);
+    }
+    return lines.join('\n');
+}
+function formatValidationResult(data) {
+    if (!data)
+        return 'No validation data';
+    const lines = [];
+    if (data.success) {
+        lines.push(`Validation: ${data.is_valid ? 'PASSED' : 'FAILED'}`);
+        lines.push('─'.repeat(60));
+        if (data.validation_errors && Array.isArray(data.validation_errors) && data.validation_errors.length > 0) {
+            lines.push('');
+            lines.push('Validation Errors:');
+            for (const err of data.validation_errors) {
+                lines.push(`  - ${err}`);
+            }
+        }
+        if (data.warnings && Array.isArray(data.warnings) && data.warnings.length > 0) {
+            lines.push('');
+            lines.push('Warnings:');
+            for (const warn of data.warnings) {
+                lines.push(`  - ${warn}`);
+            }
+        }
+        if (data.suggestions && Array.isArray(data.suggestions)) {
+            lines.push('');
+            lines.push('Suggestions:');
+            for (const suggestion of data.suggestions) {
+                lines.push(`  - ${suggestion}`);
+            }
+        }
+    }
+    else {
+        lines.push('Validation check failed');
+        if (data.error) {
+            lines.push(`Error: ${data.error}`);
+        }
+    }
+    if (data.message) {
+        lines.push('');
+        lines.push(data.message);
+    }
+    return lines.join('\n');
+}
+function formatCommonErrors(data) {
+    if (!data)
+        return 'No common errors data';
+    const lines = [];
+    if (data.success) {
+        lines.push(`Common Errors for: ${data.operation || 'Unknown operation'}`);
+        lines.push('─'.repeat(60));
+        if (data.common_errors && Array.isArray(data.common_errors)) {
+            lines.push('');
+            for (const error of data.common_errors) {
+                lines.push(`Error: ${error.error}`);
+                if (error.solution) {
+                    lines.push(`  Solution: ${error.solution}`);
+                }
+                lines.push('');
+            }
+        }
+        if (data.error_patterns && Array.isArray(data.error_patterns)) {
+            lines.push('Error Patterns:');
+            for (const pattern of data.error_patterns) {
+                lines.push(`  - ${pattern}`);
+            }
+        }
+    }
+    else {
+        lines.push('Failed to get common errors');
+        if (data.error) {
+            lines.push(`Error: ${data.error}`);
+        }
+    }
+    if (data.message) {
+        lines.push('');
+        lines.push(data.message);
+    }
+    return lines.join('\n');
+}
+function formatOperationHistory(data) {
+    if (!data)
+        return 'No operation history data';
+    const lines = [];
+    if (data.success) {
+        lines.push(`Recent Operations (${data.operations?.length || 0} of ${data.total_count || 0} total):`);
+        lines.push('─'.repeat(60));
+        if (data.operations && Array.isArray(data.operations) && data.operations.length > 0) {
+            lines.push(formatTableRow(['Time', 'Operation', 'Object', 'Status']));
+            lines.push('─'.repeat(60));
+            for (const op of data.operations) {
+                const timestamp = op.timestamp ? new Date(op.timestamp * 1000).toLocaleTimeString() : '-';
+                const status = op.status === 'success' ? 'OK' : (op.status === 'failed' ? 'FAIL' : op.status);
+                lines.push(formatTableRow([
+                    timestamp,
+                    op.operation_type || '-',
+                    op.object_name || '-',
+                    status
+                ]));
+                if (op.error) {
+                    lines.push(`  Error: ${op.error}`);
+                }
+            }
+        }
+        else {
+            lines.push('(No operations recorded)');
+        }
+    }
+    else {
+        lines.push('Failed to get operation history');
+        if (data.error) {
+            lines.push(`Error: ${data.error}`);
+        }
+    }
+    if (data.message) {
+        lines.push('');
+        lines.push(data.message);
+    }
+    return lines.join('\n');
+}
+function formatLastError(data) {
+    if (!data)
+        return 'No last error data';
+    const lines = [];
+    if (data.success) {
+        if (data.error) {
+            lines.push('Most Recent Error:');
+            lines.push('─'.repeat(60));
+            if (data.error_type) {
+                lines.push(`Type: ${data.error_type}`);
+            }
+            if (data.error_message) {
+                lines.push(`Message: ${data.error_message}`);
+            }
+            if (data.timestamp) {
+                lines.push(`Time: ${new Date(data.timestamp * 1000).toLocaleString()}`);
+            }
+            if (data.operation) {
+                lines.push(`Operation: ${data.operation}`);
+            }
+            if (data.context) {
+                lines.push(`Context: ${data.context}`);
+            }
+            if (data.stack_trace) {
+                lines.push('');
+                lines.push('Stack Trace:');
+                lines.push(data.stack_trace);
+            }
+        }
+        else {
+            lines.push('No errors recorded');
+        }
+    }
+    else {
+        lines.push('Failed to get last error');
+        if (data.error) {
+            lines.push(`Error: ${data.error}`);
+        }
+    }
+    if (data.message) {
+        lines.push('');
+        lines.push(data.message);
+    }
+    return lines.join('\n');
+}
+function formatUndoStrategy(data) {
+    if (!data)
+        return 'No undo strategy data';
+    const lines = [];
+    if (data.success) {
+        lines.push('Undo Strategy:');
+        lines.push('─'.repeat(60));
+        if (data.recommended_action) {
+            lines.push(`Recommended: ${data.recommended_action}`);
+        }
+        if (data.steps && Array.isArray(data.steps)) {
+            lines.push('');
+            lines.push('Steps:');
+            for (let i = 0; i < data.steps.length; i++) {
+                const step = data.steps[i];
+                lines.push(`  ${i + 1}. ${step}`);
+            }
+        }
+        if (data.can_undo !== undefined) {
+            lines.push(`Can Undo: ${data.can_undo ? 'Yes' : 'No'}`);
+        }
+        if (data.affected_objects && Array.isArray(data.affected_objects)) {
+            lines.push('');
+            lines.push('Affected Objects:');
+            for (const obj of data.affected_objects) {
+                lines.push(`  - ${obj}`);
+            }
+        }
+        if (data.warnings && Array.isArray(data.warnings)) {
+            lines.push('');
+            lines.push('Warnings:');
+            for (const warn of data.warnings) {
+                lines.push(`  - ${warn}`);
+            }
+        }
+    }
+    else {
+        lines.push('Failed to get undo strategy');
+        if (data.error) {
+            lines.push(`Error: ${data.error}`);
+        }
+    }
+    if (data.message) {
+        lines.push('');
+        lines.push(data.message);
+    }
+    return lines.join('\n');
+}
+function formatSafeRetryResult(data) {
+    if (!data)
+        return 'No retry result data';
+    const lines = [];
+    if (data.success) {
+        lines.push(`Operation: ${data.operation || 'Unknown'}`);
+        lines.push(`Attempts: ${data.attempts || 1}`);
+        lines.push(`Recovered: ${data.recovered ? 'Yes' : 'No'}`);
+        if (data.final_result) {
+            lines.push('');
+            lines.push('Final Result:');
+            lines.push(data.final_result);
+        }
+    }
+    else {
+        lines.push(`Operation failed after ${data.attempts || 1} attempt(s)`);
+        if (data.error) {
+            lines.push(`Error: ${data.error}`);
+        }
     }
     if (data.message) {
         lines.push('');

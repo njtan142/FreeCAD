@@ -976,5 +976,390 @@ export declare function createAgentTools(freeCADBridge: FreeCADBridge): (import(
 }> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
     jobName: z.ZodString;
     filePath: z.ZodString;
+}> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
+    objectName: z.ZodString;
+    visible: z.ZodBoolean;
+}> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
+    point1: z.ZodObject<{
+        x: z.ZodNumber;
+        y: z.ZodNumber;
+        z: z.ZodNumber;
+    }, "strip", z.ZodTypeAny, {
+        x: number;
+        y: number;
+        z: number;
+    }, {
+        x: number;
+        y: number;
+        z: number;
+    }>;
+    point2: z.ZodObject<{
+        x: z.ZodNumber;
+        y: z.ZodNumber;
+        z: z.ZodNumber;
+    }, "strip", z.ZodTypeAny, {
+        x: number;
+        y: number;
+        z: number;
+    }, {
+        x: number;
+        y: number;
+        z: number;
+    }>;
+}> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
+    object1Name: z.ZodString;
+    object2Name: z.ZodString;
+}> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
+    point1: z.ZodObject<{
+        x: z.ZodNumber;
+        y: z.ZodNumber;
+        z: z.ZodNumber;
+    }, "strip", z.ZodTypeAny, {
+        x: number;
+        y: number;
+        z: number;
+    }, {
+        x: number;
+        y: number;
+        z: number;
+    }>;
+    point2: z.ZodObject<{
+        x: z.ZodNumber;
+        y: z.ZodNumber;
+        z: z.ZodNumber;
+    }, "strip", z.ZodTypeAny, {
+        x: number;
+        y: number;
+        z: number;
+    }, {
+        x: number;
+        y: number;
+        z: number;
+    }>;
+    point3: z.ZodObject<{
+        x: z.ZodNumber;
+        y: z.ZodNumber;
+        z: z.ZodNumber;
+    }, "strip", z.ZodTypeAny, {
+        x: number;
+        y: number;
+        z: number;
+    }, {
+        x: number;
+        y: number;
+        z: number;
+    }>;
+}> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
+    name: z.ZodString;
+}> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
+    oldName: z.ZodString;
+    newName: z.ZodString;
+}> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
+    spreadsheetName: z.ZodString;
+    address: z.ZodString;
+    value: z.ZodUnion<[z.ZodString, z.ZodNumber, z.ZodBoolean]>;
+}> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
+    spreadsheetName: z.ZodString;
+    address: z.ZodString;
+}> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
+    spreadsheetName: z.ZodString;
+    address: z.ZodString;
+    expression: z.ZodString;
+}> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
+    spreadsheetName: z.ZodString;
+    startAddress: z.ZodString;
+    endAddress: z.ZodString;
+}> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
+    spreadsheetName: z.ZodString;
+    address: z.ZodString;
+    aliasName: z.ZodString;
+}> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
+    spreadsheetName: z.ZodString;
+    aliasName: z.ZodString;
+}> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
+    spreadsheetName: z.ZodString;
+}> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
+    options: z.ZodOptional<z.ZodObject<{
+        includeHidden: z.ZodOptional<z.ZodBoolean>;
+        groupByType: z.ZodOptional<z.ZodBoolean>;
+        includeProperties: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+        outputFormat: z.ZodOptional<z.ZodEnum<["list", "dict"]>>;
+    }, "strip", z.ZodTypeAny, {
+        includeHidden?: boolean | undefined;
+        groupByType?: boolean | undefined;
+        includeProperties?: string[] | undefined;
+        outputFormat?: "list" | "dict" | undefined;
+    }, {
+        includeHidden?: boolean | undefined;
+        groupByType?: boolean | undefined;
+        includeProperties?: string[] | undefined;
+        outputFormat?: "list" | "dict" | undefined;
+    }>>;
+}> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
+    objectNames: z.ZodArray<z.ZodString, "many">;
+    properties: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+}> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
+    bomData: z.ZodUnion<[z.ZodArray<z.ZodRecord<z.ZodString, z.ZodUnknown>, "many">, z.ZodRecord<z.ZodString, z.ZodUnknown>]>;
+    spreadsheetName: z.ZodString;
+    startAddress: z.ZodOptional<z.ZodString>;
+}> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
+    spreadsheetName: z.ZodString;
+    headers: z.ZodArray<z.ZodString, "many">;
+    data: z.ZodArray<z.ZodArray<z.ZodUnion<[z.ZodString, z.ZodNumber]>, "many">, "many">;
+}> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
+    spreadsheetName: z.ZodString;
+    rowKey: z.ZodUnion<[z.ZodString, z.ZodNumber]>;
+    updates: z.ZodRecord<z.ZodString, z.ZodUnion<[z.ZodString, z.ZodNumber]>>;
+}> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
+    spreadsheetName: z.ZodString;
+    columnKey: z.ZodString;
+    lookupValue: z.ZodUnion<[z.ZodString, z.ZodNumber]>;
+}> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
+    spreadsheetName: z.ZodString;
+    column: z.ZodString;
+    width: z.ZodNumber;
+}> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
+    spreadsheetName: z.ZodString;
+    row: z.ZodNumber;
+    height: z.ZodNumber;
+}> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
+    spreadsheetName: z.ZodString;
+    address: z.ZodString;
+    color: z.ZodString;
+}> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
+    object_names: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+    name: z.ZodOptional<z.ZodString>;
+}> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
+    name: z.ZodOptional<z.ZodString>;
+    elevation: z.ZodOptional<z.ZodNumber>;
+}> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
+    placement: z.ZodOptional<z.ZodUnion<[z.ZodObject<{
+        x: z.ZodNumber;
+        y: z.ZodNumber;
+        z: z.ZodNumber;
+    }, "strip", z.ZodTypeAny, {
+        x: number;
+        y: number;
+        z: number;
+    }, {
+        x: number;
+        y: number;
+        z: number;
+    }>, z.ZodArray<z.ZodNumber, "many">, z.ZodString]>>;
+    length: z.ZodOptional<z.ZodNumber>;
+    width: z.ZodOptional<z.ZodNumber>;
+    height: z.ZodOptional<z.ZodNumber>;
+    name: z.ZodOptional<z.ZodString>;
+}> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
+    width: z.ZodOptional<z.ZodNumber>;
+    height: z.ZodOptional<z.ZodNumber>;
+    placement: z.ZodOptional<z.ZodUnion<[z.ZodObject<{
+        x: z.ZodNumber;
+        y: z.ZodNumber;
+        z: z.ZodNumber;
+    }, "strip", z.ZodTypeAny, {
+        x: number;
+        y: number;
+        z: number;
+    }, {
+        x: number;
+        y: number;
+        z: number;
+    }>, z.ZodArray<z.ZodNumber, "many">, z.ZodString]>>;
+    name: z.ZodOptional<z.ZodString>;
+}> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
+    base_object: z.ZodOptional<z.ZodString>;
+    angle: z.ZodOptional<z.ZodNumber>;
+    name: z.ZodOptional<z.ZodString>;
+}> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
+    length: z.ZodOptional<z.ZodNumber>;
+    width: z.ZodOptional<z.ZodNumber>;
+    num_steps: z.ZodOptional<z.ZodNumber>;
+    name: z.ZodOptional<z.ZodString>;
+}> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
+    base_object: z.ZodOptional<z.ZodString>;
+    name: z.ZodOptional<z.ZodString>;
+}> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
+    placement: z.ZodOptional<z.ZodUnion<[z.ZodObject<{
+        x: z.ZodNumber;
+        y: z.ZodNumber;
+        z: z.ZodNumber;
+    }, "strip", z.ZodTypeAny, {
+        x: number;
+        y: number;
+        z: number;
+    }, {
+        x: number;
+        y: number;
+        z: number;
+    }>, z.ZodArray<z.ZodNumber, "many">, z.ZodString]>>;
+    name: z.ZodOptional<z.ZodString>;
+}> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
+    start: z.ZodOptional<z.ZodUnion<[z.ZodObject<{
+        x: z.ZodNumber;
+        y: z.ZodNumber;
+        z: z.ZodNumber;
+    }, "strip", z.ZodTypeAny, {
+        x: number;
+        y: number;
+        z: number;
+    }, {
+        x: number;
+        y: number;
+        z: number;
+    }>, z.ZodArray<z.ZodNumber, "many">]>>;
+    end: z.ZodOptional<z.ZodUnion<[z.ZodObject<{
+        x: z.ZodNumber;
+        y: z.ZodNumber;
+        z: z.ZodNumber;
+    }, "strip", z.ZodTypeAny, {
+        x: number;
+        y: number;
+        z: number;
+    }, {
+        x: number;
+        y: number;
+        z: number;
+    }>, z.ZodArray<z.ZodNumber, "many">]>>;
+    width: z.ZodOptional<z.ZodNumber>;
+    height: z.ZodOptional<z.ZodNumber>;
+    name: z.ZodOptional<z.ZodString>;
+}> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
+    base_object: z.ZodOptional<z.ZodString>;
+    thickness: z.ZodOptional<z.ZodNumber>;
+    name: z.ZodOptional<z.ZodString>;
+}> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
+    base_object: z.ZodOptional<z.ZodString>;
+    profile: z.ZodOptional<z.ZodString>;
+    name: z.ZodOptional<z.ZodString>;
+}> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
+    placement: z.ZodOptional<z.ZodUnion<[z.ZodObject<{
+        x: z.ZodNumber;
+        y: z.ZodNumber;
+        z: z.ZodNumber;
+    }, "strip", z.ZodTypeAny, {
+        x: number;
+        y: number;
+        z: number;
+    }, {
+        x: number;
+        y: number;
+        z: number;
+    }>, z.ZodArray<z.ZodNumber, "many">, z.ZodString]>>;
+    length: z.ZodOptional<z.ZodNumber>;
+    height: z.ZodOptional<z.ZodNumber>;
+    name: z.ZodOptional<z.ZodString>;
+}> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
+    base_object: z.ZodOptional<z.ZodString>;
+    placement: z.ZodOptional<z.ZodUnion<[z.ZodObject<{
+        x: z.ZodNumber;
+        y: z.ZodNumber;
+        z: z.ZodNumber;
+    }, "strip", z.ZodTypeAny, {
+        x: number;
+        y: number;
+        z: number;
+    }, {
+        x: number;
+        y: number;
+        z: number;
+    }>, z.ZodArray<z.ZodNumber, "many">, z.ZodString]>>;
+    name: z.ZodOptional<z.ZodString>;
+}> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
+    objects: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+    name: z.ZodOptional<z.ZodString>;
+}> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
+    num: z.ZodOptional<z.ZodNumber>;
+    spacing: z.ZodOptional<z.ZodNumber>;
+    name: z.ZodOptional<z.ZodString>;
+}> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
+    object_name: z.ZodString;
+    ifc_type: z.ZodString;
+}> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
+    object_name: z.ZodString;
+}> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
+    object_name: z.ZodString;
+    prop_name: z.ZodString;
+    value: z.ZodString;
+}> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
+    object_name: z.ZodString;
+    material_name: z.ZodString;
+}> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
+    start: z.ZodOptional<z.ZodUnion<[z.ZodObject<{
+        x: z.ZodNumber;
+        y: z.ZodNumber;
+        z: z.ZodNumber;
+    }, "strip", z.ZodTypeAny, {
+        x: number;
+        y: number;
+        z: number;
+    }, {
+        x: number;
+        y: number;
+        z: number;
+    }>, z.ZodArray<z.ZodNumber, "many">]>>;
+    end: z.ZodOptional<z.ZodUnion<[z.ZodObject<{
+        x: z.ZodNumber;
+        y: z.ZodNumber;
+        z: z.ZodNumber;
+    }, "strip", z.ZodTypeAny, {
+        x: number;
+        y: number;
+        z: number;
+    }, {
+        x: number;
+        y: number;
+        z: number;
+    }>, z.ZodArray<z.ZodNumber, "many">]>>;
+    height: z.ZodOptional<z.ZodNumber>;
+    thickness: z.ZodOptional<z.ZodNumber>;
+    name: z.ZodOptional<z.ZodString>;
+}> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
+    wall_name: z.ZodString;
+    width: z.ZodOptional<z.ZodNumber>;
+    height: z.ZodOptional<z.ZodNumber>;
+    position: z.ZodOptional<z.ZodUnion<[z.ZodNumber, z.ZodObject<{
+        x: z.ZodNumber;
+        y: z.ZodNumber;
+        z: z.ZodNumber;
+    }, "strip", z.ZodTypeAny, {
+        x: number;
+        y: number;
+        z: number;
+    }, {
+        x: number;
+        y: number;
+        z: number;
+    }>]>>;
+}> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
+    building_name: z.ZodString;
+    level: z.ZodOptional<z.ZodString>;
+    objects: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+}> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
+    error_text: z.ZodString;
+}> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
+    traceback_text: z.ZodString;
+}> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
+    error_text: z.ZodString;
+    operation_type: z.ZodOptional<z.ZodString>;
+}> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
+    error_text: z.ZodString;
+    operation: z.ZodOptional<z.ZodString>;
+}> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
+    object_name: z.ZodString;
+    operation: z.ZodString;
+}> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
+    operation_type: z.ZodString;
+}> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
+    count: z.ZodDefault<z.ZodOptional<z.ZodNumber>>;
+}> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
+    object_name: z.ZodOptional<z.ZodString>;
+    failed_operation: z.ZodOptional<z.ZodString>;
+}> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
+    validation_result: z.ZodRecord<z.ZodString, z.ZodAny>;
+}> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
+    operation: z.ZodString;
+    parameters: z.ZodRecord<z.ZodString, z.ZodAny>;
+    max_retries: z.ZodDefault<z.ZodOptional<z.ZodNumber>>;
 }>)[];
 //# sourceMappingURL=agent-tools.d.ts.map

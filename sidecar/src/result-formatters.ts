@@ -4868,3 +4868,508 @@ export function formatQuickFloor(data: any): string {
 
   return lines.join('\n');
 }
+
+// ============================================================================
+// Error Handling and Recovery Result Formatters
+// ============================================================================
+
+export function formatErrorParse(data: any): string {
+  if (!data) return 'No error data';
+
+  const lines: string[] = [];
+
+  if (data.success) {
+    lines.push('Error parsed successfully');
+    if (data.error_type) {
+      lines.push(`Error Type: ${data.error_type}`);
+    }
+    if (data.message) {
+      lines.push(`Message: ${data.message}`);
+    }
+    if (data.stack_trace) {
+      lines.push('');
+      lines.push('Stack Trace:');
+      lines.push(data.stack_trace);
+    }
+  } else {
+    lines.push('Failed to parse error');
+    if (data.error) {
+      lines.push(`Error: ${data.error}`);
+    }
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatErrorCategory(data: any): string {
+  if (!data) return 'No error category data';
+
+  const lines: string[] = [];
+
+  if (data.success) {
+    lines.push(`Category: ${data.category || 'Unknown'}`);
+    if (data.subcategory) {
+      lines.push(`Subcategory: ${data.subcategory}`);
+    }
+    lines.push('');
+    lines.push('Characteristics:');
+    if (data.characteristics && Array.isArray(data.characteristics)) {
+      for (const char of data.characteristics) {
+        lines.push(`  - ${char}`);
+      }
+    }
+    if (data.is_recoverable !== undefined) {
+      lines.push(`Recoverable: ${data.is_recoverable ? 'Yes' : 'No'}`);
+    }
+  } else {
+    lines.push('Failed to categorize error');
+    if (data.error) {
+      lines.push(`Error: ${data.error}`);
+    }
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatTracebackInfo(data: any): string {
+  if (!data) return 'No traceback data';
+
+  const lines: string[] = [];
+
+  if (data.success) {
+    lines.push('Traceback Information:');
+    lines.push('─'.repeat(60));
+
+    if (data.frames && Array.isArray(data.frames) && data.frames.length > 0) {
+      lines.push('');
+      lines.push('Call Stack:');
+      for (let i = 0; i < data.frames.length; i++) {
+        const frame = data.frames[i];
+        lines.push(`  ${i + 1}. ${frame.file || 'Unknown'}:${frame.line || '?'}`);
+        if (frame.function) {
+          lines.push(`     Function: ${frame.function}`);
+        }
+      }
+    }
+
+    if (data.exception_type) {
+      lines.push('');
+      lines.push(`Exception: ${data.exception_type}`);
+    }
+    if (data.exception_message) {
+      lines.push(`Message: ${data.exception_message}`);
+    }
+
+    if (data.most_relevant_frame) {
+      const frame = data.most_relevant_frame;
+      lines.push('');
+      lines.push('Most Relevant Frame:');
+      lines.push(`  File: ${frame.file || 'Unknown'}`);
+      lines.push(`  Line: ${frame.line || '?'}`);
+      lines.push(`  Function: ${frame.function || 'Unknown'}`);
+      if (frame.code) {
+        lines.push(`  Code: ${frame.code}`);
+      }
+    }
+  } else {
+    lines.push('Failed to extract traceback info');
+    if (data.error) {
+      lines.push(`Error: ${data.error}`);
+    }
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatErrorContext(data: any): string {
+  if (!data) return 'No error context data';
+
+  const lines: string[] = [];
+
+  if (data.success) {
+    lines.push('Error Context Analysis:');
+    lines.push('─'.repeat(60));
+
+    if (data.operation) {
+      lines.push(`Operation: ${data.operation}`);
+    }
+    if (data.object_name) {
+      lines.push(`Object: ${data.object_name}`);
+    }
+    if (data.workbench) {
+      lines.push(`Workbench: ${data.workbench}`);
+    }
+
+    lines.push('');
+    lines.push('Recent Actions:');
+    if (data.recent_actions && Array.isArray(data.recent_actions)) {
+      for (const action of data.recent_actions.slice(0, 5)) {
+        lines.push(`  - ${action}`);
+      }
+    }
+
+    if (data.related_objects && Array.isArray(data.related_objects)) {
+      lines.push('');
+      lines.push('Related Objects:');
+      for (const obj of data.related_objects) {
+        lines.push(`  - ${obj}`);
+      }
+    }
+
+    if (data.possible_causes && Array.isArray(data.possible_causes)) {
+      lines.push('');
+      lines.push('Possible Causes:');
+      for (const cause of data.possible_causes) {
+        lines.push(`  - ${cause}`);
+      }
+    }
+  } else {
+    lines.push('Failed to analyze error context');
+    if (data.error) {
+      lines.push(`Error: ${data.error}`);
+    }
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatRecoverySuggestions(data: any): string {
+  if (!data) return 'No recovery suggestions data';
+
+  const lines: string[] = [];
+
+  if (data.success) {
+    lines.push('Recovery Suggestions:');
+    lines.push('─'.repeat(60));
+
+    if (data.can_retry !== undefined) {
+      lines.push(`Can Retry: ${data.can_retry ? 'Yes' : 'No'}`);
+    }
+
+    if (data.suggestions && Array.isArray(data.suggestions)) {
+      lines.push('');
+      lines.push('Suggested Actions:');
+      for (let i = 0; i < data.suggestions.length; i++) {
+        const suggestion = data.suggestions[i];
+        lines.push(`  ${i + 1}. ${suggestion.action || suggestion}`);
+        if (suggestion.description) {
+          lines.push(`     ${suggestion.description}`);
+        }
+      }
+    }
+
+    if (data.recovery_priority && Array.isArray(data.recovery_priority)) {
+      lines.push('');
+      lines.push('Priority Order:');
+      for (const priority of data.recovery_priority) {
+        lines.push(`  - ${priority}`);
+      }
+    }
+
+    if (data.alternative_approaches && Array.isArray(data.alternative_approaches)) {
+      lines.push('');
+      lines.push('Alternative Approaches:');
+      for (const alt of data.alternative_approaches) {
+        lines.push(`  - ${alt}`);
+      }
+    }
+  } else {
+    lines.push('Failed to get recovery suggestions');
+    if (data.error) {
+      lines.push(`Error: ${data.error}`);
+    }
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatValidationResult(data: any): string {
+  if (!data) return 'No validation data';
+
+  const lines: string[] = [];
+
+  if (data.success) {
+    lines.push(`Validation: ${data.is_valid ? 'PASSED' : 'FAILED'}`);
+    lines.push('─'.repeat(60));
+
+    if (data.validation_errors && Array.isArray(data.validation_errors) && data.validation_errors.length > 0) {
+      lines.push('');
+      lines.push('Validation Errors:');
+      for (const err of data.validation_errors) {
+        lines.push(`  - ${err}`);
+      }
+    }
+
+    if (data.warnings && Array.isArray(data.warnings) && data.warnings.length > 0) {
+      lines.push('');
+      lines.push('Warnings:');
+      for (const warn of data.warnings) {
+        lines.push(`  - ${warn}`);
+      }
+    }
+
+    if (data.suggestions && Array.isArray(data.suggestions)) {
+      lines.push('');
+      lines.push('Suggestions:');
+      for (const suggestion of data.suggestions) {
+        lines.push(`  - ${suggestion}`);
+      }
+    }
+  } else {
+    lines.push('Validation check failed');
+    if (data.error) {
+      lines.push(`Error: ${data.error}`);
+    }
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatCommonErrors(data: any): string {
+  if (!data) return 'No common errors data';
+
+  const lines: string[] = [];
+
+  if (data.success) {
+    lines.push(`Common Errors for: ${data.operation || 'Unknown operation'}`);
+    lines.push('─'.repeat(60));
+
+    if (data.common_errors && Array.isArray(data.common_errors)) {
+      lines.push('');
+      for (const error of data.common_errors) {
+        lines.push(`Error: ${error.error}`);
+        if (error.solution) {
+          lines.push(`  Solution: ${error.solution}`);
+        }
+        lines.push('');
+      }
+    }
+
+    if (data.error_patterns && Array.isArray(data.error_patterns)) {
+      lines.push('Error Patterns:');
+      for (const pattern of data.error_patterns) {
+        lines.push(`  - ${pattern}`);
+      }
+    }
+  } else {
+    lines.push('Failed to get common errors');
+    if (data.error) {
+      lines.push(`Error: ${data.error}`);
+    }
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatOperationHistory(data: any): string {
+  if (!data) return 'No operation history data';
+
+  const lines: string[] = [];
+
+  if (data.success) {
+    lines.push(`Recent Operations (${data.operations?.length || 0} of ${data.total_count || 0} total):`);
+    lines.push('─'.repeat(60));
+
+    if (data.operations && Array.isArray(data.operations) && data.operations.length > 0) {
+      lines.push(formatTableRow(['Time', 'Operation', 'Object', 'Status']));
+      lines.push('─'.repeat(60));
+
+      for (const op of data.operations) {
+        const timestamp = op.timestamp ? new Date(op.timestamp * 1000).toLocaleTimeString() : '-';
+        const status = op.status === 'success' ? 'OK' : (op.status === 'failed' ? 'FAIL' : op.status);
+        lines.push(formatTableRow([
+          timestamp,
+          op.operation_type || '-',
+          op.object_name || '-',
+          status
+        ]));
+        if (op.error) {
+          lines.push(`  Error: ${op.error}`);
+        }
+      }
+    } else {
+      lines.push('(No operations recorded)');
+    }
+  } else {
+    lines.push('Failed to get operation history');
+    if (data.error) {
+      lines.push(`Error: ${data.error}`);
+    }
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatLastError(data: any): string {
+  if (!data) return 'No last error data';
+
+  const lines: string[] = [];
+
+  if (data.success) {
+    if (data.error) {
+      lines.push('Most Recent Error:');
+      lines.push('─'.repeat(60));
+
+      if (data.error_type) {
+        lines.push(`Type: ${data.error_type}`);
+      }
+      if (data.error_message) {
+        lines.push(`Message: ${data.error_message}`);
+      }
+      if (data.timestamp) {
+        lines.push(`Time: ${new Date(data.timestamp * 1000).toLocaleString()}`);
+      }
+      if (data.operation) {
+        lines.push(`Operation: ${data.operation}`);
+      }
+      if (data.context) {
+        lines.push(`Context: ${data.context}`);
+      }
+      if (data.stack_trace) {
+        lines.push('');
+        lines.push('Stack Trace:');
+        lines.push(data.stack_trace);
+      }
+    } else {
+      lines.push('No errors recorded');
+    }
+  } else {
+    lines.push('Failed to get last error');
+    if (data.error) {
+      lines.push(`Error: ${data.error}`);
+    }
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatUndoStrategy(data: any): string {
+  if (!data) return 'No undo strategy data';
+
+  const lines: string[] = [];
+
+  if (data.success) {
+    lines.push('Undo Strategy:');
+    lines.push('─'.repeat(60));
+
+    if (data.recommended_action) {
+      lines.push(`Recommended: ${data.recommended_action}`);
+    }
+
+    if (data.steps && Array.isArray(data.steps)) {
+      lines.push('');
+      lines.push('Steps:');
+      for (let i = 0; i < data.steps.length; i++) {
+        const step = data.steps[i];
+        lines.push(`  ${i + 1}. ${step}`);
+      }
+    }
+
+    if (data.can_undo !== undefined) {
+      lines.push(`Can Undo: ${data.can_undo ? 'Yes' : 'No'}`);
+    }
+
+    if (data.affected_objects && Array.isArray(data.affected_objects)) {
+      lines.push('');
+      lines.push('Affected Objects:');
+      for (const obj of data.affected_objects) {
+        lines.push(`  - ${obj}`);
+      }
+    }
+
+    if (data.warnings && Array.isArray(data.warnings)) {
+      lines.push('');
+      lines.push('Warnings:');
+      for (const warn of data.warnings) {
+        lines.push(`  - ${warn}`);
+      }
+    }
+  } else {
+    lines.push('Failed to get undo strategy');
+    if (data.error) {
+      lines.push(`Error: ${data.error}`);
+    }
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatSafeRetryResult(data: any): string {
+  if (!data) return 'No retry result data';
+
+  const lines: string[] = [];
+
+  if (data.success) {
+    lines.push(`Operation: ${data.operation || 'Unknown'}`);
+    lines.push(`Attempts: ${data.attempts || 1}`);
+    lines.push(`Recovered: ${data.recovered ? 'Yes' : 'No'}`);
+
+    if (data.final_result) {
+      lines.push('');
+      lines.push('Final Result:');
+      lines.push(data.final_result);
+    }
+  } else {
+    lines.push(`Operation failed after ${data.attempts || 1} attempt(s)`);
+    if (data.error) {
+      lines.push(`Error: ${data.error}`);
+    }
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}

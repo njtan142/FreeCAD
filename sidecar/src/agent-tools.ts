@@ -123,6 +123,7 @@ import {
   formatCellBackground,
   formatSiteCreation,
   formatBuildingCreation,
+  formatBuildingLevel,
   formatBuildingPartCreation,
   formatBuildingHierarchy,
   formatWallCreation,
@@ -152,6 +153,17 @@ import {
   formatQuickWindow,
   formatQuickDoor,
   formatQuickFloor,
+  formatErrorParse,
+  formatErrorCategory,
+  formatTracebackInfo,
+  formatErrorContext,
+  formatRecoverySuggestions,
+  formatValidationResult,
+  formatCommonErrors,
+  formatOperationHistory,
+  formatLastError,
+  formatUndoStrategy,
+  formatSafeRetryResult,
 } from './result-formatters';
 import {
   validateFilePath,
@@ -595,6 +607,20 @@ export function createAgentTools(freeCADBridge: FreeCADBridge) {
     quickWindowTool(freeCADBridge),
     quickDoorTool(freeCADBridge),
     quickFloorTool(freeCADBridge),
+    // Error handling and recovery tools
+    parseErrorTool(freeCADBridge),
+    categorizeErrorTool(freeCADBridge),
+    extractTracebackInfoTool(freeCADBridge),
+    analyzeErrorContextTool(freeCADBridge),
+    getRecoverySuggestionsTool(freeCADBridge),
+    validateOperationTool(freeCADBridge),
+    getCommonErrorsTool(freeCADBridge),
+    getOperationHistoryTool(freeCADBridge),
+    getLastErrorTool(freeCADBridge),
+    clearErrorHistoryTool(freeCADBridge),
+    suggestUndoStrategyTool(freeCADBridge),
+    recoverFromValidationErrorTool(freeCADBridge),
+    safeRetryOperationTool(freeCADBridge),
   ];
 }
 
@@ -20057,7 +20083,7 @@ function createSiteTool(freeCADBridge: FreeCADBridge) {
     },
     async (input) => {
       const { name } = input;
-      const code = 'from llm_bridge.bim_handlers import handle_create_site; import json; params = json.loads(JSON.stringify({ name: name || null })); result = handle_create_site(name=params['name']); print(json.dumps(result))';
+      const code = `from llm_bridge.bim_handlers import handle_create_site; import json; params = json.loads(JSON.stringify({ name: name || null })); result = handle_create_site(name=params['name']); print(json.dumps(result))`;
       try {
         const result = await freeCADBridge.executePython(code);
         const parsed = parseLastJsonLine(result.output);
@@ -20483,30 +20509,6 @@ function createEquipmentTool(freeCADBridge: FreeCADBridge) {
   );
 }
 
-function createPipeTool(freeCADBridge: FreeCADBridge) {
-  return tool(
-    'create_pipe',
-    'Create a pipe.',
-    {
-      start: z.union([z.object({ x: z.number(), y: z.number(), z: z.number() }), z.array(z.number())]).optional().describe('Start point as dict/list/Vector'),
-      end: z.union([z.object({ x: z.number(), y: z.number(), z: z.number() }), z.array(z.number())]).optional().describe('End point as dict/list/Vector'),
-      radius: z.number().optional().describe('Pipe radius'),
-      name: z.string().optional().describe('Name for the pipe'),
-    },
-    async (input) => {
-      const { start, end, radius, name } = input;
-      const code = 'from llm_bridge.bim_handlers import handle_create_pipe; import json; params = json.loads(JSON.stringify({ start: start || null, end: end || null, radius: radius || null, name: name || null })); result = handle_create_pipe(**params); print(json.dumps(result))';
-      try {
-        const result = await freeCADBridge.executePython(code);
-        const parsed = parseLastJsonLine(result.output);
-        return { content: [{ type: 'text', text: parsed.success ? formatPipeCreation(parsed.data) : 'Error: ' + parsed.error }] };
-      } catch (error) {
-        return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
-      }
-    },
-  );
-}
-
 function createPipeConnectorTool(freeCADBridge: FreeCADBridge) {
   return tool(
     'create_pipe_connector',
@@ -20838,6 +20840,575 @@ function quickFloorTool(freeCADBridge: FreeCADBridge) {
         const result = await freeCADBridge.executePython(code);
         const parsed = parseLastJsonLine(result.output);
         return { content: [{ type: 'text', text: parsed.success ? formatQuickFloor(parsed.data) : 'Error: ' + parsed.error }] };
+      } catch (error) {
+        return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+      }
+    },
+  );
+}
+
+// ============================================================================
+// Error Handling and Recovery Tools
+// ============================================================================
+
+function parseErrorTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'parse_error',
+    `Parse a Python/FreeCAD error text into structured data.
+
+Parameters:
+- error_text (required): The error text or traceback to parse
+
+Returns:
+- success: Whether parsing succeeded
+- error_type: Type of error (AttributeError, TypeError, etc.)
+- error_message: The error message
+- line_number: Line number where error occurred (if available)
+- file_name: File where error occurred (if available)
+- context: Surrounding context of the error
+
+Use this tool to parse raw error output into structured information for better analysis.`,
+    {
+      error_text: z.string().describe('The error text or traceback to parse'),
+    },
+    async (input) => {
+      const { error_text } = input;
+      const code = `
+from llm_bridge.error_handlers import handle_parse_error
+import json
+params = json.loads('${JSON.stringify({ error_text })}')
+result = handle_parse_error(error_text=params['error_text'])
+print(json.dumps(result))
+`.trim();
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatErrorParse(parsed.data);
+        return { content: [{ type: 'text', text: parsed.success ? formatted : 'Error: ' + parsed.error }] };
+      } catch (error) {
+        return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+      }
+    },
+  );
+}
+
+function categorizeErrorTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'categorize_error',
+    `Categorize an error into FreeCAD-specific error categories.
+
+Parameters:
+- error_text (required): The error text or traceback to categorize
+
+Returns:
+- success: Whether categorization succeeded
+- category: Error category (ATTRIBUTE_ERROR, TYPE_ERROR, VALUE_ERROR, etc.)
+- description: Description of the error category
+- freecad_specific: Whether this is a FreeCAD-specific error
+- suggestions: Initial suggestions for fixing
+
+Error Categories:
+- ATTRIBUTE_ERROR: Object does not have the requested attribute
+- TYPE_ERROR: Wrong type for operation
+- VALUE_ERROR: Invalid value provided to function
+- REFERENCE_ERROR: Referenced object not found
+- CONSTRAINT_ERROR: Geometric constraint conflict
+- SOLVER_ERROR: Sketch solver failed to converge
+- BOOLEAN_ERROR: Boolean operation failed
+- DOCUMENT_ERROR: Document operation failed
+- PLACEMENT_ERROR: Invalid placement/position
+- EXPRESSION_ERROR: Invalid expression syntax
+- PERMISSION_ERROR: Object is locked or read-only
+- MEMORY_ERROR: Insufficient memory`,
+    {
+      error_text: z.string().describe('The error text or traceback to categorize'),
+    },
+    async (input) => {
+      const { error_text } = input;
+      const code = `
+from llm_bridge.error_handlers import handle_get_error_category
+import json
+params = json.loads('${JSON.stringify({ error_text })}')
+result = handle_get_error_category(error_text=params['error_text'])
+print(json.dumps(result))
+`.trim();
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatErrorCategory(parsed.data);
+        return { content: [{ type: 'text', text: parsed.success ? formatted : 'Error: ' + parsed.error }] };
+      } catch (error) {
+        return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+      }
+    },
+  );
+}
+
+function extractTracebackInfoTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'extract_traceback_info',
+    `Extract structured information from a Python traceback.
+
+Parameters:
+- traceback_text (required): The traceback text to analyze
+
+Returns:
+- success: Whether extraction succeeded
+- file_name: Name of the file where error occurred
+- line_number: Line number where error occurred
+- function_name: Name of the function where error occurred
+- error_type: Type of exception
+- error_message: The exception message
+- stack_frames: Array of stack frames with file, line, and function info
+
+Use this tool to extract detailed location information from tracebacks.`,
+    {
+      traceback_text: z.string().describe('The traceback text to analyze'),
+    },
+    async (input) => {
+      const { traceback_text } = input;
+      const code = `
+from llm_bridge.error_handlers import handle_extract_traceback_info
+import json
+params = json.loads('${JSON.stringify({ traceback_text })}')
+result = handle_extract_traceback_info(traceback_text=params['traceback_text'])
+print(json.dumps(result))
+`.trim();
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatTracebackInfo(parsed.data);
+        return { content: [{ type: 'text', text: parsed.success ? formatted : 'Error: ' + parsed.error }] };
+      } catch (error) {
+        return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+      }
+    },
+  );
+}
+
+function analyzeErrorContextTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'analyze_error_context',
+    `Analyze an error in the context of the operation that was attempted.
+
+Parameters:
+- error_text (required): The error text or traceback
+- operation_type (optional): Type of operation that failed (pad, pocket, sketch, etc.)
+
+Returns:
+- success: Whether analysis succeeded
+- operation: The operation that was attempted
+- error_category: Categorized error type
+- likely_causes: List of likely causes
+- suggested_fixes: Suggested fixes based on context
+- related_operations: Operations that might have similar issues
+
+Use this tool to get contextual analysis of errors with operation-specific guidance.`,
+    {
+      error_text: z.string().describe('The error text or traceback'),
+      operation_type: z.string().optional().describe('Type of operation that failed'),
+    },
+    async (input) => {
+      const { error_text, operation_type } = input;
+      const code = `
+from llm_bridge.error_handlers import handle_analyze_error_context
+import json
+params = json.loads('${JSON.stringify({ error_text, operation_type })}')
+result = handle_analyze_error_context(
+    error_text=params['error_text'],
+    operation_type=params.get('operation_type')
+)
+print(json.dumps(result))
+`.trim();
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatErrorContext(parsed.data);
+        return { content: [{ type: 'text', text: parsed.success ? formatted : 'Error: ' + parsed.error }] };
+      } catch (error) {
+        return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+      }
+    },
+  );
+}
+
+function getRecoverySuggestionsTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'get_recovery_suggestions',
+    `Get recovery suggestions for a failed operation.
+
+Parameters:
+- error_text (required): The error text or traceback
+- operation (optional): The operation that was attempted
+
+Returns:
+- success: Whether suggestions were generated
+- suggestions: Array of suggested recovery actions
+- recovery_priority: Recommended order of trying suggestions
+- can_retry: Whether the operation can be retried safely
+- alternative_approaches: Alternative methods to achieve the same goal
+
+Use this tool after an operation fails to get actionable recovery steps.`,
+    {
+      error_text: z.string().describe('The error text or traceback'),
+      operation: z.string().optional().describe('The operation that was attempted'),
+    },
+    async (input) => {
+      const { error_text, operation } = input;
+      const code = `
+from llm_bridge.error_handlers import handle_get_recovery_suggestions
+import json
+params = json.loads('${JSON.stringify({ error_text, operation })}')
+result = handle_get_recovery_suggestions(
+    error_text=params['error_text'],
+    operation=params.get('operation')
+)
+print(json.dumps(result))
+`.trim();
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatRecoverySuggestions(parsed.data);
+        return { content: [{ type: 'text', text: parsed.success ? formatted : 'Error: ' + parsed.error }] };
+      } catch (error) {
+        return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+      }
+    },
+  );
+}
+
+function validateOperationTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'validate_operation',
+    `Validate that an operation can succeed before attempting it.
+
+Parameters:
+- object_name (required): Name of the object to validate
+- operation (required): Type of operation to validate (pad, pocket, sketch, etc.)
+
+Returns:
+- success: Whether validation succeeded
+- is_valid: Whether the operation can proceed
+- validation_errors: List of validation issues
+- warnings: Warnings that don't block but should be noted
+- suggestions: Suggestions to fix validation issues
+
+Use this tool before attempting risky operations to prevent errors.`,
+    {
+      object_name: z.string().describe('Name of the object to validate'),
+      operation: z.string().describe('Type of operation to validate'),
+    },
+    async (input) => {
+      const { object_name, operation } = input;
+      const code = `
+from llm_bridge.error_handlers import handle_validate_operation
+import json
+params = json.loads('${JSON.stringify({ object_name, operation })}')
+result = handle_validate_operation(
+    object_name=params['object_name'],
+    operation=params['operation']
+)
+print(json.dumps(result))
+`.trim();
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatValidationResult(parsed.data);
+        return { content: [{ type: 'text', text: parsed.success ? formatted : 'Error: ' + parsed.error }] };
+      } catch (error) {
+        return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+      }
+    },
+  );
+}
+
+function getCommonErrorsTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'get_common_errors',
+    `Get common errors for a given operation type.
+
+Parameters:
+- operation_type (required): Type of operation (pad, pocket, boolean, sketch, etc.)
+
+Returns:
+- success: Whether query succeeded
+- operation: The operation type queried
+- common_errors: Array of common errors for this operation
+- error_patterns: Patterns to recognize these errors
+- solutions: Solutions for each common error
+
+Use this tool to learn about frequent issues with specific operations.`,
+    {
+      operation_type: z.string().describe('Type of operation (pad, pocket, boolean, sketch, etc.)'),
+    },
+    async (input) => {
+      const { operation_type } = input;
+      const code = `
+from llm_bridge.error_handlers import handle_get_common_errors
+import json
+params = json.loads('${JSON.stringify({ operation_type })}')
+result = handle_get_common_errors(operation_type=params['operation_type'])
+print(json.dumps(result))
+`.trim();
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatCommonErrors(parsed.data);
+        return { content: [{ type: 'text', text: parsed.success ? formatted : 'Error: ' + parsed.error }] };
+      } catch (error) {
+        return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+      }
+    },
+  );
+}
+
+function getOperationHistoryTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'get_operation_history',
+    `Get recent operations with their status.
+
+Parameters:
+- count (optional): Number of operations to return (default: 10)
+
+Returns:
+- success: Whether query succeeded
+- operations: Array of recent operations
+- total_count: Total number of tracked operations
+
+Each operation includes:
+- timestamp: When the operation occurred
+- operation_type: Type of operation
+- object_name: Object the operation was performed on
+- status: success, failed, or pending
+- error: Error message if failed`,
+    {
+      count: z.number().optional().default(10).describe('Number of operations to return'),
+    },
+    async (input) => {
+      const { count } = input;
+      const code = `
+from llm_bridge.error_handlers import handle_get_operation_history
+import json
+params = json.loads('${JSON.stringify({ count })}')
+result = handle_get_operation_history(count=params.get('count', 10))
+print(json.dumps(result))
+`.trim();
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatOperationHistory(parsed.data);
+        return { content: [{ type: 'text', text: parsed.success ? formatted : 'Error: ' + parsed.error }] };
+      } catch (error) {
+        return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+      }
+    },
+  );
+}
+
+function getLastErrorTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'get_last_error',
+    `Get the most recent error details.
+
+Parameters: None
+
+Returns:
+- success: Whether query succeeded
+- error: The most recent error if any
+- error_type: Type of error
+- error_message: Error message
+- timestamp: When the error occurred
+- operation: The operation that caused the error
+- context: Additional context about the error`,
+    {
+      // No parameters needed
+    },
+    async () => {
+      const code = `
+from llm_bridge.error_handlers import handle_get_last_error
+import json
+result = handle_get_last_error()
+print(json.dumps(result))
+`.trim();
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatLastError(parsed.data);
+        return { content: [{ type: 'text', text: parsed.success ? formatted : 'Error: ' + parsed.error }] };
+      } catch (error) {
+        return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+      }
+    },
+  );
+}
+
+function clearErrorHistoryTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'clear_error_history',
+    `Clear the error tracking history.
+
+Parameters: None
+
+Returns:
+- success: Whether clearing succeeded
+- cleared_count: Number of errors that were cleared
+- message: Status message
+
+Use this tool to reset error tracking after resolving issues.`,
+    {
+      // No parameters needed
+    },
+    async () => {
+      const code = `
+from llm_bridge.error_handlers import handle_clear_error_history
+import json
+result = handle_clear_error_history()
+print(json.dumps(result))
+`.trim();
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        if (parsed.success) {
+          return { content: [{ type: 'text', text: `Cleared ${parsed.cleared_count || 0} error(s)\n${parsed.message || ''}` }] };
+        } else {
+          return { content: [{ type: 'text', text: 'Error: ' + parsed.error }] };
+        }
+      } catch (error) {
+        return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+      }
+    },
+  );
+}
+
+function suggestUndoStrategyTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'suggest_undo_strategy',
+    `Suggest an undo approach after a failed operation.
+
+Parameters:
+- object_name (optional): Name of the object involved in the failed operation
+- failed_operation (optional): Description of the failed operation
+
+Returns:
+- success: Whether suggestion generation succeeded
+- strategy: Recommended undo/recovery approach
+- steps: Ordered steps to safely undo
+- can_redo: Whether the operation can be redone after undoing
+- alternative: Alternative approach if undo is not recommended`,
+    {
+      object_name: z.string().optional().describe('Name of the object involved'),
+      failed_operation: z.string().optional().describe('Description of the failed operation'),
+    },
+    async (input) => {
+      const { object_name, failed_operation } = input;
+      const code = `
+from llm_bridge.error_handlers import handle_suggest_undo_strategy
+import json
+params = json.loads('${JSON.stringify({ object_name, failed_operation })}')
+result = handle_suggest_undo_strategy(
+    object_name=params.get('object_name'),
+    failed_operation=params.get('failed_operation')
+)
+print(json.dumps(result))
+`.trim();
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatUndoStrategy(parsed.data);
+        return { content: [{ type: 'text', text: parsed.success ? formatted : 'Error: ' + parsed.error }] };
+      } catch (error) {
+        return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+      }
+    },
+  );
+}
+
+function recoverFromValidationErrorTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'recover_from_validation_error',
+    `Generate recovery code for validation failures.
+
+Parameters:
+- validation_result (required): The validation result containing errors
+
+Returns:
+- success: Whether recovery code was generated
+- recovery_code: Python code to fix the validation issues
+- fixes_applied: List of fixes that will be applied
+- warnings: Any warnings about the recovery
+
+Use this tool to automatically generate code to fix validation errors.`,
+    {
+      validation_result: z.record(z.any()).describe('The validation result containing errors'),
+    },
+    async (input) => {
+      const { validation_result } = input;
+      const code = `
+from llm_bridge.error_handlers import handle_recover_from_validation_error
+import json
+params = json.loads('${JSON.stringify({ validation_result })}')
+result = handle_recover_from_validation_error(validation_result=params['validation_result'])
+print(json.dumps(result))
+`.trim();
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        if (parsed.success) {
+          return { content: [{ type: 'text', text: `Recovery generated:\n${parsed.recovery_code || 'No specific recovery needed'}\n\nFixes: ${(parsed.fixes_applied || []).join(', ') || 'None'}\n${parsed.warnings || ''}` }] };
+        } else {
+          return { content: [{ type: 'text', text: 'Error: ' + parsed.error }] };
+        }
+      } catch (error) {
+        return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+      }
+    },
+  );
+}
+
+function safeRetryOperationTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'safe_retry_operation',
+    `Execute an operation with additional safety checks.
+
+Parameters:
+- operation (required): The operation to attempt
+- parameters (required): Parameters for the operation
+- max_retries (optional): Maximum retry attempts (default: 3)
+
+Returns:
+- success: Whether the operation eventually succeeded
+- attempts: Number of attempts made
+- final_result: The result of the final attempt
+- errors: Errors from failed attempts
+- recovered: Whether the operation was eventually successful
+
+Use this tool to safely retry operations that might fail due to transient issues.`,
+    {
+      operation: z.string().describe('The operation to attempt'),
+      parameters: z.record(z.any()).describe('Parameters for the operation'),
+      max_retries: z.number().optional().default(3).describe('Maximum retry attempts'),
+    },
+    async (input) => {
+      const { operation, parameters, max_retries } = input;
+      const code = `
+from llm_bridge.error_handlers import handle_safe_retry
+import json
+params = json.loads('${JSON.stringify({ operation, parameters, max_retries })}')
+result = handle_safe_retry(
+    operation=params['operation'],
+    parameters=params['parameters'],
+    max_retries=params.get('max_retries', 3)
+)
+print(json.dumps(result))
+`.trim();
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        if (parsed.success) {
+          return { content: [{ type: 'text', text: `Operation ${parsed.recovered ? 'recovered' : 'completed'} after ${parsed.attempts} attempt(s)\n${parsed.final_result || ''}` }] };
+        } else {
+          return { content: [{ type: 'text', text: `Operation failed after ${parsed.attempts} attempts: ${parsed.error || 'Unknown error'}` }] };
+        }
       } catch (error) {
         return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
       }

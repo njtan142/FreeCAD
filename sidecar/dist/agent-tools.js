@@ -338,6 +338,118 @@ function createAgentTools(freeCADBridge) {
         // G-code and simulation
         exportGCodeTool(freeCADBridge),
         simulatePathTool(freeCADBridge),
+        // Undo/Redo tools
+        createUndoTool(freeCADBridge),
+        createRedoTool(freeCADBridge),
+        getUndoStackSizeTool(freeCADBridge),
+        // Visibility management tools
+        showObjectTool(freeCADBridge),
+        hideObjectTool(freeCADBridge),
+        toggleVisibilityTool(freeCADBridge),
+        showAllObjectsTool(freeCADBridge),
+        hideAllObjectsTool(freeCADBridge),
+        getVisibleObjectsTool(freeCADBridge),
+        setObjectVisibilityTool(freeCADBridge),
+        // Selection tools
+        selectObjectTool(freeCADBridge),
+        deselectObjectTool(freeCADBridge),
+        selectAllObjectsTool(freeCADBridge),
+        clearSelectionTool(freeCADBridge),
+        isObjectSelectedTool(freeCADBridge),
+        // Measurement tools
+        measureDistanceTool(freeCADBridge),
+        measureObjectDistanceTool(freeCADBridge),
+        measureAngleTool(freeCADBridge),
+        measureLengthTool(freeCADBridge),
+        measureAreaTool(freeCADBridge),
+        getMeasureInfoTool(freeCADBridge),
+        // Spreadsheet lifecycle tools
+        createSpreadsheetTool(freeCADBridge),
+        deleteSpreadsheetTool(freeCADBridge),
+        renameSpreadsheetTool(freeCADBridge),
+        listSpreadsheetsTool(freeCADBridge),
+        getSpreadsheetInfoTool(freeCADBridge),
+        // Cell operation tools
+        setCellTool(freeCADBridge),
+        getCellTool(freeCADBridge),
+        setCellExpressionTool(freeCADBridge),
+        getCellExpressionTool(freeCADBridge),
+        clearCellTool(freeCADBridge),
+        clearRangeTool(freeCADBridge),
+        // Alias tools
+        setAliasTool(freeCADBridge),
+        getAliasTool(freeCADBridge),
+        removeAliasTool(freeCADBridge),
+        listAliasesTool(freeCADBridge),
+        // BOM tools
+        generateBomTool(freeCADBridge),
+        getObjectBomDataTool(freeCADBridge),
+        exportBomToSpreadsheetTool(freeCADBridge),
+        // Parametric table tools
+        createParametricTableTool(freeCADBridge),
+        updateParametricTableTool(freeCADBridge),
+        lookupValueTool(freeCADBridge),
+        // Formatting tools
+        setColumnWidthTool(freeCADBridge),
+        setRowHeightTool(freeCADBridge),
+        setCellBackgroundTool(freeCADBridge),
+        // BIM workbench tools
+        // Building structure tools
+        createSiteTool(freeCADBridge),
+        createBuildingTool(freeCADBridge),
+        createBuildingPartTool(freeCADBridge),
+        createBuildingLevelTool(freeCADBridge),
+        getBuildingHierarchyTool(freeCADBridge),
+        // Architectural element tools
+        createWallTool(freeCADBridge),
+        createWindowTool(freeCADBridge),
+        createDoorTool(freeCADBridge),
+        createRoofTool(freeCADBridge),
+        createStairsTool(freeCADBridge),
+        createCurtainWallTool(freeCADBridge),
+        createSpaceTool(freeCADBridge),
+        // Structural element tools
+        createColumnTool(freeCADBridge),
+        createBeamTool(freeCADBridge),
+        createSlabTool(freeCADBridge),
+        createFrameTool(freeCADBridge),
+        createTrussTool(freeCADBridge),
+        createFenceTool(freeCADBridge),
+        // Equipment and infrastructure tools
+        createEquipmentTool(freeCADBridge),
+        createPipeTool(freeCADBridge),
+        createPipeConnectorTool(freeCADBridge),
+        createPanelTool(freeCADBridge),
+        // Annotation and grid tools
+        createAxisTool(freeCADBridge),
+        createGridTool(freeCADBridge),
+        createSectionPlaneTool(freeCADBridge),
+        createScheduleTool(freeCADBridge),
+        // IFC data tools
+        setIfcTypeTool(freeCADBridge),
+        getIfcPropertiesTool(freeCADBridge),
+        setIfcPropertyTool(freeCADBridge),
+        getBimMaterialTool(freeCADBridge),
+        assignMaterialTool(freeCADBridge),
+        // Quick construction tools
+        quickWallTool(freeCADBridge),
+        quickWindowTool(freeCADBridge),
+        quickDoorTool(freeCADBridge),
+        quickFloorTool(freeCADBridge),
+        // Error handling and recovery tools
+        parseErrorTool(freeCADBridge),
+        categorizeErrorTool(freeCADBridge),
+        extractTracebackInfoTool(freeCADBridge),
+        analyzeErrorContextTool(freeCADBridge),
+        getRecoverySuggestionsTool(freeCADBridge),
+        validateOperationTool(freeCADBridge),
+        getCommonErrorsTool(freeCADBridge),
+        getOperationHistoryTool(freeCADBridge),
+        getLastErrorTool(freeCADBridge),
+        clearErrorHistoryTool(freeCADBridge),
+        suggestUndoStrategyTool(freeCADBridge),
+        recoverFromValidationErrorTool(freeCADBridge),
+        safeRetryOperationTool(freeCADBridge),
     ];
 }
 /**
@@ -15326,6 +15438,3636 @@ print(json.dumps(result))
                     },
                 ],
             };
+        }
+    });
+}
+// ============================================================================
+// Undo/Redo Tools
+// ============================================================================
+function createUndoTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('undo', `Undo the last operation in the FreeCAD document.
+
+Returns:
+- success: Whether the undo was successful
+- undoneObject: Name of the object that was undone (if any)
+- message: Status message
+
+Use this tool when you make a mistake and need to revert the last change.`, {
+    // No parameters needed
+    }, async () => {
+        const code = `
+from llm_bridge.workflow_handlers import handle_undo
+import json
+result = handle_undo()
+print(json.dumps(result))
+`.trim();
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            const formatted = (0, result_formatters_1.formatUndoResult)(parsed.data);
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: parsed.success ? formatted : `Error: ${parsed.error}`,
+                    },
+                ],
+            };
+        }
+        catch (error) {
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+                    },
+                ],
+            };
+        }
+    });
+}
+function createRedoTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('redo', `Redo the last undone operation in the FreeCAD document.
+
+Returns:
+- success: Whether the redo was successful
+- redoneObject: Name of the object that was redone (if any)
+- message: Status message
+
+Use this tool when you want to reapply a change that was previously undone.`, {
+    // No parameters needed
+    }, async () => {
+        const code = `
+from llm_bridge.workflow_handlers import handle_redo
+import json
+result = handle_redo()
+print(json.dumps(result))
+`.trim();
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            const formatted = (0, result_formatters_1.formatRedoResult)(parsed.data);
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: parsed.success ? formatted : `Error: ${parsed.error}`,
+                    },
+                ],
+            };
+        }
+        catch (error) {
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+                    },
+                ],
+            };
+        }
+    });
+}
+function getUndoStackSizeTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('get_undo_stack_size', `Get the current size of the undo and redo stacks.
+
+Returns:
+- success: Whether the query was successful
+- undoSize: Number of operations in the undo stack
+- redoSize: Number of operations in the redo stack
+- canUndo: Whether undo is available
+- canRedo: Whether redo is available
+- message: Status message
+
+Use this tool to check if undo/redo is available before attempting operations.`, {
+    // No parameters needed
+    }, async () => {
+        const code = `
+from llm_bridge.workflow_handlers import handle_get_undo_stack_size
+import json
+result = handle_get_undo_stack_size()
+print(json.dumps(result))
+`.trim();
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            const formatted = (0, result_formatters_1.formatUndoStackSize)(parsed.data);
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: parsed.success ? formatted : `Error: ${parsed.error}`,
+                    },
+                ],
+            };
+        }
+        catch (error) {
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+                    },
+                ],
+            };
+        }
+    });
+}
+// ============================================================================
+// Visibility Tools
+// ============================================================================
+function showObjectTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('show_object', `Show a hidden object in the FreeCAD viewport.
+
+Parameters:
+- objectName (required): Name of the object to show
+
+Returns:
+- success: Whether the operation was successful
+- objectName: Name of the object
+- visible: Always true for this operation
+- message: Status message
+
+Use this tool to make a hidden object visible again.`, {
+        objectName: zod_1.z.string().describe('Name of the object to show'),
+    }, async (input) => {
+        const { objectName } = input;
+        const code = `
+from llm_bridge.workflow_handlers import handle_show_object
+import json
+params = json.loads('${JSON.stringify({ objectName })}')
+result = handle_show_object(object_name=params['objectName'])
+print(json.dumps(result))
+`.trim();
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            const formatted = (0, result_formatters_1.formatVisibilityChange)(parsed.data);
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: parsed.success ? formatted : `Error: ${parsed.error}`,
+                    },
+                ],
+            };
+        }
+        catch (error) {
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+                    },
+                ],
+            };
+        }
+    });
+}
+function hideObjectTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('hide_object', `Hide an object in the FreeCAD viewport.
+
+Parameters:
+- objectName (required): Name of the object to hide
+
+Returns:
+- success: Whether the operation was successful
+- objectName: Name of the object
+- visible: Always false for this operation
+- message: Status message
+
+Use this tool to hide an object without deleting it.`, {
+        objectName: zod_1.z.string().describe('Name of the object to hide'),
+    }, async (input) => {
+        const { objectName } = input;
+        const code = `
+from llm_bridge.workflow_handlers import handle_hide_object
+import json
+params = json.loads('${JSON.stringify({ objectName })}')
+result = handle_hide_object(object_name=params['objectName'])
+print(json.dumps(result))
+`.trim();
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            const formatted = (0, result_formatters_1.formatVisibilityChange)(parsed.data);
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: parsed.success ? formatted : `Error: ${parsed.error}`,
+                    },
+                ],
+            };
+        }
+        catch (error) {
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+                    },
+                ],
+            };
+        }
+    });
+}
+function toggleVisibilityTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('toggle_object_visibility', `Toggle the visibility of an object in the FreeCAD viewport.
+
+Parameters:
+- objectName (required): Name of the object to toggle
+
+Returns:
+- success: Whether the operation was successful
+- objectName: Name of the object
+- visible: New visibility state after toggle
+- message: Status message
+
+Use this tool to quickly toggle an object's visibility.`, {
+        objectName: zod_1.z.string().describe('Name of the object to toggle visibility'),
+    }, async (input) => {
+        const { objectName } = input;
+        const code = `
+from llm_bridge.workflow_handlers import handle_toggle_visibility
+import json
+params = json.loads('${JSON.stringify({ objectName })}')
+result = handle_toggle_visibility(object_name=params['objectName'])
+print(json.dumps(result))
+`.trim();
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            const formatted = (0, result_formatters_1.formatVisibilityChange)(parsed.data);
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: parsed.success ? formatted : `Error: ${parsed.error}`,
+                    },
+                ],
+            };
+        }
+        catch (error) {
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+                    },
+                ],
+            };
+        }
+    });
+}
+function showAllObjectsTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('show_all_objects', `Show all hidden objects in the FreeCAD viewport.
+
+Returns:
+- success: Whether the operation was successful
+- count: Number of objects shown
+- message: Status message
+
+Use this tool to make all hidden objects visible at once.`, {
+    // No parameters needed
+    }, async () => {
+        const code = `
+from llm_bridge.workflow_handlers import handle_show_all
+import json
+result = handle_show_all()
+print(json.dumps(result))
+`.trim();
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            const formatted = (0, result_formatters_1.formatVisibilityChange)(parsed.data);
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: parsed.success ? formatted : `Error: ${parsed.error}`,
+                    },
+                ],
+            };
+        }
+        catch (error) {
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+                    },
+                ],
+            };
+        }
+    });
+}
+function hideAllObjectsTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('hide_all_objects', `Hide all visible objects in the FreeCAD viewport.
+
+Returns:
+- success: Whether the operation was successful
+- count: Number of objects hidden
+- message: Status message
+
+Use this tool to hide all visible objects at once.`, {
+    // No parameters needed
+    }, async () => {
+        const code = `
+from llm_bridge.workflow_handlers import handle_hide_all
+import json
+result = handle_hide_all()
+print(json.dumps(result))
+`.trim();
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            const formatted = (0, result_formatters_1.formatVisibilityChange)(parsed.data);
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: parsed.success ? formatted : `Error: ${parsed.error}`,
+                    },
+                ],
+            };
+        }
+        catch (error) {
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+                    },
+                ],
+            };
+        }
+    });
+}
+function getVisibleObjectsTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('get_visible_objects', `Get a list of all currently visible objects in the FreeCAD viewport.
+
+Returns:
+- success: Whether the query was successful
+- count: Number of visible objects
+- objects: Array of visible object info (name, label, type)
+- message: Status message
+
+Use this tool to see which objects are currently visible.`, {
+    // No parameters needed
+    }, async () => {
+        const code = `
+from llm_bridge.workflow_handlers import handle_get_visible_objects
+import json
+result = handle_get_visible_objects()
+print(json.dumps(result))
+`.trim();
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            const formatted = (0, result_formatters_1.formatVisibleObjectsList)(parsed.data);
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: parsed.success ? formatted : `Error: ${parsed.error}`,
+                    },
+                ],
+            };
+        }
+        catch (error) {
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+                    },
+                ],
+            };
+        }
+    });
+}
+function setObjectVisibilityTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('set_object_visibility', `Set the visibility of an object to a specific state.
+
+Parameters:
+- objectName (required): Name of the object
+- visible (required): Whether the object should be visible (true) or hidden (false)
+
+Returns:
+- success: Whether the operation was successful
+- objectName: Name of the object
+- visible: The new visibility state
+- message: Status message
+
+Use this tool to explicitly show or hide an object.`, {
+        objectName: zod_1.z.string().describe('Name of the object'),
+        visible: zod_1.z.boolean().describe('Whether the object should be visible'),
+    }, async (input) => {
+        const { objectName, visible } = input;
+        const code = `
+from llm_bridge.workflow_handlers import handle_set_object_visibility
+import json
+params = json.loads('${JSON.stringify({ objectName, visible })}')
+result = handle_set_object_visibility(object_name=params['objectName'], visible=params['visible'])
+print(json.dumps(result))
+`.trim();
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            const formatted = (0, result_formatters_1.formatVisibilityChange)(parsed.data);
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: parsed.success ? formatted : `Error: ${parsed.error}`,
+                    },
+                ],
+            };
+        }
+        catch (error) {
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+                    },
+                ],
+            };
+        }
+    });
+}
+// ============================================================================
+// Selection Tools
+// ============================================================================
+function selectObjectTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('select_object', `Select an object in the FreeCAD viewport.
+
+Parameters:
+- objectName (required): Name of the object to select
+
+Returns:
+- success: Whether the selection was successful
+- objectName: Name of the selected object
+- selected: Always true for this operation
+- message: Status message
+
+Use this tool to select an object for subsequent operations.`, {
+        objectName: zod_1.z.string().describe('Name of the object to select'),
+    }, async (input) => {
+        const { objectName } = input;
+        const code = `
+from llm_bridge.workflow_handlers import handle_select_object
+import json
+params = json.loads('${JSON.stringify({ objectName })}')
+result = handle_select_object(object_name=params['objectName'])
+print(json.dumps(result))
+`.trim();
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            const formatted = (0, result_formatters_1.formatSelectionChange)(parsed.data);
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: parsed.success ? formatted : `Error: ${parsed.error}`,
+                    },
+                ],
+            };
+        }
+        catch (error) {
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+                    },
+                ],
+            };
+        }
+    });
+}
+function deselectObjectTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('deselect_object', `Deselect an object in the FreeCAD viewport.
+
+Parameters:
+- objectName (required): Name of the object to deselect
+
+Returns:
+- success: Whether the deselection was successful
+- objectName: Name of the deselected object
+- selected: Always false for this operation
+- message: Status message
+
+Use this tool to remove an object from the current selection.`, {
+        objectName: zod_1.z.string().describe('Name of the object to deselect'),
+    }, async (input) => {
+        const { objectName } = input;
+        const code = `
+from llm_bridge.workflow_handlers import handle_deselect_object
+import json
+params = json.loads('${JSON.stringify({ objectName })}')
+result = handle_deselect_object(object_name=params['objectName'])
+print(json.dumps(result))
+`.trim();
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            const formatted = (0, result_formatters_1.formatSelectionChange)(parsed.data);
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: parsed.success ? formatted : `Error: ${parsed.error}`,
+                    },
+                ],
+            };
+        }
+        catch (error) {
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+                    },
+                ],
+            };
+        }
+    });
+}
+function selectAllObjectsTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('select_all_objects', `Select all objects in the FreeCAD viewport.
+
+Returns:
+- success: Whether the selection was successful
+- count: Number of objects selected
+- message: Status message
+
+Use this tool to select all objects at once.`, {
+    // No parameters needed
+    }, async () => {
+        const code = `
+from llm_bridge.workflow_handlers import handle_select_all
+import json
+result = handle_select_all()
+print(json.dumps(result))
+`.trim();
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            const formatted = (0, result_formatters_1.formatSelectionChange)(parsed.data);
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: parsed.success ? formatted : `Error: ${parsed.error}`,
+                    },
+                ],
+            };
+        }
+        catch (error) {
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+                    },
+                ],
+            };
+        }
+    });
+}
+function clearSelectionTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('clear_selection', `Clear the current selection in the FreeCAD viewport.
+
+Returns:
+- success: Whether the operation was successful
+- count: Number of objects that were deselected
+- message: Status message
+
+Use this tool to deselect all currently selected objects.`, {
+    // No parameters needed
+    }, async () => {
+        const code = `
+from llm_bridge.workflow_handlers import handle_clear_selection
+import json
+result = handle_clear_selection()
+print(json.dumps(result))
+`.trim();
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            const formatted = (0, result_formatters_1.formatSelectionChange)(parsed.data);
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: parsed.success ? formatted : `Error: ${parsed.error}`,
+                    },
+                ],
+            };
+        }
+        catch (error) {
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+                    },
+                ],
+            };
+        }
+    });
+}
+function isObjectSelectedTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('is_object_selected', `Check if a specific object is currently selected.
+
+Parameters:
+- objectName (required): Name of the object to check
+
+Returns:
+- success: Whether the query was successful
+- objectName: Name of the checked object
+- selected: Whether the object is currently selected
+- message: Status message
+
+Use this tool to check the selection state of an object.`, {
+        objectName: zod_1.z.string().describe('Name of the object to check'),
+    }, async (input) => {
+        const { objectName } = input;
+        const code = `
+from llm_bridge.workflow_handlers import handle_is_selected
+import json
+params = json.loads('${JSON.stringify({ objectName })}')
+result = handle_is_selected(object_name=params['objectName'])
+print(json.dumps(result))
+`.trim();
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            const formatted = (0, result_formatters_1.formatSelectionChange)(parsed.data);
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: parsed.success ? formatted : `Error: ${parsed.error}`,
+                    },
+                ],
+            };
+        }
+        catch (error) {
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+                    },
+                ],
+            };
+        }
+    });
+}
+// ============================================================================
+// Measurement Tools
+// ============================================================================
+function measureDistanceTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('measure_distance', `Measure the distance between two points in 3D space.
+
+Parameters:
+- point1 (required): First point as {x, y, z}
+- point2 (required): Second point as {x, y, z}
+
+Returns:
+- success: Whether the measurement was successful
+- measurementType: "distance"
+- value: The distance value
+- point1: First point coordinates
+- point2: Second point coordinates
+- message: Status message
+
+Use this tool to get the distance between two 3D coordinates.`, {
+        point1: zod_1.z.object({
+            x: zod_1.z.number(),
+            y: zod_1.z.number(),
+            z: zod_1.z.number(),
+        }).describe('First point coordinates'),
+        point2: zod_1.z.object({
+            x: zod_1.z.number(),
+            y: zod_1.z.number(),
+            z: zod_1.z.number(),
+        }).describe('Second point coordinates'),
+    }, async (input) => {
+        const { point1, point2 } = input;
+        const code = `
+from llm_bridge.measurement_handlers import handle_measure_distance
+import json
+params = json.loads('${JSON.stringify({ point1, point2 })}')
+result = handle_measure_distance(point1=params['point1'], point2=params['point2'])
+print(json.dumps(result))
+`.trim();
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            const formatted = (0, result_formatters_1.formatDistanceMeasurement)(parsed.data);
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: parsed.success ? formatted : `Error: ${parsed.error}`,
+                    },
+                ],
+            };
+        }
+        catch (error) {
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+                    },
+                ],
+            };
+        }
+    });
+}
+function measureObjectDistanceTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('measure_object_distance', `Measure the minimum distance between two objects.
+
+Parameters:
+- object1Name (required): Name of the first object
+- object2Name (required): Name of the second object
+
+Returns:
+- success: Whether the measurement was successful
+- measurementType: "object_distance"
+- value: The minimum distance between objects
+- object1: Name of first object
+- object2: Name of second object
+- message: Status message
+
+Use this tool to find the closest points between two 3D objects.`, {
+        object1Name: zod_1.z.string().describe('Name of the first object'),
+        object2Name: zod_1.z.string().describe('Name of the second object'),
+    }, async (input) => {
+        const { object1Name, object2Name } = input;
+        const code = `
+from llm_bridge.measurement_handlers import handle_measure_object_distance
+import json
+params = json.loads('${JSON.stringify({ object1Name, object2Name })}')
+result = handle_measure_object_distance(obj1_name=params['object1Name'], obj2_name=params['object2Name'])
+print(json.dumps(result))
+`.trim();
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            const formatted = (0, result_formatters_1.formatDistanceMeasurement)(parsed.data);
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: parsed.success ? formatted : `Error: ${parsed.error}`,
+                    },
+                ],
+            };
+        }
+        catch (error) {
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+                    },
+                ],
+            };
+        }
+    });
+}
+function measureAngleTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('measure_angle', `Measure the angle at a vertex formed by three points.
+
+Parameters:
+- point1 (required): First point as {x, y, z}
+- point2 (required): Vertex point as {x, y, z} (the angle is measured here)
+- point3 (required): Third point as {x, y, z}
+
+Returns:
+- success: Whether the measurement was successful
+- measurementType: "angle"
+- value: The angle in degrees
+- point1, point2, point3: The three points
+- vertex: The vertex point (point2)
+- message: Status message
+
+Use this tool to measure the angle between two lines meeting at a point.`, {
+        point1: zod_1.z.object({
+            x: zod_1.z.number(),
+            y: zod_1.z.number(),
+            z: zod_1.z.number(),
+        }).describe('First point'),
+        point2: zod_1.z.object({
+            x: zod_1.z.number(),
+            y: zod_1.z.number(),
+            z: zod_1.z.number(),
+        }).describe('Vertex point (angle is measured here)'),
+        point3: zod_1.z.object({
+            x: zod_1.z.number(),
+            y: zod_1.z.number(),
+            z: zod_1.z.number(),
+        }).describe('Third point'),
+    }, async (input) => {
+        const { point1, point2, point3 } = input;
+        const code = `
+from llm_bridge.measurement_handlers import handle_measure_angle
+import json
+params = json.loads('${JSON.stringify({ point1, point2, point3 })}')
+result = handle_measure_angle(point1=params['point1'], point2=params['point2'], point3=params['point3'])
+print(json.dumps(result))
+`.trim();
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            const formatted = (0, result_formatters_1.formatAngleMeasurement)(parsed.data);
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: parsed.success ? formatted : `Error: ${parsed.error}`,
+                    },
+                ],
+            };
+        }
+        catch (error) {
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+                    },
+                ],
+            };
+        }
+    });
+}
+function measureLengthTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('measure_length', `Get the length of a line, wire, or edge object.
+
+Parameters:
+- objectName (required): Name of the line, wire, or edge object
+
+Returns:
+- success: Whether the measurement was successful
+- measurementType: "length"
+- value: The length value in mm
+- objectName: Name of the measured object
+- message: Status message
+
+Use this tool to get the length of linear geometry.`, {
+        objectName: zod_1.z.string().describe('Name of the line, wire, or edge object'),
+    }, async (input) => {
+        const { objectName } = input;
+        const code = `
+from llm_bridge.measurement_handlers import handle_measure_length
+import json
+params = json.loads('${JSON.stringify({ objectName })}')
+result = handle_measure_length(object_name=params['objectName'])
+print(json.dumps(result))
+`.trim();
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            const formatted = (0, result_formatters_1.formatMeasurement)(parsed.data);
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: parsed.success ? formatted : `Error: ${parsed.error}`,
+                    },
+                ],
+            };
+        }
+        catch (error) {
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+                    },
+                ],
+            };
+        }
+    });
+}
+function measureAreaTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('measure_area', `Get the surface area of a face or object.
+
+Parameters:
+- objectName (required): Name of the face or object
+
+Returns:
+- success: Whether the measurement was successful
+- measurementType: "area"
+- value: The area value in mm²
+- objectName: Name of the measured object
+- message: Status message
+
+Use this tool to get the surface area of planar geometry.`, {
+        objectName: zod_1.z.string().describe('Name of the face or object'),
+    }, async (input) => {
+        const { objectName } = input;
+        const code = `
+from llm_bridge.measurement_handlers import handle_measure_area
+import json
+params = json.loads('${JSON.stringify({ objectName })}')
+result = handle_measure_area(object_name=params['objectName'])
+print(json.dumps(result))
+`.trim();
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            const formatted = (0, result_formatters_1.formatMeasurement)(parsed.data);
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: parsed.success ? formatted : `Error: ${parsed.error}`,
+                    },
+                ],
+            };
+        }
+        catch (error) {
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+                    },
+                ],
+            };
+        }
+    });
+}
+function getMeasureInfoTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('get_measure_info', `Get all measurement information for an object.
+
+Parameters:
+- objectName (required): Name of the object to measure
+
+Returns:
+- success: Whether the measurement was successful
+- objectName: Name of the measured object
+- measurements: Object containing available measurements (length, area, volume, etc.)
+- message: Status message
+
+Use this tool to get all available measurements for an object at once.`, {
+        objectName: zod_1.z.string().describe('Name of the object to get measurements for'),
+    }, async (input) => {
+        const { objectName } = input;
+        const code = `
+from llm_bridge.measurement_handlers import handle_get_measure_info
+import json
+params = json.loads('${JSON.stringify({ objectName })}')
+result = handle_get_measure_info(object_name=params['objectName'])
+print(json.dumps(result))
+`.trim();
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            const formatted = (0, result_formatters_1.formatMeasurement)(parsed.data);
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: parsed.success ? formatted : `Error: ${parsed.error}`,
+                    },
+                ],
+            };
+        }
+        catch (error) {
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+                    },
+                ],
+            };
+        }
+    });
+}
+// =============================================================================
+// Spreadsheet Workbench Tools
+// =============================================================================
+function createSpreadsheetTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('create_spreadsheet', `Create a new spreadsheet in the FreeCAD document.
+
+Parameters:
+- name (required): Name for the new spreadsheet
+
+Returns:
+- success: Whether the spreadsheet was created
+- spreadsheetName: Internal name of the spreadsheet
+- spreadsheetLabel: User-friendly label
+- message: Status message
+
+Use this tool when the user wants to create a new spreadsheet for BOM generation, parametric tables, or data organization.`, {
+        name: zod_1.z.string().describe('Name for the new spreadsheet'),
+    }, async (input) => {
+        const { name } = input;
+        const code = `
+from llm_bridge.spreadsheet_handlers import handle_create_spreadsheet
+import json
+params = json.loads('${JSON.stringify({ name })}')
+result = handle_create_spreadsheet(name=params['name'])
+print(json.dumps(result))
+`.trim();
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            if (parsed.success) {
+                return {
+                    content: [
+                        {
+                            type: 'text',
+                            text: `${parsed.data.message}`,
+                        },
+                    ],
+                };
+            }
+            else {
+                return {
+                    content: [
+                        {
+                            type: 'text',
+                            text: `Failed to create spreadsheet: ${parsed.error}`,
+                        },
+                    ],
+                };
+            }
+        }
+        catch (error) {
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+                    },
+                ],
+            };
+        }
+    });
+}
+function deleteSpreadsheetTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('delete_spreadsheet', `Delete a spreadsheet from the FreeCAD document.
+
+Parameters:
+- name (required): Name or label of the spreadsheet to delete
+
+Returns:
+- success: Whether the spreadsheet was deleted
+- message: Status message
+
+Use this tool when the user wants to remove a spreadsheet.`, {
+        name: zod_1.z.string().describe('Name or label of the spreadsheet to delete'),
+    }, async (input) => {
+        const { name } = input;
+        const code = `
+from llm_bridge.spreadsheet_handlers import handle_delete_spreadsheet
+import json
+params = json.loads('${JSON.stringify({ name })}')
+result = handle_delete_spreadsheet(name=params['name'])
+print(json.dumps(result))
+`.trim();
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            if (parsed.success) {
+                return {
+                    content: [
+                        {
+                            type: 'text',
+                            text: `${parsed.data.message}`,
+                        },
+                    ],
+                };
+            }
+            else {
+                return {
+                    content: [
+                        {
+                            type: 'text',
+                            text: `Failed to delete spreadsheet: ${parsed.error}`,
+                        },
+                    ],
+                };
+            }
+        }
+        catch (error) {
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+                    },
+                ],
+            };
+        }
+    });
+}
+function renameSpreadsheetTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('rename_spreadsheet', `Rename a spreadsheet.
+
+Parameters:
+- oldName (required): Current name or label of the spreadsheet
+- newName (required): New name for the spreadsheet
+
+Returns:
+- success: Whether the spreadsheet was renamed
+- message: Status message
+
+Use this tool when the user wants to change a spreadsheet's name.`, {
+        oldName: zod_1.z.string().describe('Current name or label of the spreadsheet'),
+        newName: zod_1.z.string().describe('New name for the spreadsheet'),
+    }, async (input) => {
+        const { oldName, newName } = input;
+        const code = `
+from llm_bridge.spreadsheet_handlers import handle_rename_spreadsheet
+import json
+params = json.loads('${JSON.stringify({ oldName, newName })}')
+result = handle_rename_spreadsheet(old_name=params['oldName'], new_name=params['newName'])
+print(json.dumps(result))
+`.trim();
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            if (parsed.success) {
+                return {
+                    content: [
+                        {
+                            type: 'text',
+                            text: `${parsed.data.message}`,
+                        },
+                    ],
+                };
+            }
+            else {
+                return {
+                    content: [
+                        {
+                            type: 'text',
+                            text: `Failed to rename spreadsheet: ${parsed.error}`,
+                        },
+                    ],
+                };
+            }
+        }
+        catch (error) {
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+                    },
+                ],
+            };
+        }
+    });
+}
+function listSpreadsheetsTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('list_spreadsheets', `List all spreadsheets in the current FreeCAD document.
+
+Returns:
+- success: Whether the operation succeeded
+- spreadsheets: Array of spreadsheet objects with name, label
+- count: Number of spreadsheets found
+- message: Status message
+
+Use this tool to find available spreadsheets in the document.`, {}, async () => {
+        const code = `
+from llm_bridge.spreadsheet_handlers import handle_list_spreadsheets
+import json
+result = handle_list_spreadsheets()
+print(json.dumps(result))
+`.trim();
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            if (parsed.success) {
+                const spreadsheets = parsed.data.spreadsheets || [];
+                const lines = spreadsheets.map((ss) => `- ${ss.label} (${ss.name})`);
+                return {
+                    content: [
+                        {
+                            type: 'text',
+                            text: spreadsheets.length > 0
+                                ? `Spreadsheets:\n${lines.join('\n')}`
+                                : 'No spreadsheets found in document',
+                        },
+                    ],
+                };
+            }
+            else {
+                return {
+                    content: [
+                        {
+                            type: 'text',
+                            text: `Failed to list spreadsheets: ${parsed.error}`,
+                        },
+                    ],
+                };
+            }
+        }
+        catch (error) {
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+                    },
+                ],
+            };
+        }
+    });
+}
+function getSpreadsheetInfoTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('get_spreadsheet_info', `Get metadata about a spreadsheet.
+
+Parameters:
+- name (required): Name or label of the spreadsheet
+
+Returns:
+- success: Whether the operation succeeded
+- name: Spreadsheet internal name
+- label: Spreadsheet label
+- type: Object type
+- aliasCount: Number of aliases defined
+- message: Status message
+
+Use this tool to get details about a specific spreadsheet.`, {
+        name: zod_1.z.string().describe('Name or label of the spreadsheet'),
+    }, async (input) => {
+        const { name } = input;
+        const code = `
+from llm_bridge.spreadsheet_handlers import handle_get_spreadsheet_info
+import json
+params = json.loads('${JSON.stringify({ name })}')
+result = handle_get_spreadsheet_info(name=params['name'])
+print(json.dumps(result))
+`.trim();
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            if (parsed.success) {
+                const data = parsed.data;
+                return {
+                    content: [
+                        {
+                            type: 'text',
+                            text: `Spreadsheet: ${data.label}\nName: ${data.name}\nType: ${data.type}\nAliases: ${data.aliasCount || 0}`,
+                        },
+                    ],
+                };
+            }
+            else {
+                return {
+                    content: [
+                        {
+                            type: 'text',
+                            text: `Failed to get spreadsheet info: ${parsed.error}`,
+                        },
+                    ],
+                };
+            }
+        }
+        catch (error) {
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+                    },
+                ],
+            };
+        }
+    });
+}
+function setCellTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('set_cell', `Set a cell value in a spreadsheet.
+
+Parameters:
+- spreadsheetName (required): Name or label of the spreadsheet
+- address (required): Cell address (e.g., 'A1', '$B$2')
+- value (required): Value to set (string, number, or boolean)
+
+Returns:
+- success: Whether the cell was set
+- message: Status message
+
+Use this tool to write data to spreadsheet cells. Cell addresses support both A1 and \$A\$1 notation.`, {
+        spreadsheetName: zod_1.z.string().describe('Name or label of the spreadsheet'),
+        address: zod_1.z.string().describe('Cell address (e.g., A1, $B$2)'),
+        value: zod_1.z.union([zod_1.z.string(), zod_1.z.number(), zod_1.z.boolean()]).describe('Value to set'),
+    }, async (input) => {
+        const { spreadsheetName, address, value } = input;
+        const code = `
+from llm_bridge.spreadsheet_handlers import handle_set_cell
+import json
+params = json.loads('${JSON.stringify({ spreadsheetName, address, value })}')
+result = handle_set_cell(spreadsheet_name=params['spreadsheetName'], address=params['address'], value=params['value'])
+print(json.dumps(result))
+`.trim();
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            if (parsed.success) {
+                return {
+                    content: [
+                        {
+                            type: 'text',
+                            text: `${parsed.data.message}`,
+                        },
+                    ],
+                };
+            }
+            else {
+                return {
+                    content: [
+                        {
+                            type: 'text',
+                            text: `Failed to set cell: ${parsed.error}`,
+                        },
+                    ],
+                };
+            }
+        }
+        catch (error) {
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+                    },
+                ],
+            };
+        }
+    });
+}
+function getCellTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('get_cell', `Get a cell value from a spreadsheet.
+
+Parameters:
+- spreadsheetName (required): Name or label of the spreadsheet
+- address (required): Cell address (e.g., 'A1', '$B$2')
+
+Returns:
+- success: Whether the cell was read
+- address: Cell address
+- value: Cell value
+- expression: Cell expression (if any)
+- hasExpression: Whether cell has an expression
+- message: Status message
+
+Use this tool to read data from spreadsheet cells.`, {
+        spreadsheetName: zod_1.z.string().describe('Name or label of the spreadsheet'),
+        address: zod_1.z.string().describe('Cell address (e.g., A1, $B$2)'),
+    }, async (input) => {
+        const { spreadsheetName, address } = input;
+        const code = `
+from llm_bridge.spreadsheet_handlers import handle_get_cell
+import json
+params = json.loads('${JSON.stringify({ spreadsheetName, address })}')
+result = handle_get_cell(spreadsheet_name=params['spreadsheetName'], address=params['address'])
+print(json.dumps(result))
+`.trim();
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            if (parsed.success) {
+                const data = parsed.data;
+                const hasExpr = data.hasExpression ? ` (formula: ${data.expression})` : '';
+                return {
+                    content: [
+                        {
+                            type: 'text',
+                            text: `Cell ${address}: ${data.value}${hasExpr}`,
+                        },
+                    ],
+                };
+            }
+            else {
+                return {
+                    content: [
+                        {
+                            type: 'text',
+                            text: `Failed to get cell: ${parsed.error}`,
+                        },
+                    ],
+                };
+            }
+        }
+        catch (error) {
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+                    },
+                ],
+            };
+        }
+    });
+}
+function setCellExpressionTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('set_cell_expression', `Set a cell formula/expression in a spreadsheet.
+
+Parameters:
+- spreadsheetName (required): Name or label of the spreadsheet
+- address (required): Cell address (e.g., 'A1', '$B$2')
+- expression (required): Formula/expression to set (e.g., '=A1+B1' or '=Sum(A1:A10)')
+
+Returns:
+- success: Whether the expression was set
+- message: Status message
+
+Use this tool to set formulas in cells. Expressions should start with = for formulas.`, {
+        spreadsheetName: zod_1.z.string().describe('Name or label of the spreadsheet'),
+        address: zod_1.z.string().describe('Cell address (e.g., A1, $B$2)'),
+        expression: zod_1.z.string().describe('Formula/expression (e.g., =A1+B1)'),
+    }, async (input) => {
+        const { spreadsheetName, address, expression } = input;
+        const code = `
+from llm_bridge.spreadsheet_handlers import handle_set_cell_expression
+import json
+params = json.loads('${JSON.stringify({ spreadsheetName, address, expression })}')
+result = handle_set_cell_expression(spreadsheet_name=params['spreadsheetName'], address=params['address'], expression=params['expression'])
+print(json.dumps(result))
+`.trim();
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            if (parsed.success) {
+                return {
+                    content: [
+                        {
+                            type: 'text',
+                            text: `${parsed.data.message}`,
+                        },
+                    ],
+                };
+            }
+            else {
+                return {
+                    content: [
+                        {
+                            type: 'text',
+                            text: `Failed to set expression: ${parsed.error}`,
+                        },
+                    ],
+                };
+            }
+        }
+        catch (error) {
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+                    },
+                ],
+            };
+        }
+    });
+}
+function getCellExpressionTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('get_cell_expression', `Get a cell's formula/expression from a spreadsheet.
+
+Parameters:
+- spreadsheetName (required): Name or label of the spreadsheet
+- address (required): Cell address (e.g., 'A1', '$B$2')
+
+Returns:
+- success: Whether the expression was retrieved
+- address: Cell address
+- expression: Cell expression/formula
+- computedValue: Computed value after formula evaluation
+- hasExpression: Whether cell has an expression
+- message: Status message
+
+Use this tool to check what formula is in a cell.`, {
+        spreadsheetName: zod_1.z.string().describe('Name or label of the spreadsheet'),
+        address: zod_1.z.string().describe('Cell address (e.g., A1, $B$2)'),
+    }, async (input) => {
+        const { spreadsheetName, address } = input;
+        const code = `
+from llm_bridge.spreadsheet_handlers import handle_get_cell_expression
+import json
+params = json.loads('${JSON.stringify({ spreadsheetName, address })}')
+result = handle_get_cell_expression(spreadsheet_name=params['spreadsheetName'], address=params['address'])
+print(json.dumps(result))
+`.trim();
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            if (parsed.success) {
+                const data = parsed.data;
+                if (data.expression) {
+                    return {
+                        content: [
+                            {
+                                type: 'text',
+                                text: `Cell ${address}: ${data.expression}\nComputed value: ${data.computedValue}`,
+                            },
+                        ],
+                    };
+                }
+                else {
+                    return {
+                        content: [
+                            {
+                                type: 'text',
+                                text: `Cell ${address}: No expression, value is ${data.computedValue}`,
+                            },
+                        ],
+                    };
+                }
+            }
+            else {
+                return {
+                    content: [
+                        {
+                            type: 'text',
+                            text: `Failed to get expression: ${parsed.error}`,
+                        },
+                    ],
+                };
+            }
+        }
+        catch (error) {
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+                    },
+                ],
+            };
+        }
+    });
+}
+function clearCellTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('clear_cell', `Clear a cell's content in a spreadsheet.
+
+Parameters:
+- spreadsheetName (required): Name or label of the spreadsheet
+- address (required): Cell address (e.g., 'A1', '$B$2')
+
+Returns:
+- success: Whether the cell was cleared
+- message: Status message
+
+Use this tool to clear a single cell. Use clear_range for multiple cells.`, {
+        spreadsheetName: zod_1.z.string().describe('Name or label of the spreadsheet'),
+        address: zod_1.z.string().describe('Cell address (e.g., A1, $B$2)'),
+    }, async (input) => {
+        const { spreadsheetName, address } = input;
+        const code = `
+from llm_bridge.spreadsheet_handlers import handle_clear_cell
+import json
+params = json.loads('${JSON.stringify({ spreadsheetName, address })}')
+result = handle_clear_cell(spreadsheet_name=params['spreadsheetName'], address=params['address'])
+print(json.dumps(result))
+`.trim();
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            if (parsed.success) {
+                return {
+                    content: [
+                        {
+                            type: 'text',
+                            text: `${parsed.data.message}`,
+                        },
+                    ],
+                };
+            }
+            else {
+                return {
+                    content: [
+                        {
+                            type: 'text',
+                            text: `Failed to clear cell: ${parsed.error}`,
+                        },
+                    ],
+                };
+            }
+        }
+        catch (error) {
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+                    },
+                ],
+            };
+        }
+    });
+}
+function clearRangeTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('clear_range', `Clear a range of cells in a spreadsheet.
+
+Parameters:
+- spreadsheetName (required): Name or label of the spreadsheet
+- startAddress (required): Start cell address (e.g., 'A1')
+- endAddress (required): End cell address (e.g., 'D10')
+
+Returns:
+- success: Whether the cells were cleared
+- clearedCount: Number of cells cleared
+- message: Status message
+
+Use this tool to clear multiple cells at once.`, {
+        spreadsheetName: zod_1.z.string().describe('Name or label of the spreadsheet'),
+        startAddress: zod_1.z.string().describe('Start cell address (e.g., A1)'),
+        endAddress: zod_1.z.string().describe('End cell address (e.g., D10)'),
+    }, async (input) => {
+        const { spreadsheetName, startAddress, endAddress } = input;
+        const code = `
+from llm_bridge.spreadsheet_handlers import handle_clear_range
+import json
+params = json.loads('${JSON.stringify({ spreadsheetName, startAddress, endAddress })}')
+result = handle_clear_range(spreadsheet_name=params['spreadsheetName'], start_address=params['startAddress'], end_address=params['endAddress'])
+print(json.dumps(result))
+`.trim();
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            if (parsed.success) {
+                return {
+                    content: [
+                        {
+                            type: 'text',
+                            text: `${parsed.data.message}`,
+                        },
+                    ],
+                };
+            }
+            else {
+                return {
+                    content: [
+                        {
+                            type: 'text',
+                            text: `Failed to clear range: ${parsed.error}`,
+                        },
+                    ],
+                };
+            }
+        }
+        catch (error) {
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+                    },
+                ],
+            };
+        }
+    });
+}
+function setAliasTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('set_alias', `Set an alias on a cell for parametric access.
+
+Parameters:
+- spreadsheetName (required): Name or label of the spreadsheet
+- address (required): Cell address (e.g., 'A1', '$B$2')
+- aliasName (required): Name for the alias
+
+Returns:
+- success: Whether the alias was set
+- message: Status message
+
+Use this tool to create a named reference to a cell that can be used in expressions elsewhere in the document.`, {
+        spreadsheetName: zod_1.z.string().describe('Name or label of the spreadsheet'),
+        address: zod_1.z.string().describe('Cell address (e.g., A1, $B$2)'),
+        aliasName: zod_1.z.string().describe('Name for the alias'),
+    }, async (input) => {
+        const { spreadsheetName, address, aliasName } = input;
+        const code = `
+from llm_bridge.spreadsheet_handlers import handle_set_alias
+import json
+params = json.loads('${JSON.stringify({ spreadsheetName, address, aliasName })}')
+result = handle_set_alias(spreadsheet_name=params['spreadsheetName'], address=params['address'], alias_name=params['aliasName'])
+print(json.dumps(result))
+`.trim();
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            if (parsed.success) {
+                return {
+                    content: [
+                        {
+                            type: 'text',
+                            text: `${parsed.data.message}`,
+                        },
+                    ],
+                };
+            }
+            else {
+                return {
+                    content: [
+                        {
+                            type: 'text',
+                            text: `Failed to set alias: ${parsed.error}`,
+                        },
+                    ],
+                };
+            }
+        }
+        catch (error) {
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+                    },
+                ],
+            };
+        }
+    });
+}
+function getAliasTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('get_alias', `Get a cell value by alias name.
+
+Parameters:
+- spreadsheetName (required): Name or label of the spreadsheet
+- aliasName (required): Name of the alias to look up
+
+Returns:
+- success: Whether the alias was found
+- aliasName: Alias name
+- address: Cell address
+- value: Cell value
+- message: Status message
+
+Use this tool to retrieve a cell value using its alias name.`, {
+        spreadsheetName: zod_1.z.string().describe('Name or label of the spreadsheet'),
+        aliasName: zod_1.z.string().describe('Name of the alias'),
+    }, async (input) => {
+        const { spreadsheetName, aliasName } = input;
+        const code = `
+from llm_bridge.spreadsheet_handlers import handle_get_alias
+import json
+params = json.loads('${JSON.stringify({ spreadsheetName, aliasName })}')
+result = handle_get_alias(spreadsheet_name=params['spreadsheetName'], alias_name=params['aliasName'])
+print(json.dumps(result))
+`.trim();
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            if (parsed.success) {
+                const data = parsed.data;
+                return {
+                    content: [
+                        {
+                            type: 'text',
+                            text: `Alias '${aliasName}' -> ${data.address} = ${data.value}`,
+                        },
+                    ],
+                };
+            }
+            else {
+                return {
+                    content: [
+                        {
+                            type: 'text',
+                            text: `Failed to get alias: ${parsed.error}`,
+                        },
+                    ],
+                };
+            }
+        }
+        catch (error) {
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+                    },
+                ],
+            };
+        }
+    });
+}
+function removeAliasTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('remove_alias', `Remove an alias from a cell.
+
+Parameters:
+- spreadsheetName (required): Name or label of the spreadsheet
+- aliasName (required): Name of the alias to remove
+
+Returns:
+- success: Whether the alias was removed
+- message: Status message
+
+Use this tool to delete a cell alias.`, {
+        spreadsheetName: zod_1.z.string().describe('Name or label of the spreadsheet'),
+        aliasName: zod_1.z.string().describe('Name of the alias to remove'),
+    }, async (input) => {
+        const { spreadsheetName, aliasName } = input;
+        const code = `
+from llm_bridge.spreadsheet_handlers import handle_remove_alias
+import json
+params = json.loads('${JSON.stringify({ spreadsheetName, aliasName })}')
+result = handle_remove_alias(spreadsheet_name=params['spreadsheetName'], alias_name=params['aliasName'])
+print(json.dumps(result))
+`.trim();
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            if (parsed.success) {
+                return {
+                    content: [
+                        {
+                            type: 'text',
+                            text: `${parsed.data.message}`,
+                        },
+                    ],
+                };
+            }
+            else {
+                return {
+                    content: [
+                        {
+                            type: 'text',
+                            text: `Failed to remove alias: ${parsed.error}`,
+                        },
+                    ],
+                };
+            }
+        }
+        catch (error) {
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+                    },
+                ],
+            };
+        }
+    });
+}
+function listAliasesTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('list_aliases', `List all aliases in a spreadsheet.
+
+Parameters:
+- spreadsheetName (required): Name or label of the spreadsheet
+
+Returns:
+- success: Whether aliases were listed
+- aliases: Array of alias objects with name, address, value
+- count: Number of aliases
+- message: Status message
+
+Use this tool to see all named cell references in a spreadsheet.`, {
+        spreadsheetName: zod_1.z.string().describe('Name or label of the spreadsheet'),
+    }, async (input) => {
+        const { spreadsheetName } = input;
+        const code = `
+from llm_bridge.spreadsheet_handlers import handle_list_aliases
+import json
+params = json.loads('${JSON.stringify({ spreadsheetName })}')
+result = handle_list_aliases(spreadsheet_name=params['spreadsheetName'])
+print(json.dumps(result))
+`.trim();
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            if (parsed.success) {
+                const aliases = parsed.data.aliases || [];
+                if (aliases.length === 0) {
+                    return {
+                        content: [{ type: 'text', text: 'No aliases defined in this spreadsheet' }],
+                    };
+                }
+                const lines = aliases.map((a) => `- ${a.alias} -> ${a.address} = ${a.value}`);
+                return {
+                    content: [
+                        {
+                            type: 'text',
+                            text: `Aliases (${aliases.length}):\n${lines.join('\n')}`,
+                        },
+                    ],
+                };
+            }
+            else {
+                return {
+                    content: [
+                        {
+                            type: 'text',
+                            text: `Failed to list aliases: ${parsed.error}`,
+                        },
+                    ],
+                };
+            }
+        }
+        catch (error) {
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+                    },
+                ],
+            };
+        }
+    });
+}
+function generateBomTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('generate_bom', `Generate a Bill of Materials from document objects.
+
+Parameters:
+- options (optional): Object with:
+  - includeHidden: boolean - Include hidden objects (default: false)
+  - groupByType: boolean - Group objects by type (default: false)
+  - includeProperties: string[] - Properties to include
+  - outputFormat: 'list' or 'dict' (default: 'list')
+
+Returns:
+- success: Whether BOM was generated
+- bom: Array or grouped object with BOM entries
+- itemCount: Number of items
+- message: Status message
+
+Each BOM entry includes: name, type, label, and common properties like volume, surface area, dimensions.`, {
+        options: zod_1.z
+            .object({
+            includeHidden: zod_1.z.boolean().optional(),
+            groupByType: zod_1.z.boolean().optional(),
+            includeProperties: zod_1.z.array(zod_1.z.string()).optional(),
+            outputFormat: zod_1.z.enum(['list', 'dict']).optional(),
+        })
+            .optional()
+            .describe('BOM generation options'),
+    }, async (input) => {
+        const options = input.options || {};
+        const code = `
+from llm_bridge.spreadsheet_handlers import handle_generate_bom
+import json
+params = json.loads('${JSON.stringify({ options })}')
+result = handle_generate_bom(options=params['options'] if params.get('options') else None)
+print(json.dumps(result))
+`.trim();
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            if (parsed.success) {
+                const count = parsed.data.itemCount || 0;
+                const grouped = parsed.data.groupedByType ? ' (grouped by type)' : '';
+                return {
+                    content: [
+                        {
+                            type: 'text',
+                            text: `Generated BOM with ${count} item(s)${grouped}`,
+                        },
+                    ],
+                };
+            }
+            else {
+                return {
+                    content: [
+                        {
+                            type: 'text',
+                            text: `Failed to generate BOM: ${parsed.error}`,
+                        },
+                    ],
+                };
+            }
+        }
+        catch (error) {
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+                    },
+                ],
+            };
+        }
+    });
+}
+function getObjectBomDataTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('get_object_bom_data', `Extract structured data from specific objects for BOM.
+
+Parameters:
+- objectNames (required): Array of object names or labels
+- properties (optional): Array of property names to extract
+
+Returns:
+- success: Whether data was extracted
+- items: Array of extracted data objects
+- itemCount: Number of items
+- message: Status message
+
+Use this to get detailed property data from specific objects for BOM reporting.`, {
+        objectNames: zod_1.z.array(zod_1.z.string()).describe('Array of object names or labels'),
+        properties: zod_1.z.array(zod_1.z.string()).optional().describe('Property names to extract'),
+    }, async (input) => {
+        const { objectNames, properties } = input;
+        const code = `
+from llm_bridge.spreadsheet_handlers import handle_get_object_bom_data
+import json
+params = json.loads('${JSON.stringify({ objectNames, properties })}')
+result = handle_get_object_bom_data(object_names=params['objectNames'], properties=params.get('properties'))
+print(json.dumps(result))
+`.trim();
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            if (parsed.success) {
+                const count = parsed.data.itemCount || 0;
+                return {
+                    content: [
+                        {
+                            type: 'text',
+                            text: `Extracted BOM data from ${count} object(s)`,
+                        },
+                    ],
+                };
+            }
+            else {
+                return {
+                    content: [
+                        {
+                            type: 'text',
+                            text: `Failed to get BOM data: ${parsed.error}`,
+                        },
+                    ],
+                };
+            }
+        }
+        catch (error) {
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+                    },
+                ],
+            };
+        }
+    });
+}
+function exportBomToSpreadsheetTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('export_bom_to_spreadsheet', `Write BOM data to a spreadsheet.
+
+Parameters:
+- bomData (required): BOM data from generate_bom or get_object_bom_data
+- spreadsheetName (required): Name or label of target spreadsheet
+- startAddress (optional): Starting cell address (default: 'A1')
+
+Returns:
+- success: Whether export succeeded
+- rowsWritten: Number of data rows written
+- message: Status message
+
+Use this to export generated BOM data to a spreadsheet for documentation or further editing.`, {
+        bomData: zod_1.z.union([zod_1.z.array(zod_1.z.record(zod_1.z.string(), zod_1.z.unknown())), zod_1.z.record(zod_1.z.string(), zod_1.z.unknown())]).describe('BOM data to export'),
+        spreadsheetName: zod_1.z.string().describe('Name or label of target spreadsheet'),
+        startAddress: zod_1.z.string().optional().describe('Starting cell address (default: A1)'),
+    }, async (input) => {
+        const { bomData, spreadsheetName, startAddress } = input;
+        const code = `
+from llm_bridge.spreadsheet_handlers import handle_export_bom_to_spreadsheet
+import json
+params = json.loads('${JSON.stringify({ bomData, spreadsheetName, startAddress: startAddress || 'A1' })}')
+result = handle_export_bom_to_spreadsheet(bom_data=params['bomData'], spreadsheet_name=params['spreadsheetName'], start_address=params.get('startAddress', 'A1'))
+print(json.dumps(result))
+`.trim();
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            if (parsed.success) {
+                return {
+                    content: [
+                        {
+                            type: 'text',
+                            text: `${parsed.data.message}`,
+                        },
+                    ],
+                };
+            }
+            else {
+                return {
+                    content: [
+                        {
+                            type: 'text',
+                            text: `Failed to export BOM: ${parsed.error}`,
+                        },
+                    ],
+                };
+            }
+        }
+        catch (error) {
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+                    },
+                ],
+            };
+        }
+    });
+}
+function createParametricTableTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('create_parametric_table', `Create a parametric lookup table in a spreadsheet.
+
+Parameters:
+- spreadsheetName (required): Name or label of the spreadsheet
+- headers (required): Array of column header names
+- data (required): Array of rows, each row is an array of values
+
+Returns:
+- success: Whether table was created
+- rowCount: Number of data rows
+- columnCount: Number of columns
+- message: Status message
+
+Use this to create lookup tables that can be used with the lookup_value tool.`, {
+        spreadsheetName: zod_1.z.string().describe('Name or label of the spreadsheet'),
+        headers: zod_1.z.array(zod_1.z.string()).describe('Column header names'),
+        data: zod_1.z.array(zod_1.z.array(zod_1.z.union([zod_1.z.string(), zod_1.z.number()]))).describe('Array of row data arrays'),
+    }, async (input) => {
+        const { spreadsheetName, headers, data } = input;
+        const code = `
+from llm_bridge.spreadsheet_handlers import handle_create_parametric_table
+import json
+params = json.loads('${JSON.stringify({ spreadsheetName, headers, data })}')
+result = handle_create_parametric_table(spreadsheet_name=params['spreadsheetName'], headers=params['headers'], data=params['data'])
+print(json.dumps(result))
+`.trim();
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            if (parsed.success) {
+                return {
+                    content: [
+                        {
+                            type: 'text',
+                            text: `${parsed.data.message}`,
+                        },
+                    ],
+                };
+            }
+            else {
+                return {
+                    content: [
+                        {
+                            type: 'text',
+                            text: `Failed to create table: ${parsed.error}`,
+                        },
+                    ],
+                };
+            }
+        }
+        catch (error) {
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+                    },
+                ],
+            };
+        }
+    });
+}
+function updateParametricTableTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('update_parametric_table', `Update a row in a parametric table.
+
+Parameters:
+- spreadsheetName (required): Name or label of the spreadsheet
+- rowKey (required): Value in the first column to identify the row
+- updates (required): Object mapping column headers to new values
+
+Returns:
+- success: Whether update succeeded
+- updatedCells: Array of updated cell info
+- message: Status message
+
+Use this to modify existing rows in a lookup table.`, {
+        spreadsheetName: zod_1.z.string().describe('Name or label of the spreadsheet'),
+        rowKey: zod_1.z.union([zod_1.z.string(), zod_1.z.number()]).describe('Value in first column to identify row'),
+        updates: zod_1.z.record(zod_1.z.union([zod_1.z.string(), zod_1.z.number()])).describe('Object mapping column headers to new values'),
+    }, async (input) => {
+        const { spreadsheetName, rowKey, updates } = input;
+        const code = `
+from llm_bridge.spreadsheet_handlers import handle_update_parametric_table
+import json
+params = json.loads('${JSON.stringify({ spreadsheetName, rowKey, updates })}')
+result = handle_update_parametric_table(spreadsheet_name=params['spreadsheetName'], row_key=params['rowKey'], updates=params['updates'])
+print(json.dumps(result))
+`.trim();
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            if (parsed.success) {
+                return {
+                    content: [
+                        {
+                            type: 'text',
+                            text: `${parsed.data.message}`,
+                        },
+                    ],
+                };
+            }
+            else {
+                return {
+                    content: [
+                        {
+                            type: 'text',
+                            text: `Failed to update table: ${parsed.error}`,
+                        },
+                    ],
+                };
+            }
+        }
+        catch (error) {
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+                    },
+                ],
+            };
+        }
+    });
+}
+function lookupValueTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('lookup_value', `Lookup a value in a parametric table.
+
+Parameters:
+- spreadsheetName (required): Name or label of the spreadsheet
+- columnKey (required): Column header to return (the "return column")
+- lookupValue (required): Value to search for in the first column
+
+Returns:
+- success: Whether lookup succeeded
+- resultValue: The found value
+- rowData: Full row data
+- message: Status message
+
+Use this to search a lookup table created with create_parametric_table. The search is case-insensitive.`, {
+        spreadsheetName: zod_1.z.string().describe('Name or label of the spreadsheet'),
+        columnKey: zod_1.z.string().describe('Column header to return'),
+        lookupValue: zod_1.z.union([zod_1.z.string(), zod_1.z.number()]).describe('Value to search for in first column'),
+    }, async (input) => {
+        const { spreadsheetName, columnKey, lookupValue } = input;
+        const code = `
+from llm_bridge.spreadsheet_handlers import handle_lookup_value
+import json
+params = json.loads('${JSON.stringify({ spreadsheetName, columnKey, lookupValue })}')
+result = handle_lookup_value(spreadsheet_name=params['spreadsheetName'], column_key=params['columnKey'], lookup_value=params['lookupValue'])
+print(json.dumps(result))
+`.trim();
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            if (parsed.success) {
+                const data = parsed.data;
+                return {
+                    content: [
+                        {
+                            type: 'text',
+                            text: `Found: ${data.resultValue} (${columnKey} for ${lookupValue})`,
+                        },
+                    ],
+                };
+            }
+            else {
+                return {
+                    content: [
+                        {
+                            type: 'text',
+                            text: `Lookup failed: ${parsed.error}`,
+                        },
+                    ],
+                };
+            }
+        }
+        catch (error) {
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+                    },
+                ],
+            };
+        }
+    });
+}
+function setColumnWidthTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('set_column_width', `Set column width in a spreadsheet.
+
+Parameters:
+- spreadsheetName (required): Name or label of the spreadsheet
+- column (required): Column letter (e.g., 'A', 'B', 'AB')
+- width (required): Width in points
+
+Returns:
+- success: Whether width was set
+- column: Column letter
+- width: New width value
+- message: Status message
+
+Use this to adjust column widths for better display.`, {
+        spreadsheetName: zod_1.z.string().describe('Name or label of the spreadsheet'),
+        column: zod_1.z.string().describe('Column letter (e.g., A, B, AB)'),
+        width: zod_1.z.number().describe('Width in points'),
+    }, async (input) => {
+        const { spreadsheetName, column, width } = input;
+        const code = `
+from llm_bridge.spreadsheet_handlers import handle_set_column_width
+import json
+params = json.loads('${JSON.stringify({ spreadsheetName, column, width })}')
+result = handle_set_column_width(spreadsheet_name=params['spreadsheetName'], column=params['column'], width=params['width'])
+print(json.dumps(result))
+`.trim();
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            if (parsed.success) {
+                return {
+                    content: [
+                        {
+                            type: 'text',
+                            text: `${parsed.data.message}`,
+                        },
+                    ],
+                };
+            }
+            else {
+                return {
+                    content: [
+                        {
+                            type: 'text',
+                            text: `Failed to set column width: ${parsed.error}`,
+                        },
+                    ],
+                };
+            }
+        }
+        catch (error) {
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+                    },
+                ],
+            };
+        }
+    });
+}
+function setRowHeightTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('set_row_height', `Set row height in a spreadsheet.
+
+Parameters:
+- spreadsheetName (required): Name or label of the spreadsheet
+- row (required): Row number (1-based)
+- height (required): Height in points
+
+Returns:
+- success: Whether height was set
+- row: Row number
+- height: New height value
+- message: Status message
+
+Use this to adjust row heights for better display.`, {
+        spreadsheetName: zod_1.z.string().describe('Name or label of the spreadsheet'),
+        row: zod_1.z.number().int().positive().describe('Row number (1-based)'),
+        height: zod_1.z.number().describe('Height in points'),
+    }, async (input) => {
+        const { spreadsheetName, row, height } = input;
+        const code = `
+from llm_bridge.spreadsheet_handlers import handle_set_row_height
+import json
+params = json.loads('${JSON.stringify({ spreadsheetName, row, height })}')
+result = handle_set_row_height(spreadsheet_name=params['spreadsheetName'], row=params['row'], height=params['height'])
+print(json.dumps(result))
+`.trim();
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            if (parsed.success) {
+                return {
+                    content: [
+                        {
+                            type: 'text',
+                            text: `${parsed.data.message}`,
+                        },
+                    ],
+                };
+            }
+            else {
+                return {
+                    content: [
+                        {
+                            type: 'text',
+                            text: `Failed to set row height: ${parsed.error}`,
+                        },
+                    ],
+                };
+            }
+        }
+        catch (error) {
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+                    },
+                ],
+            };
+        }
+    });
+}
+function setCellBackgroundTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('set_cell_background', `Set cell background color.
+
+Parameters:
+- spreadsheetName (required): Name or label of the spreadsheet
+- address (required): Cell address (e.g., 'A1', '$B$2')
+- color (required): Color as hex string (e.g., '#FF0000' for red) or 'default'
+
+Returns:
+- success: Whether color was set
+- address: Cell address
+- color: Applied color
+- message: Status message
+
+Use this to highlight cells with background colors.`, {
+        spreadsheetName: zod_1.z.string().describe('Name or label of the spreadsheet'),
+        address: zod_1.z.string().describe('Cell address (e.g., A1, $B$2)'),
+        color: zod_1.z.string().describe("Color as hex (e.g., '#FF0000') or 'default'"),
+    }, async (input) => {
+        const { spreadsheetName, address, color } = input;
+        const code = `
+from llm_bridge.spreadsheet_handlers import handle_set_cell_background
+import json
+params = json.loads('${JSON.stringify({ spreadsheetName, address, color })}')
+result = handle_set_cell_background(spreadsheet_name=params['spreadsheetName'], address=params['address'], color=params['color'])
+print(json.dumps(result))
+`.trim();
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            if (parsed.success) {
+                return {
+                    content: [
+                        {
+                            type: 'text',
+                            text: `${parsed.data.message}`,
+                        },
+                    ],
+                };
+            }
+            else {
+                return {
+                    content: [
+                        {
+                            type: 'text',
+                            text: `Failed to set cell background: ${parsed.error}`,
+                        },
+                    ],
+                };
+            }
+        }
+        catch (error) {
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+                    },
+                ],
+            };
+        }
+    });
+}
+// ============================================================================
+// BIM/Arch Workbench Tools
+// ============================================================================
+function createSiteTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('create_site', 'Create a new BIM site for containing building projects.', {
+        name: zod_1.z.string().optional().describe('Name for the site'),
+    }, async (input) => {
+        const { name } = input;
+        const code = `from llm_bridge.bim_handlers import handle_create_site; import json; params = json.loads(JSON.stringify({ name: name || null })); result = handle_create_site(name=params['name']); print(json.dumps(result))`;
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            return { content: [{ type: 'text', text: parsed.success ? (0, result_formatters_1.formatSiteCreation)(parsed.data) : 'Error: ' + parsed.error }] };
+        }
+        catch (error) {
+            return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+        }
+    });
+}
+function createBuildingTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('create_building', 'Create a building containing objects.', {
+        object_names: zod_1.z.array(zod_1.z.string()).optional().describe('List of object names to include in the building'),
+        name: zod_1.z.string().optional().describe('Name for the building'),
+    }, async (input) => {
+        const { object_names, name } = input;
+        const code = 'from llm_bridge.bim_handlers import handle_create_building; import json; params = json.loads(JSON.stringify({ object_names: object_names || null, name: name || null })); result = handle_create_building(**params); print(json.dumps(result))';
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            return { content: [{ type: 'text', text: parsed.success ? (0, result_formatters_1.formatBuildingCreation)(parsed.data) : 'Error: ' + parsed.error }] };
+        }
+        catch (error) {
+            return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+        }
+    });
+}
+function createBuildingPartTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('create_building_part', 'Create a floor/level (BuildingPart).', {
+        object_names: zod_1.z.array(zod_1.z.string()).optional().describe('List of object names to include'),
+        name: zod_1.z.string().optional().describe('Name for the building part'),
+    }, async (input) => {
+        const { object_names, name } = input;
+        const code = 'from llm_bridge.bim_handlers import handle_create_building_part; import json; params = json.loads(JSON.stringify({ object_names: object_names || null, name: name || null })); result = handle_create_building_part(**params); print(json.dumps(result))';
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            return { content: [{ type: 'text', text: parsed.success ? (0, result_formatters_1.formatBuildingPartCreation)(parsed.data) : 'Error: ' + parsed.error }] };
+        }
+        catch (error) {
+            return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+        }
+    });
+}
+function createBuildingLevelTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('create_building_level', 'Create a single building level with elevation.', {
+        name: zod_1.z.string().optional().describe('Name for the level'),
+        elevation: zod_1.z.number().optional().describe('Elevation value (Z coordinate)'),
+    }, async (input) => {
+        const { name, elevation } = input;
+        const code = 'from llm_bridge.bim_handlers import handle_create_building_level; import json; params = json.loads(JSON.stringify({ name: name || null, elevation: elevation || null })); result = handle_create_building_level(**params); print(json.dumps(result))';
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            return { content: [{ type: 'text', text: parsed.success ? (0, result_formatters_1.formatBuildingLevel)(parsed.data) : 'Error: ' + parsed.error }] };
+        }
+        catch (error) {
+            return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+        }
+    });
+}
+function getBuildingHierarchyTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('get_building_hierarchy', 'Get building/floor/space hierarchy.', {}, async () => {
+        const code = 'from llm_bridge.bim_handlers import handle_get_building_hierarchy; import json; result = handle_get_building_hierarchy(); print(json.dumps(result))';
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            return { content: [{ type: 'text', text: parsed.success ? (0, result_formatters_1.formatBuildingHierarchy)(parsed.data) : 'Error: ' + parsed.error }] };
+        }
+        catch (error) {
+            return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+        }
+    });
+}
+function createWallTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('create_wall', 'Create a parametric wall.', {
+        placement: zod_1.z.union([zod_1.z.object({ x: zod_1.z.number(), y: zod_1.z.number(), z: zod_1.z.number() }), zod_1.z.array(zod_1.z.number()), zod_1.z.string()]).optional().describe('Placement as dict/list/Placement'),
+        length: zod_1.z.number().optional().describe('Wall length'),
+        width: zod_1.z.number().optional().describe('Wall width (thickness)'),
+        height: zod_1.z.number().optional().describe('Wall height'),
+        name: zod_1.z.string().optional().describe('Name for the wall'),
+    }, async (input) => {
+        const { placement, length, width, height, name } = input;
+        const code = 'from llm_bridge.bim_handlers import handle_create_wall; import json; params = json.loads(JSON.stringify({ placement: placement || null, length: length || null, width: width || null, height: height || null, name: name || null })); result = handle_create_wall(**params); print(json.dumps(result))';
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            return { content: [{ type: 'text', text: parsed.success ? (0, result_formatters_1.formatWallCreation)(parsed.data) : 'Error: ' + parsed.error }] };
+        }
+        catch (error) {
+            return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+        }
+    });
+}
+function createWindowTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('create_window', 'Create a window in a wall.', {
+        width: zod_1.z.number().optional().describe('Window width'),
+        height: zod_1.z.number().optional().describe('Window height'),
+        placement: zod_1.z.union([zod_1.z.object({ x: zod_1.z.number(), y: zod_1.z.number(), z: zod_1.z.number() }), zod_1.z.array(zod_1.z.number()), zod_1.z.string()]).optional().describe('Placement as dict/list/Placement'),
+        name: zod_1.z.string().optional().describe('Name for the window'),
+    }, async (input) => {
+        const { width, height, placement, name } = input;
+        const code = 'from llm_bridge.bim_handlers import handle_create_window; import json; params = json.loads(JSON.stringify({ width: width || null, height: height || null, placement: placement || null, name: name || null })); result = handle_create_window(**params); print(json.dumps(result))';
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            return { content: [{ type: 'text', text: parsed.success ? (0, result_formatters_1.formatWindowCreation)(parsed.data) : 'Error: ' + parsed.error }] };
+        }
+        catch (error) {
+            return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+        }
+    });
+}
+function createDoorTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('create_door', 'Create a door in a wall.', {
+        width: zod_1.z.number().optional().describe('Door width'),
+        height: zod_1.z.number().optional().describe('Door height'),
+        placement: zod_1.z.union([zod_1.z.object({ x: zod_1.z.number(), y: zod_1.z.number(), z: zod_1.z.number() }), zod_1.z.array(zod_1.z.number()), zod_1.z.string()]).optional().describe('Placement as dict/list/Placement'),
+        name: zod_1.z.string().optional().describe('Name for the door'),
+    }, async (input) => {
+        const { width, height, placement, name } = input;
+        const code = 'from llm_bridge.bim_handlers import handle_create_door; import json; params = json.loads(JSON.stringify({ width: width || null, height: height || null, placement: placement || null, name: name || null })); result = handle_create_door(**params); print(json.dumps(result))';
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            return { content: [{ type: 'text', text: parsed.success ? (0, result_formatters_1.formatDoorCreation)(parsed.data) : 'Error: ' + parsed.error }] };
+        }
+        catch (error) {
+            return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+        }
+    });
+}
+function createRoofTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('create_roof', 'Create a roof from a profile.', {
+        base_object: zod_1.z.string().optional().describe('Name of base object for roof profile'),
+        angle: zod_1.z.number().optional().describe('Roof angle in degrees'),
+        name: zod_1.z.string().optional().describe('Name for the roof'),
+    }, async (input) => {
+        const { base_object, angle, name } = input;
+        const code = 'from llm_bridge.bim_handlers import handle_create_roof; import json; params = json.loads(JSON.stringify({ base_object: base_object || null, angle: angle || null, name: name || null })); result = handle_create_roof(**params); print(json.dumps(result))';
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            return { content: [{ type: 'text', text: parsed.success ? (0, result_formatters_1.formatRoofCreation)(parsed.data) : 'Error: ' + parsed.error }] };
+        }
+        catch (error) {
+            return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+        }
+    });
+}
+function createStairsTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('create_stairs', 'Create a staircase.', {
+        length: zod_1.z.number().optional().describe('Stairs length'),
+        width: zod_1.z.number().optional().describe('Stairs width'),
+        num_steps: zod_1.z.number().optional().describe('Number of steps'),
+        name: zod_1.z.string().optional().describe('Name for the stairs'),
+    }, async (input) => {
+        const { length, width, num_steps, name } = input;
+        const code = 'from llm_bridge.bim_handlers import handle_create_stairs; import json; params = json.loads(JSON.stringify({ length: length || null, width: width || null, num_steps: num_steps || null, name: name || null })); result = handle_create_stairs(**params); print(json.dumps(result))';
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            return { content: [{ type: 'text', text: parsed.success ? (0, result_formatters_1.formatStairsCreation)(parsed.data) : 'Error: ' + parsed.error }] };
+        }
+        catch (error) {
+            return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+        }
+    });
+}
+function createCurtainWallTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('create_curtain_wall', 'Create a curtain wall system.', {
+        base_object: zod_1.z.string().optional().describe('Name of base object for curtain wall'),
+        name: zod_1.z.string().optional().describe('Name for the curtain wall'),
+    }, async (input) => {
+        const { base_object, name } = input;
+        const code = 'from llm_bridge.bim_handlers import handle_create_curtain_wall; import json; params = json.loads(JSON.stringify({ base_object: base_object || null, name: name || null })); result = handle_create_curtain_wall(**params); print(json.dumps(result))';
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            return { content: [{ type: 'text', text: parsed.success ? (0, result_formatters_1.formatCurtainWallCreation)(parsed.data) : 'Error: ' + parsed.error }] };
+        }
+        catch (error) {
+            return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+        }
+    });
+}
+function createSpaceTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('create_space', 'Create a space/room.', {
+        placement: zod_1.z.union([zod_1.z.object({ x: zod_1.z.number(), y: zod_1.z.number(), z: zod_1.z.number() }), zod_1.z.array(zod_1.z.number()), zod_1.z.string()]).optional().describe('Placement as dict/list/Placement'),
+        name: zod_1.z.string().optional().describe('Name for the space'),
+    }, async (input) => {
+        const { placement, name } = input;
+        const code = 'from llm_bridge.bim_handlers import handle_create_space; import json; params = json.loads(JSON.stringify({ placement: placement || null, name: name || null })); result = handle_create_space(**params); print(json.dumps(result))';
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            return { content: [{ type: 'text', text: parsed.success ? (0, result_formatters_1.formatSpaceCreation)(parsed.data) : 'Error: ' + parsed.error }] };
+        }
+        catch (error) {
+            return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+        }
+    });
+}
+function createColumnTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('create_column', 'Create a vertical column.', {
+        placement: zod_1.z.union([zod_1.z.object({ x: zod_1.z.number(), y: zod_1.z.number(), z: zod_1.z.number() }), zod_1.z.array(zod_1.z.number()), zod_1.z.string()]).optional().describe('Placement as dict/list/Placement'),
+        width: zod_1.z.number().optional().describe('Column width'),
+        height: zod_1.z.number().optional().describe('Column height'),
+        name: zod_1.z.string().optional().describe('Name for the column'),
+    }, async (input) => {
+        const { placement, width, height, name } = input;
+        const code = 'from llm_bridge.bim_handlers import handle_create_column; import json; params = json.loads(JSON.stringify({ placement: placement || null, width: width || null, height: height || null, name: name || null })); result = handle_create_column(**params); print(json.dumps(result))';
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            return { content: [{ type: 'text', text: parsed.success ? (0, result_formatters_1.formatColumnCreation)(parsed.data) : 'Error: ' + parsed.error }] };
+        }
+        catch (error) {
+            return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+        }
+    });
+}
+function createBeamTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('create_beam', 'Create a horizontal beam.', {
+        start: zod_1.z.union([zod_1.z.object({ x: zod_1.z.number(), y: zod_1.z.number(), z: zod_1.z.number() }), zod_1.z.array(zod_1.z.number())]).optional().describe('Start point as dict/list/Vector'),
+        end: zod_1.z.union([zod_1.z.object({ x: zod_1.z.number(), y: zod_1.z.number(), z: zod_1.z.number() }), zod_1.z.array(zod_1.z.number())]).optional().describe('End point as dict/list/Vector'),
+        width: zod_1.z.number().optional().describe('Beam width'),
+        height: zod_1.z.number().optional().describe('Beam height'),
+        name: zod_1.z.string().optional().describe('Name for the beam'),
+    }, async (input) => {
+        const { start, end, width, height, name } = input;
+        const code = 'from llm_bridge.bim_handlers import handle_create_beam; import json; params = json.loads(JSON.stringify({ start: start || null, end: end || null, width: width || null, height: height || null, name: name || null })); result = handle_create_beam(**params); print(json.dumps(result))';
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            return { content: [{ type: 'text', text: parsed.success ? (0, result_formatters_1.formatBeamCreation)(parsed.data) : 'Error: ' + parsed.error }] };
+        }
+        catch (error) {
+            return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+        }
+    });
+}
+function createSlabTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('create_slab', 'Create a floor/roof slab.', {
+        base_object: zod_1.z.string().optional().describe('Name of base object for slab'),
+        thickness: zod_1.z.number().optional().describe('Slab thickness'),
+        name: zod_1.z.string().optional().describe('Name for the slab'),
+    }, async (input) => {
+        const { base_object, thickness, name } = input;
+        const code = 'from llm_bridge.bim_handlers import handle_create_slab; import json; params = json.loads(JSON.stringify({ base_object: base_object || null, thickness: thickness || null, name: name || null })); result = handle_create_slab(**params); print(json.dumps(result))';
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            return { content: [{ type: 'text', text: parsed.success ? (0, result_formatters_1.formatSlabCreation)(parsed.data) : 'Error: ' + parsed.error }] };
+        }
+        catch (error) {
+            return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+        }
+    });
+}
+function createFrameTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('create_frame', 'Create a frame structure.', {
+        base_object: zod_1.z.string().optional().describe('Name of base sketch/object for frame'),
+        profile: zod_1.z.string().optional().describe('Name of profile object'),
+        name: zod_1.z.string().optional().describe('Name for the frame'),
+    }, async (input) => {
+        const { base_object, profile, name } = input;
+        const code = 'from llm_bridge.bim_handlers import handle_create_frame; import json; params = json.loads(JSON.stringify({ base_object: base_object || null, profile: profile || null, name: name || null })); result = handle_create_frame(**params); print(json.dumps(result))';
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            return { content: [{ type: 'text', text: parsed.success ? (0, result_formatters_1.formatFrameCreation)(parsed.data) : 'Error: ' + parsed.error }] };
+        }
+        catch (error) {
+            return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+        }
+    });
+}
+function createTrussTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('create_truss', 'Create a truss.', {
+        placement: zod_1.z.union([zod_1.z.object({ x: zod_1.z.number(), y: zod_1.z.number(), z: zod_1.z.number() }), zod_1.z.array(zod_1.z.number()), zod_1.z.string()]).optional().describe('Placement as dict/list/Placement'),
+        length: zod_1.z.number().optional().describe('Truss length'),
+        height: zod_1.z.number().optional().describe('Truss height'),
+        name: zod_1.z.string().optional().describe('Name for the truss'),
+    }, async (input) => {
+        const { placement, length, height, name } = input;
+        const code = 'from llm_bridge.bim_handlers import handle_create_truss; import json; params = json.loads(JSON.stringify({ placement: placement || null, length: length || null, height: height || null, name: name || null })); result = handle_create_truss(**params); print(json.dumps(result))';
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            return { content: [{ type: 'text', text: parsed.success ? (0, result_formatters_1.formatTrussCreation)(parsed.data) : 'Error: ' + parsed.error }] };
+        }
+        catch (error) {
+            return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+        }
+    });
+}
+function createFenceTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('create_fence', 'Create a fence.', {
+        placement: zod_1.z.union([zod_1.z.object({ x: zod_1.z.number(), y: zod_1.z.number(), z: zod_1.z.number() }), zod_1.z.array(zod_1.z.number()), zod_1.z.string()]).optional().describe('Placement as dict/list/Placement'),
+        length: zod_1.z.number().optional().describe('Fence length'),
+        height: zod_1.z.number().optional().describe('Fence height'),
+        name: zod_1.z.string().optional().describe('Name for the fence'),
+    }, async (input) => {
+        const { placement, length, height, name } = input;
+        const code = 'from llm_bridge.bim_handlers import handle_create_fence; import json; params = json.loads(JSON.stringify({ placement: placement || null, length: length || null, height: height || null, name: name || null })); result = handle_create_fence(**params); print(json.dumps(result))';
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            return { content: [{ type: 'text', text: parsed.success ? (0, result_formatters_1.formatFenceCreation)(parsed.data) : 'Error: ' + parsed.error }] };
+        }
+        catch (error) {
+            return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+        }
+    });
+}
+function createEquipmentTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('create_equipment', 'Create equipment/furniture.', {
+        base_object: zod_1.z.string().optional().describe('Name of base object for equipment'),
+        placement: zod_1.z.union([zod_1.z.object({ x: zod_1.z.number(), y: zod_1.z.number(), z: zod_1.z.number() }), zod_1.z.array(zod_1.z.number()), zod_1.z.string()]).optional().describe('Placement as dict/list/Placement'),
+        name: zod_1.z.string().optional().describe('Name for the equipment'),
+    }, async (input) => {
+        const { base_object, placement, name } = input;
+        const code = 'from llm_bridge.bim_handlers import handle_create_equipment; import json; params = json.loads(JSON.stringify({ base_object: base_object || null, placement: placement || null, name: name || null })); result = handle_create_equipment(**params); print(json.dumps(result))';
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            return { content: [{ type: 'text', text: parsed.success ? (0, result_formatters_1.formatEquipmentCreation)(parsed.data) : 'Error: ' + parsed.error }] };
+        }
+        catch (error) {
+            return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+        }
+    });
+}
+function createPipeConnectorTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('create_pipe_connector', 'Create a pipe connector fitting.', {
+        objects: zod_1.z.array(zod_1.z.string()).optional().describe('List of pipe object names to connect'),
+        name: zod_1.z.string().optional().describe('Name for the connector'),
+    }, async (input) => {
+        const { objects, name } = input;
+        const code = 'from llm_bridge.bim_handlers import handle_create_pipe_connector; import json; params = json.loads(JSON.stringify({ objects: objects || null, name: name || null })); result = handle_create_pipe_connector(**params); print(json.dumps(result))';
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            return { content: [{ type: 'text', text: parsed.success ? (0, result_formatters_1.formatPipeConnectorCreation)(parsed.data) : 'Error: ' + parsed.error }] };
+        }
+        catch (error) {
+            return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+        }
+    });
+}
+function createPanelTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('create_panel', 'Create a panel/board.', {
+        base_object: zod_1.z.string().optional().describe('Name of base object for panel'),
+        name: zod_1.z.string().optional().describe('Name for the panel'),
+    }, async (input) => {
+        const { base_object, name } = input;
+        const code = 'from llm_bridge.bim_handlers import handle_create_panel; import json; params = json.loads(JSON.stringify({ base_object: base_object || null, name: name || null })); result = handle_create_panel(**params); print(json.dumps(result))';
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            return { content: [{ type: 'text', text: parsed.success ? (0, result_formatters_1.formatPanelCreation)(parsed.data) : 'Error: ' + parsed.error }] };
+        }
+        catch (error) {
+            return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+        }
+    });
+}
+function createAxisTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('create_axis', 'Create an axis system.', {
+        num: zod_1.z.number().optional().describe('Number of axes'),
+        spacing: zod_1.z.number().optional().describe('Spacing between axes'),
+        name: zod_1.z.string().optional().describe('Name for the axis system'),
+    }, async (input) => {
+        const { num, spacing, name } = input;
+        const code = 'from llm_bridge.bim_handlers import handle_create_axis; import json; params = json.loads(JSON.stringify({ num: num || null, spacing: spacing || null, name: name || null })); result = handle_create_axis(**params); print(json.dumps(result))';
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            return { content: [{ type: 'text', text: parsed.success ? (0, result_formatters_1.formatAxisCreation)(parsed.data) : 'Error: ' + parsed.error }] };
+        }
+        catch (error) {
+            return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+        }
+    });
+}
+function createGridTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('create_grid', 'Create a reference grid.', {
+        placement: zod_1.z.union([zod_1.z.object({ x: zod_1.z.number(), y: zod_1.z.number(), z: zod_1.z.number() }), zod_1.z.array(zod_1.z.number()), zod_1.z.string()]).optional().describe('Placement as dict/list/Placement'),
+        name: zod_1.z.string().optional().describe('Name for the grid'),
+    }, async (input) => {
+        const { placement, name } = input;
+        const code = 'from llm_bridge.bim_handlers import handle_create_grid; import json; params = json.loads(JSON.stringify({ placement: placement || null, name: name || null })); result = handle_create_grid(**params); print(json.dumps(result))';
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            return { content: [{ type: 'text', text: parsed.success ? (0, result_formatters_1.formatGridCreation)(parsed.data) : 'Error: ' + parsed.error }] };
+        }
+        catch (error) {
+            return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+        }
+    });
+}
+function createSectionPlaneTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('create_section_plane', 'Create a section plane for views.', {
+        object_names: zod_1.z.array(zod_1.z.string()).optional().describe('List of object names to include in section'),
+        name: zod_1.z.string().optional().describe('Name for the section plane'),
+    }, async (input) => {
+        const { object_names, name } = input;
+        const code = 'from llm_bridge.bim_handlers import handle_create_section_plane; import json; params = json.loads(JSON.stringify({ object_names: object_names || null, name: name || null })); result = handle_create_section_plane(**params); print(json.dumps(result))';
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            return { content: [{ type: 'text', text: parsed.success ? (0, result_formatters_1.formatSectionPlaneCreation)(parsed.data) : 'Error: ' + parsed.error }] };
+        }
+        catch (error) {
+            return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+        }
+    });
+}
+function createScheduleTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('create_schedule', 'Create a quantity takeoff schedule.', {
+        object_names: zod_1.z.array(zod_1.z.string()).optional().describe('List of object names to include in schedule'),
+        name: zod_1.z.string().optional().describe('Name for the schedule'),
+    }, async (input) => {
+        const { object_names, name } = input;
+        const code = 'from llm_bridge.bim_handlers import handle_create_schedule; import json; params = json.loads(JSON.stringify({ object_names: object_names || null, name: name || null })); result = handle_create_schedule(**params); print(json.dumps(result))';
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            return { content: [{ type: 'text', text: parsed.success ? (0, result_formatters_1.formatScheduleCreation)(parsed.data) : 'Error: ' + parsed.error }] };
+        }
+        catch (error) {
+            return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+        }
+    });
+}
+function setIfcTypeTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('set_ifc_type', 'Set IFC entity type on an object.', {
+        object_name: zod_1.z.string().describe('Name of the object'),
+        ifc_type: zod_1.z.string().describe('IFC type string (e.g., Wall, Column, Beam)'),
+    }, async (input) => {
+        const { object_name, ifc_type } = input;
+        const code = 'from llm_bridge.bim_handlers import handle_set_ifc_type; import json; params = json.loads(JSON.stringify({ object_name: object_name, ifc_type: ifc_type })); result = handle_set_ifc_type(**params); print(json.dumps(result))';
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            return { content: [{ type: 'text', text: parsed.success ? (0, result_formatters_1.formatIfcProperties)(parsed.data) : 'Error: ' + parsed.error }] };
+        }
+        catch (error) {
+            return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+        }
+    });
+}
+function getIfcPropertiesTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('get_ifc_properties', 'Get IFC properties from an object.', {
+        object_name: zod_1.z.string().describe('Name of the object'),
+    }, async (input) => {
+        const { object_name } = input;
+        const code = 'from llm_bridge.bim_handlers import handle_get_ifc_properties; import json; params = json.loads(JSON.stringify({ object_name: object_name })); result = handle_get_ifc_properties(**params); print(json.dumps(result))';
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            return { content: [{ type: 'text', text: parsed.success ? (0, result_formatters_1.formatIfcProperties)(parsed.data) : 'Error: ' + parsed.error }] };
+        }
+        catch (error) {
+            return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+        }
+    });
+}
+function setIfcPropertyTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('set_ifc_property', 'Set an IFC property on an object.', {
+        object_name: zod_1.z.string().describe('Name of the object'),
+        prop_name: zod_1.z.string().describe('Property name to set'),
+        value: zod_1.z.string().describe('Property value to set'),
+    }, async (input) => {
+        const { object_name, prop_name, value } = input;
+        const code = 'from llm_bridge.bim_handlers import handle_set_ifc_property; import json; params = json.loads(JSON.stringify({ object_name: object_name, prop_name: prop_name, value: value })); result = handle_set_ifc_property(**params); print(json.dumps(result))';
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            return { content: [{ type: 'text', text: parsed.success ? (0, result_formatters_1.formatIfcProperties)(parsed.data) : 'Error: ' + parsed.error }] };
+        }
+        catch (error) {
+            return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+        }
+    });
+}
+function getBimMaterialTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('get_bim_material', 'Get material from a BIM object.', {
+        object_name: zod_1.z.string().describe('Name of the object'),
+    }, async (input) => {
+        const { object_name } = input;
+        const code = 'from llm_bridge.bim_handlers import handle_get_bim_material; import json; params = json.loads(JSON.stringify({ object_name: object_name })); result = handle_get_bim_material(**params); print(json.dumps(result))';
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            return { content: [{ type: 'text', text: parsed.success ? (0, result_formatters_1.formatMaterialAssignment)(parsed.data) : 'Error: ' + parsed.error }] };
+        }
+        catch (error) {
+            return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+        }
+    });
+}
+function assignMaterialTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('assign_material', 'Assign material to a BIM object.', {
+        object_name: zod_1.z.string().describe('Name of the object'),
+        material_name: zod_1.z.string().describe('Name of the material to assign'),
+    }, async (input) => {
+        const { object_name, material_name } = input;
+        const code = 'from llm_bridge.bim_handlers import handle_assign_material; import json; params = json.loads(JSON.stringify({ object_name: object_name, material_name: material_name })); result = handle_assign_material(**params); print(json.dumps(result))';
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            return { content: [{ type: 'text', text: parsed.success ? (0, result_formatters_1.formatMaterialAssignment)(parsed.data) : 'Error: ' + parsed.error }] };
+        }
+        catch (error) {
+            return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+        }
+    });
+}
+function quickWallTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('quick_wall', 'Quick wall creation from a line.', {
+        start: zod_1.z.union([zod_1.z.object({ x: zod_1.z.number(), y: zod_1.z.number(), z: zod_1.z.number() }), zod_1.z.array(zod_1.z.number())]).optional().describe('Start point as dict/list/Vector'),
+        end: zod_1.z.union([zod_1.z.object({ x: zod_1.z.number(), y: zod_1.z.number(), z: zod_1.z.number() }), zod_1.z.array(zod_1.z.number())]).optional().describe('End point as dict/list/Vector'),
+        height: zod_1.z.number().optional().describe('Wall height'),
+        thickness: zod_1.z.number().optional().describe('Wall thickness (width)'),
+        name: zod_1.z.string().optional().describe('Name for the wall'),
+    }, async (input) => {
+        const { start, end, height, thickness, name } = input;
+        const code = 'from llm_bridge.bim_handlers import handle_quick_wall; import json; params = json.loads(JSON.stringify({ start: start || null, end: end || null, height: height || null, thickness: thickness || null, name: name || null })); result = handle_quick_wall(**params); print(json.dumps(result))';
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            return { content: [{ type: 'text', text: parsed.success ? (0, result_formatters_1.formatQuickWall)(parsed.data) : 'Error: ' + parsed.error }] };
+        }
+        catch (error) {
+            return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+        }
+    });
+}
+function quickWindowTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('quick_window', 'Insert a window into a wall at a specific position.', {
+        wall_name: zod_1.z.string().describe('Name of the wall to insert window into'),
+        width: zod_1.z.number().optional().describe('Window width'),
+        height: zod_1.z.number().optional().describe('Window height'),
+        position: zod_1.z.union([zod_1.z.number(), zod_1.z.object({ x: zod_1.z.number(), y: zod_1.z.number(), z: zod_1.z.number() })]).optional().describe('Position along wall (0-1 normalized or dict with x,y,z)'),
+    }, async (input) => {
+        const { wall_name, width, height, position } = input;
+        const code = 'from llm_bridge.bim_handlers import handle_quick_window; import json; params = json.loads(JSON.stringify({ wall_name: wall_name, width: width || null, height: height || null, position: position || null })); result = handle_quick_window(**params); print(json.dumps(result))';
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            return { content: [{ type: 'text', text: parsed.success ? (0, result_formatters_1.formatQuickWindow)(parsed.data) : 'Error: ' + parsed.error }] };
+        }
+        catch (error) {
+            return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+        }
+    });
+}
+function quickDoorTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('quick_door', 'Insert a door into a wall at a specific position.', {
+        wall_name: zod_1.z.string().describe('Name of the wall to insert door into'),
+        width: zod_1.z.number().optional().describe('Door width'),
+        height: zod_1.z.number().optional().describe('Door height'),
+        position: zod_1.z.union([zod_1.z.number(), zod_1.z.object({ x: zod_1.z.number(), y: zod_1.z.number(), z: zod_1.z.number() })]).optional().describe('Position along wall (0-1 normalized or dict with x,y,z)'),
+    }, async (input) => {
+        const { wall_name, width, height, position } = input;
+        const code = 'from llm_bridge.bim_handlers import handle_quick_door; import json; params = json.loads(JSON.stringify({ wall_name: wall_name, width: width || null, height: height || null, position: position || null })); result = handle_quick_door(**params); print(json.dumps(result))';
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            return { content: [{ type: 'text', text: parsed.success ? (0, result_formatters_1.formatQuickDoor)(parsed.data) : 'Error: ' + parsed.error }] };
+        }
+        catch (error) {
+            return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+        }
+    });
+}
+function quickFloorTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('quick_floor', 'Add a floor/level to a building.', {
+        building_name: zod_1.z.string().describe('Name of the building'),
+        level: zod_1.z.string().optional().describe('Level name or number'),
+        objects: zod_1.z.array(zod_1.z.string()).optional().describe('List of object names to add to the floor'),
+    }, async (input) => {
+        const { building_name, level, objects } = input;
+        const code = 'from llm_bridge.bim_handlers import handle_quick_floor; import json; params = json.loads(JSON.stringify({ building_name: building_name, level: level || null, objects: objects || null })); result = handle_quick_floor(**params); print(json.dumps(result))';
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            return { content: [{ type: 'text', text: parsed.success ? (0, result_formatters_1.formatQuickFloor)(parsed.data) : 'Error: ' + parsed.error }] };
+        }
+        catch (error) {
+            return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+        }
+    });
+}
+// ============================================================================
+// Error Handling and Recovery Tools
+// ============================================================================
+function parseErrorTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('parse_error', `Parse a Python/FreeCAD error text into structured data.
+
+Parameters:
+- error_text (required): The error text or traceback to parse
+
+Returns:
+- success: Whether parsing succeeded
+- error_type: Type of error (AttributeError, TypeError, etc.)
+- error_message: The error message
+- line_number: Line number where error occurred (if available)
+- file_name: File where error occurred (if available)
+- context: Surrounding context of the error
+
+Use this tool to parse raw error output into structured information for better analysis.`, {
+        error_text: zod_1.z.string().describe('The error text or traceback to parse'),
+    }, async (input) => {
+        const { error_text } = input;
+        const code = `
+from llm_bridge.error_handlers import handle_parse_error
+import json
+params = json.loads('${JSON.stringify({ error_text })}')
+result = handle_parse_error(error_text=params['error_text'])
+print(json.dumps(result))
+`.trim();
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            const formatted = (0, result_formatters_1.formatErrorParse)(parsed.data);
+            return { content: [{ type: 'text', text: parsed.success ? formatted : 'Error: ' + parsed.error }] };
+        }
+        catch (error) {
+            return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+        }
+    });
+}
+function categorizeErrorTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('categorize_error', `Categorize an error into FreeCAD-specific error categories.
+
+Parameters:
+- error_text (required): The error text or traceback to categorize
+
+Returns:
+- success: Whether categorization succeeded
+- category: Error category (ATTRIBUTE_ERROR, TYPE_ERROR, VALUE_ERROR, etc.)
+- description: Description of the error category
+- freecad_specific: Whether this is a FreeCAD-specific error
+- suggestions: Initial suggestions for fixing
+
+Error Categories:
+- ATTRIBUTE_ERROR: Object does not have the requested attribute
+- TYPE_ERROR: Wrong type for operation
+- VALUE_ERROR: Invalid value provided to function
+- REFERENCE_ERROR: Referenced object not found
+- CONSTRAINT_ERROR: Geometric constraint conflict
+- SOLVER_ERROR: Sketch solver failed to converge
+- BOOLEAN_ERROR: Boolean operation failed
+- DOCUMENT_ERROR: Document operation failed
+- PLACEMENT_ERROR: Invalid placement/position
+- EXPRESSION_ERROR: Invalid expression syntax
+- PERMISSION_ERROR: Object is locked or read-only
+- MEMORY_ERROR: Insufficient memory`, {
+        error_text: zod_1.z.string().describe('The error text or traceback to categorize'),
+    }, async (input) => {
+        const { error_text } = input;
+        const code = `
+from llm_bridge.error_handlers import handle_get_error_category
+import json
+params = json.loads('${JSON.stringify({ error_text })}')
+result = handle_get_error_category(error_text=params['error_text'])
+print(json.dumps(result))
+`.trim();
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            const formatted = (0, result_formatters_1.formatErrorCategory)(parsed.data);
+            return { content: [{ type: 'text', text: parsed.success ? formatted : 'Error: ' + parsed.error }] };
+        }
+        catch (error) {
+            return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+        }
+    });
+}
+function extractTracebackInfoTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('extract_traceback_info', `Extract structured information from a Python traceback.
+
+Parameters:
+- traceback_text (required): The traceback text to analyze
+
+Returns:
+- success: Whether extraction succeeded
+- file_name: Name of the file where error occurred
+- line_number: Line number where error occurred
+- function_name: Name of the function where error occurred
+- error_type: Type of exception
+- error_message: The exception message
+- stack_frames: Array of stack frames with file, line, and function info
+
+Use this tool to extract detailed location information from tracebacks.`, {
+        traceback_text: zod_1.z.string().describe('The traceback text to analyze'),
+    }, async (input) => {
+        const { traceback_text } = input;
+        const code = `
+from llm_bridge.error_handlers import handle_extract_traceback_info
+import json
+params = json.loads('${JSON.stringify({ traceback_text })}')
+result = handle_extract_traceback_info(traceback_text=params['traceback_text'])
+print(json.dumps(result))
+`.trim();
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            const formatted = (0, result_formatters_1.formatTracebackInfo)(parsed.data);
+            return { content: [{ type: 'text', text: parsed.success ? formatted : 'Error: ' + parsed.error }] };
+        }
+        catch (error) {
+            return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+        }
+    });
+}
+function analyzeErrorContextTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('analyze_error_context', `Analyze an error in the context of the operation that was attempted.
+
+Parameters:
+- error_text (required): The error text or traceback
+- operation_type (optional): Type of operation that failed (pad, pocket, sketch, etc.)
+
+Returns:
+- success: Whether analysis succeeded
+- operation: The operation that was attempted
+- error_category: Categorized error type
+- likely_causes: List of likely causes
+- suggested_fixes: Suggested fixes based on context
+- related_operations: Operations that might have similar issues
+
+Use this tool to get contextual analysis of errors with operation-specific guidance.`, {
+        error_text: zod_1.z.string().describe('The error text or traceback'),
+        operation_type: zod_1.z.string().optional().describe('Type of operation that failed'),
+    }, async (input) => {
+        const { error_text, operation_type } = input;
+        const code = `
+from llm_bridge.error_handlers import handle_analyze_error_context
+import json
+params = json.loads('${JSON.stringify({ error_text, operation_type })}')
+result = handle_analyze_error_context(
+    error_text=params['error_text'],
+    operation_type=params.get('operation_type')
+)
+print(json.dumps(result))
+`.trim();
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            const formatted = (0, result_formatters_1.formatErrorContext)(parsed.data);
+            return { content: [{ type: 'text', text: parsed.success ? formatted : 'Error: ' + parsed.error }] };
+        }
+        catch (error) {
+            return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+        }
+    });
+}
+function getRecoverySuggestionsTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('get_recovery_suggestions', `Get recovery suggestions for a failed operation.
+
+Parameters:
+- error_text (required): The error text or traceback
+- operation (optional): The operation that was attempted
+
+Returns:
+- success: Whether suggestions were generated
+- suggestions: Array of suggested recovery actions
+- recovery_priority: Recommended order of trying suggestions
+- can_retry: Whether the operation can be retried safely
+- alternative_approaches: Alternative methods to achieve the same goal
+
+Use this tool after an operation fails to get actionable recovery steps.`, {
+        error_text: zod_1.z.string().describe('The error text or traceback'),
+        operation: zod_1.z.string().optional().describe('The operation that was attempted'),
+    }, async (input) => {
+        const { error_text, operation } = input;
+        const code = `
+from llm_bridge.error_handlers import handle_get_recovery_suggestions
+import json
+params = json.loads('${JSON.stringify({ error_text, operation })}')
+result = handle_get_recovery_suggestions(
+    error_text=params['error_text'],
+    operation=params.get('operation')
+)
+print(json.dumps(result))
+`.trim();
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            const formatted = (0, result_formatters_1.formatRecoverySuggestions)(parsed.data);
+            return { content: [{ type: 'text', text: parsed.success ? formatted : 'Error: ' + parsed.error }] };
+        }
+        catch (error) {
+            return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+        }
+    });
+}
+function validateOperationTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('validate_operation', `Validate that an operation can succeed before attempting it.
+
+Parameters:
+- object_name (required): Name of the object to validate
+- operation (required): Type of operation to validate (pad, pocket, sketch, etc.)
+
+Returns:
+- success: Whether validation succeeded
+- is_valid: Whether the operation can proceed
+- validation_errors: List of validation issues
+- warnings: Warnings that don't block but should be noted
+- suggestions: Suggestions to fix validation issues
+
+Use this tool before attempting risky operations to prevent errors.`, {
+        object_name: zod_1.z.string().describe('Name of the object to validate'),
+        operation: zod_1.z.string().describe('Type of operation to validate'),
+    }, async (input) => {
+        const { object_name, operation } = input;
+        const code = `
+from llm_bridge.error_handlers import handle_validate_operation
+import json
+params = json.loads('${JSON.stringify({ object_name, operation })}')
+result = handle_validate_operation(
+    object_name=params['object_name'],
+    operation=params['operation']
+)
+print(json.dumps(result))
+`.trim();
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            const formatted = (0, result_formatters_1.formatValidationResult)(parsed.data);
+            return { content: [{ type: 'text', text: parsed.success ? formatted : 'Error: ' + parsed.error }] };
+        }
+        catch (error) {
+            return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+        }
+    });
+}
+function getCommonErrorsTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('get_common_errors', `Get common errors for a given operation type.
+
+Parameters:
+- operation_type (required): Type of operation (pad, pocket, boolean, sketch, etc.)
+
+Returns:
+- success: Whether query succeeded
+- operation: The operation type queried
+- common_errors: Array of common errors for this operation
+- error_patterns: Patterns to recognize these errors
+- solutions: Solutions for each common error
+
+Use this tool to learn about frequent issues with specific operations.`, {
+        operation_type: zod_1.z.string().describe('Type of operation (pad, pocket, boolean, sketch, etc.)'),
+    }, async (input) => {
+        const { operation_type } = input;
+        const code = `
+from llm_bridge.error_handlers import handle_get_common_errors
+import json
+params = json.loads('${JSON.stringify({ operation_type })}')
+result = handle_get_common_errors(operation_type=params['operation_type'])
+print(json.dumps(result))
+`.trim();
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            const formatted = (0, result_formatters_1.formatCommonErrors)(parsed.data);
+            return { content: [{ type: 'text', text: parsed.success ? formatted : 'Error: ' + parsed.error }] };
+        }
+        catch (error) {
+            return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+        }
+    });
+}
+function getOperationHistoryTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('get_operation_history', `Get recent operations with their status.
+
+Parameters:
+- count (optional): Number of operations to return (default: 10)
+
+Returns:
+- success: Whether query succeeded
+- operations: Array of recent operations
+- total_count: Total number of tracked operations
+
+Each operation includes:
+- timestamp: When the operation occurred
+- operation_type: Type of operation
+- object_name: Object the operation was performed on
+- status: success, failed, or pending
+- error: Error message if failed`, {
+        count: zod_1.z.number().optional().default(10).describe('Number of operations to return'),
+    }, async (input) => {
+        const { count } = input;
+        const code = `
+from llm_bridge.error_handlers import handle_get_operation_history
+import json
+params = json.loads('${JSON.stringify({ count })}')
+result = handle_get_operation_history(count=params.get('count', 10))
+print(json.dumps(result))
+`.trim();
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            const formatted = (0, result_formatters_1.formatOperationHistory)(parsed.data);
+            return { content: [{ type: 'text', text: parsed.success ? formatted : 'Error: ' + parsed.error }] };
+        }
+        catch (error) {
+            return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+        }
+    });
+}
+function getLastErrorTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('get_last_error', `Get the most recent error details.
+
+Parameters: None
+
+Returns:
+- success: Whether query succeeded
+- error: The most recent error if any
+- error_type: Type of error
+- error_message: Error message
+- timestamp: When the error occurred
+- operation: The operation that caused the error
+- context: Additional context about the error`, {
+    // No parameters needed
+    }, async () => {
+        const code = `
+from llm_bridge.error_handlers import handle_get_last_error
+import json
+result = handle_get_last_error()
+print(json.dumps(result))
+`.trim();
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            const formatted = (0, result_formatters_1.formatLastError)(parsed.data);
+            return { content: [{ type: 'text', text: parsed.success ? formatted : 'Error: ' + parsed.error }] };
+        }
+        catch (error) {
+            return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+        }
+    });
+}
+function clearErrorHistoryTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('clear_error_history', `Clear the error tracking history.
+
+Parameters: None
+
+Returns:
+- success: Whether clearing succeeded
+- cleared_count: Number of errors that were cleared
+- message: Status message
+
+Use this tool to reset error tracking after resolving issues.`, {
+    // No parameters needed
+    }, async () => {
+        const code = `
+from llm_bridge.error_handlers import handle_clear_error_history
+import json
+result = handle_clear_error_history()
+print(json.dumps(result))
+`.trim();
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            if (parsed.success) {
+                return { content: [{ type: 'text', text: `Cleared ${parsed.cleared_count || 0} error(s)\n${parsed.message || ''}` }] };
+            }
+            else {
+                return { content: [{ type: 'text', text: 'Error: ' + parsed.error }] };
+            }
+        }
+        catch (error) {
+            return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+        }
+    });
+}
+function suggestUndoStrategyTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('suggest_undo_strategy', `Suggest an undo approach after a failed operation.
+
+Parameters:
+- object_name (optional): Name of the object involved in the failed operation
+- failed_operation (optional): Description of the failed operation
+
+Returns:
+- success: Whether suggestion generation succeeded
+- strategy: Recommended undo/recovery approach
+- steps: Ordered steps to safely undo
+- can_redo: Whether the operation can be redone after undoing
+- alternative: Alternative approach if undo is not recommended`, {
+        object_name: zod_1.z.string().optional().describe('Name of the object involved'),
+        failed_operation: zod_1.z.string().optional().describe('Description of the failed operation'),
+    }, async (input) => {
+        const { object_name, failed_operation } = input;
+        const code = `
+from llm_bridge.error_handlers import handle_suggest_undo_strategy
+import json
+params = json.loads('${JSON.stringify({ object_name, failed_operation })}')
+result = handle_suggest_undo_strategy(
+    object_name=params.get('object_name'),
+    failed_operation=params.get('failed_operation')
+)
+print(json.dumps(result))
+`.trim();
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            const formatted = (0, result_formatters_1.formatUndoStrategy)(parsed.data);
+            return { content: [{ type: 'text', text: parsed.success ? formatted : 'Error: ' + parsed.error }] };
+        }
+        catch (error) {
+            return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+        }
+    });
+}
+function recoverFromValidationErrorTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('recover_from_validation_error', `Generate recovery code for validation failures.
+
+Parameters:
+- validation_result (required): The validation result containing errors
+
+Returns:
+- success: Whether recovery code was generated
+- recovery_code: Python code to fix the validation issues
+- fixes_applied: List of fixes that will be applied
+- warnings: Any warnings about the recovery
+
+Use this tool to automatically generate code to fix validation errors.`, {
+        validation_result: zod_1.z.record(zod_1.z.any()).describe('The validation result containing errors'),
+    }, async (input) => {
+        const { validation_result } = input;
+        const code = `
+from llm_bridge.error_handlers import handle_recover_from_validation_error
+import json
+params = json.loads('${JSON.stringify({ validation_result })}')
+result = handle_recover_from_validation_error(validation_result=params['validation_result'])
+print(json.dumps(result))
+`.trim();
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            if (parsed.success) {
+                return { content: [{ type: 'text', text: `Recovery generated:\n${parsed.recovery_code || 'No specific recovery needed'}\n\nFixes: ${(parsed.fixes_applied || []).join(', ') || 'None'}\n${parsed.warnings || ''}` }] };
+            }
+            else {
+                return { content: [{ type: 'text', text: 'Error: ' + parsed.error }] };
+            }
+        }
+        catch (error) {
+            return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+        }
+    });
+}
+function safeRetryOperationTool(freeCADBridge) {
+    return (0, claude_agent_sdk_1.tool)('safe_retry_operation', `Execute an operation with additional safety checks.
+
+Parameters:
+- operation (required): The operation to attempt
+- parameters (required): Parameters for the operation
+- max_retries (optional): Maximum retry attempts (default: 3)
+
+Returns:
+- success: Whether the operation eventually succeeded
+- attempts: Number of attempts made
+- final_result: The result of the final attempt
+- errors: Errors from failed attempts
+- recovered: Whether the operation was eventually successful
+
+Use this tool to safely retry operations that might fail due to transient issues.`, {
+        operation: zod_1.z.string().describe('The operation to attempt'),
+        parameters: zod_1.z.record(zod_1.z.any()).describe('Parameters for the operation'),
+        max_retries: zod_1.z.number().optional().default(3).describe('Maximum retry attempts'),
+    }, async (input) => {
+        const { operation, parameters, max_retries } = input;
+        const code = `
+from llm_bridge.error_handlers import handle_safe_retry
+import json
+params = json.loads('${JSON.stringify({ operation, parameters, max_retries })}')
+result = handle_safe_retry(
+    operation=params['operation'],
+    parameters=params['parameters'],
+    max_retries=params.get('max_retries', 3)
+)
+print(json.dumps(result))
+`.trim();
+        try {
+            const result = await freeCADBridge.executePython(code);
+            const parsed = parseLastJsonLine(result.output);
+            if (parsed.success) {
+                return { content: [{ type: 'text', text: `Operation ${parsed.recovered ? 'recovered' : 'completed'} after ${parsed.attempts} attempt(s)\n${parsed.final_result || ''}` }] };
+            }
+            else {
+                return { content: [{ type: 'text', text: `Operation failed after ${parsed.attempts} attempts: ${parsed.error || 'Unknown error'}` }] };
+            }
+        }
+        catch (error) {
+            return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
         }
     });
 }
