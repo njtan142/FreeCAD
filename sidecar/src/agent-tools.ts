@@ -64,6 +64,11 @@ import {
   formatAnimationState,
   formatKinematicPositions,
   formatCollisionResult,
+  formatRenderResult,
+  formatViewAngle,
+  formatAnimationCapture,
+  formatVideoExport,
+  formatMaterialResult,
 } from './result-formatters';
 import {
   validateFilePath,
@@ -294,6 +299,24 @@ export function createAgentTools(freeCADBridge: FreeCADBridge) {
     getAnimationStateTool(freeCADBridge),
     getKinematicPositionsTool(freeCADBridge),
     checkCollisionTool(freeCADBridge),
+    // View tools
+    setViewAngleTool(freeCADBridge),
+    zoomToFitTool(freeCADBridge),
+    setCameraPositionTool(freeCADBridge),
+    // Render tools
+    renderViewTool(freeCADBridge),
+    setRendererTool(freeCADBridge),
+    setRenderQualityTool(freeCADBridge),
+    // Material tools
+    setObjectMaterialTool(freeCADBridge),
+    setObjectColorTool(freeCADBridge),
+    // Lighting tools
+    configureLightingTool(freeCADBridge),
+    // Animation export tools
+    startAnimationCaptureTool(freeCADBridge),
+    captureAnimationFrameTool(freeCADBridge),
+    stopAnimationCaptureTool(freeCADBridge),
+    exportAnimationTool(freeCADBridge),
   ];
 }
 
@@ -11064,7 +11087,7 @@ Example:
 from llm_bridge.kinematic_handlers import handle_check_collision
 import json
 params = json.loads('${JSON.stringify({ assemblyName, duringMotion: duringMotion || false })}')
-result = handle_check_collision(during_motion=params['duringMotion'])
+result = handle_check_collision(assembly_name=params['assemblyName'], during_motion=params['duringMotion'])
 print(json.dumps(result))
 `.trim();
 
@@ -11220,6 +11243,857 @@ print(json.dumps(result))
         const result = await freeCADBridge.executePython(code);
         const parsed = parseLastJsonLine(result.output);
         const formatted = formatSurfaceInfo(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: \${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: \${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: set_view_angle
+ *
+ * Set viewport camera to a preset angle.
+ */
+function setViewAngleTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'set_view_angle',
+    `Set viewport camera to a preset viewing angle.
+
+Parameters:
+- viewName (required): Preset view name - "top", "bottom", "front", "back", "left", "right", "iso", "home"
+
+Returns:
+- success: Whether setting view succeeded
+- viewName: The view that was set
+- message: Status message
+
+Use this tool to quickly orient the camera to standard CAD views.
+
+Example:
+- Set view to isometric: { viewName: "iso" }
+- Look from top: { viewName: "top" }`,
+    {
+      viewName: z.enum(['top', 'bottom', 'front', 'back', 'left', 'right', 'iso', 'home']).describe('Preset view angle'),
+    },
+    async (input) => {
+      const { viewName } = input;
+
+      const code = `
+from llm_bridge.render_handlers import handle_set_view_angle
+import json
+params = json.loads('${JSON.stringify({ viewName })}')
+result = handle_set_view_angle(view_name=params['viewName'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatViewAngle(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: \${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: \${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: zoom_to_fit
+ *
+ * Zoom to fit all visible objects in the viewport.
+ */
+function zoomToFitTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'zoom_to_fit',
+    `Zoom the viewport to fit all visible objects in view.
+
+Parameters: None
+
+Returns:
+- success: Whether zoom succeeded
+- message: Status message
+
+Use this tool to automatically adjust the camera to show all objects in the current view.
+
+Example:
+- "Zoom to fit all objects"`,
+    {},
+    async () => {
+      const code = `
+from llm_bridge.render_handlers import handle_zoom_to_fit
+import json
+result = handle_zoom_to_fit()
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatViewAngle(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: \${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: \${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: set_camera_position
+ *
+ * Set exact camera position and target.
+ */
+function setCameraPositionTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'set_camera_position',
+    `Set exact camera position and look-at target.
+
+Parameters:
+- position (required): Camera position as {x, y, z}
+- target (optional): Look-at target as {x, y, z}, defaults to origin
+
+Returns:
+- success: Whether setting position succeeded
+- position: Camera position that was set
+- target: Look-at target that was set
+- message: Status message
+
+Use this tool for precise camera positioning.
+
+Example:
+- Position at specific point: { position: {x: 100, y: 100, z: 50} }
+- View from angle: { position: {x: 50, y: 50, z: 50}, target: {x: 0, y: 0, z: 0} }`,
+    {
+      position: z.object({
+        x: z.number().describe('X coordinate'),
+        y: z.number().describe('Y coordinate'),
+        z: z.number().describe('Z coordinate'),
+      }).describe('Camera position'),
+      target: z.object({
+        x: z.number().describe('X coordinate'),
+        y: z.number().describe('Y coordinate'),
+        z: z.number().describe('Z coordinate'),
+      }).optional().describe('Look-at target position'),
+    },
+    async (input) => {
+      const { position, target } = input;
+
+      const code = `
+from llm_bridge.render_handlers import handle_set_camera_position
+import json
+params = json.loads('${JSON.stringify({ position, target: target || { x: 0, y: 0, z: 0 } })}')
+result = handle_set_camera_position(position=params['position'], target=params['target'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatViewAngle(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: \${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: \${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: render_view
+ *
+ * Render current view to an image file.
+ */
+function renderViewTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'render_view',
+    `Render the current viewport view to an image file.
+
+Parameters:
+- outputPath (required): Path to output image file (.png, .jpg)
+- width (optional): Image width in pixels, default 1920
+- height (optional): Image height in pixels, default 1080
+- renderer (optional): Renderer to use - "opengl" (default), "raytracing", "embree"
+
+Returns:
+- success: Whether render succeeded
+- outputPath: Path to the rendered image
+- width: Image width
+- height: Image height
+- message: Status message
+
+Example:
+- Basic render: { outputPath: "~/render.png" }
+- High resolution: { outputPath: "~/4k_render.png", width: 3840, height: 2160 }
+- Raytraced: { outputPath: "~/rt_render.png", renderer: "raytracing" }`,
+    {
+      outputPath: z.string().describe('Path to output image file'),
+      width: z.number().optional().describe('Image width in pixels (default 1920)'),
+      height: z.number().optional().describe('Image height in pixels (default 1080)'),
+      renderer: z.enum(['opengl', 'raytracing', 'embree']).optional().describe('Renderer to use'),
+    },
+    async (input) => {
+      const { outputPath, width, height, renderer } = input;
+
+      const code = `
+from llm_bridge.render_handlers import handle_render_view
+import json
+params = json.loads('${JSON.stringify({ outputPath, width: width || 1920, height: height || 1080, renderer: renderer || 'opengl' })}')
+result = handle_render_view(image_path=params['outputPath'], width=params['width'], height=params['height'], renderer=params['renderer'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatRenderResult(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: \${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: \${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: set_renderer
+ *
+ * Select the rendering engine.
+ */
+function setRendererTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'set_renderer',
+    `Select the rendering engine for viewport and exports.
+
+Parameters:
+- rendererName (required): Renderer name - "opengl", "raytracing", "embree"
+
+Returns:
+- success: Whether renderer change succeeded
+- rendererName: The renderer that was set
+- message: Status message
+
+Use this tool to switch between different renderers. OpenGL is fastest for viewport, Raytracing provides photorealistic results.
+
+Example:
+- Use raytracing: { rendererName: "raytracing" }
+- Fast viewport render: { rendererName: "opengl" }`,
+    {
+      rendererName: z.enum(['opengl', 'raytracing', 'embree']).describe('Renderer name'),
+    },
+    async (input) => {
+      const { rendererName } = input;
+
+      const code = `
+from llm_bridge.render_handlers import handle_set_renderer
+import json
+params = json.loads('${JSON.stringify({ rendererName })}')
+result = handle_set_renderer(renderer_name=params['rendererName'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatRenderResult(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: \${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: \${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: set_render_quality
+ *
+ * Set render quality level.
+ */
+function setRenderQualityTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'set_render_quality',
+    `Set the render quality level for the current renderer.
+
+Parameters:
+- quality (required): Quality level - "draft", "medium", "high", "ultra"
+
+Returns:
+- success: Whether quality change succeeded
+- quality: The quality that was set
+- message: Status message
+
+Higher quality takes longer to render but looks better.
+
+Example:
+- Fast draft render: { quality: "draft" }
+- High quality: { quality: "high" }`,
+    {
+      quality: z.enum(['draft', 'medium', 'high', 'ultra']).describe('Render quality level'),
+    },
+    async (input) => {
+      const { quality } = input;
+
+      const code = `
+from llm_bridge.render_handlers import handle_set_render_quality
+import json
+params = json.loads('${JSON.stringify({ quality })}')
+result = handle_set_render_quality(quality=params['quality'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatRenderResult(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: \${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: \${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: set_object_material
+ *
+ * Apply a material to an object.
+ */
+function setObjectMaterialTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'set_object_material',
+    `Apply a material from the FreeCAD material database to an object.
+
+Parameters:
+- objectName (required): Name of the object to modify
+- materialName (required): Name of material from FreeCAD material database (e.g., "Steel", "Aluminum", "Plastic")
+
+Returns:
+- success: Whether material application succeeded
+- objectName: Name of the object
+- materialName: Material that was applied
+- message: Status message
+
+Use this tool to change how an object looks and its physical properties.
+
+Example:
+- Apply steel: { objectName: "Box", materialName: "Steel" }
+- Use plastic: { objectName: "Housing", materialName: "Plastic" }`,
+    {
+      objectName: z.string().describe('Name of the object'),
+      materialName: z.string().describe('Material name from FreeCAD database'),
+    },
+    async (input) => {
+      const { objectName, materialName } = input;
+
+      const code = `
+from llm_bridge.render_handlers import handle_set_material
+import json
+params = json.loads('${JSON.stringify({ objectName, materialName })}')
+result = handle_set_material(object_name=params['objectName'], material_name=params['materialName'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatMaterialResult(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: \${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: \${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: set_object_color
+ *
+ * Set the color of an object.
+ */
+function setObjectColorTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'set_object_color',
+    `Set the display color of an object.
+
+Parameters:
+- objectName (required): Name of the object to modify
+- color (required): Color as {r, g, b, a} with values 0-255
+- r: Red component (0-255)
+- g: Green component (0-255)
+- b: Blue component (0-255)
+- a: Alpha/transparency (0-255), optional default 255
+
+Returns:
+- success: Whether color change succeeded
+- objectName: Name of the object
+- color: Color that was set
+- message: Status message
+
+Example:
+- Red object: { objectName: "Box", color: {r: 255, g: 0, b: 0} }
+- Blue with transparency: { objectName: "Sphere", color: {r: 0, g: 0, b: 255, a: 128} }`,
+    {
+      objectName: z.string().describe('Name of the object'),
+      color: z.object({
+        r: z.number().min(0).max(255).describe('Red component'),
+        g: z.number().min(0).max(255).describe('Green component'),
+        b: z.number().min(0).max(255).describe('Blue component'),
+        a: z.number().min(0).max(255).optional().describe('Alpha component'),
+      }).describe('Color RGBA values (0-255)'),
+    },
+    async (input) => {
+      const { objectName, color } = input;
+
+      const code = `
+from llm_bridge.render_handlers import handle_set_material
+import json
+params = json.loads('${JSON.stringify({ objectName, color: { ...color, a: color.a || 255 } })}')
+result = handle_set_material(object_name=params['objectName'], property_name='ShapeColor', value=params['color'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatMaterialResult(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: \${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: \${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: configure_lighting
+ *
+ * Configure scene lighting preset.
+ */
+function configureLightingTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'configure_lighting',
+    `Configure the scene lighting with a preset.
+
+Parameters:
+- lightingType (required): Lighting preset - "default", "studio", "outdoor", "museum"
+
+Returns:
+- success: Whether lighting change succeeded
+- lightingType: The lighting preset that was set
+- message: Status message
+
+Use this tool to change how the scene is illuminated.
+
+Example:
+- Studio lighting: { lightingType: "studio" }
+- Outdoor sun: { lightingType: "outdoor" }`,
+    {
+      lightingType: z.enum(['default', 'studio', 'outdoor', 'museum']).describe('Lighting preset type'),
+    },
+    async (input) => {
+      const { lightingType } = input;
+
+      const code = `
+from llm_bridge.render_handlers import handle_configure_lighting
+import json
+params = json.loads('${JSON.stringify({ lightingType })}')
+result = handle_configure_lighting(lights_config=params['lightingType'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatRenderResult(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: \${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: \${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: start_animation_capture
+ *
+ * Start capturing animation frames.
+ */
+function startAnimationCaptureTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'start_animation_capture',
+    `Start capturing animation frames to a directory.
+
+Parameters:
+- outputDir (required): Directory to save frames
+- fps (optional): Frames per second, default 30
+
+Returns:
+- success: Whether capture start succeeded
+- outputDir: Directory for frames
+- fps: Frames per second
+- message: Status message
+
+Use this to begin recording frames for animation. Follow with capture_animation_frame and stop_animation_capture.
+
+Example:
+- Start capture: { outputDir: "/tmp/anim" }
+- 60fps capture: { outputDir: "/tmp/anim", fps: 60 }`,
+    {
+      outputDir: z.string().describe('Directory to save animation frames'),
+      fps: z.number().optional().describe('Frames per second (default 30)'),
+    },
+    async (input) => {
+      const { outputDir, fps } = input;
+
+      const code = `
+from llm_bridge.animation_export_handlers import handle_start_animation_capture
+import json
+params = json.loads('${JSON.stringify({ outputDir, fps: fps || 30 })}')
+result = handle_start_animation_capture(output_path=params['outputDir'], fps=params['fps'], format='png')
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatAnimationCapture(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: \${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: \${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: capture_animation_frame
+ *
+ * Capture a single animation frame.
+ */
+function captureAnimationFrameTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'capture_animation_frame',
+    `Capture a single frame during animation capture.
+
+Parameters: None
+
+Returns:
+- success: Whether capture succeeded
+- frameNumber: Current frame number
+- message: Status message
+
+Use this after start_animation_capture to record each frame.
+
+Example:
+- "Capture this frame"`,
+    {},
+    async () => {
+      const code = `
+from llm_bridge.animation_export_handlers import handle_capture_frame
+import json
+result = handle_capture_frame()
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatAnimationCapture(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: \${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: \${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: stop_animation_capture
+ *
+ * Stop capture and encode video.
+ */
+function stopAnimationCaptureTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'stop_animation_capture',
+    `Stop animation capture and encode to video file.
+
+Parameters:
+- outputPath (required): Output video file path (.mp4, .gif, .webm)
+- format (required): Video format - "mp4", "gif", "webm"
+- quality (optional): Quality setting - "low", "medium", "high"
+
+Returns:
+- success: Whether encoding succeeded
+- outputPath: Path to encoded video
+- format: Video format used
+- totalFrames: Number of frames captured
+- message: Status message
+
+Example:
+- Create MP4: { outputPath: "~/video.mp4", format: "mp4" }
+- Create GIF: { outputPath: "~/anim.gif", format: "gif" }`,
+    {
+      outputPath: z.string().describe('Output video file path'),
+      format: z.enum(['mp4', 'gif', 'webm']).describe('Video format'),
+      quality: z.enum(['low', 'medium', 'high']).optional().describe('Video quality'),
+    },
+    async (input) => {
+      const { outputPath, format, quality } = input;
+
+      const code = `
+from llm_bridge.animation_export_handlers import handle_stop_animation_capture
+import json
+params = json.loads('${JSON.stringify({ outputPath, format, quality: quality || 'high' })}')
+result = handle_stop_animation_capture(output_path=params['outputPath'], fps=30, codec=params['format'], quality=params['quality'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatVideoExport(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: \${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: \${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: export_animation
+ *
+ * Export a full animation in one call.
+ */
+function exportAnimationTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'export_animation',
+    `Export a complete animation from assembly in a single call.
+
+Parameters:
+- assemblyName (required): Name of the assembly to animate
+- outputPath (required): Output video file path
+- format (required): Video format - "mp4", "gif"
+- duration (required): Animation duration in seconds
+- fps (optional): Frames per second, default 30
+
+Returns:
+- success: Whether export succeeded
+- outputPath: Path to exported video
+- format: Video format used
+- duration: Animation duration in seconds
+- totalFrames: Number of frames rendered
+- message: Status message
+
+Example:
+- Export mechanism: { assemblyName: "Robot", outputPath: "~/robot.mp4", format: "mp4", duration: 5 }
+- Create GIF: { assemblyName: "Motor", outputPath: "~/motor.gif", format: "gif", duration: 3 }`,
+    {
+      assemblyName: z.string().describe('Name of the assembly to animate'),
+      outputPath: z.string().describe('Output video file path'),
+      format: z.enum(['mp4', 'gif']).describe('Video format'),
+      duration: z.number().describe('Animation duration in seconds'),
+      fps: z.number().optional().describe('Frames per second (default 30)'),
+    },
+    async (input) => {
+      const { assemblyName, outputPath, format, duration, fps } = input;
+
+      const code = `
+from llm_bridge.animation_export_handlers import handle_export_animation
+import json
+params = json.loads('${JSON.stringify({ assemblyName, outputPath, format, duration, fps: fps || 30 })}')
+result = handle_export_animation(assembly_name=params['assemblyName'], output_path=params['outputPath'], format=params['format'], duration=params['duration'], fps=params['fps'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatVideoExport(parsed.data);
         return {
           content: [
             {
