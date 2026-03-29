@@ -41,6 +41,12 @@ import {
   formatDimensionCreation,
   formatTextCreation,
   formatModificationResult,
+  formatPageCreation,
+  formatViewCreation,
+  formatTechDrawDimension,
+  formatAnnotationCreation,
+  formatExportResult,
+  formatTableRow,
 } from './result-formatters';
 import {
   validateFilePath,
@@ -186,6 +192,33 @@ export function createAgentTools(freeCADBridge: FreeCADBridge) {
     createSaveChatSessionTool(),
     createLoadChatSessionTool(),
     createListChatSessionsTool(),
+    // TechDraw workbench tools
+    // Page management
+    createDrawingPageTool(freeCADBridge),
+    listDrawingPagesTool(freeCADBridge),
+    deleteDrawingPageTool(freeCADBridge),
+    getDrawingPagePropertiesTool(freeCADBridge),
+    // View creation
+    createStandardViewTool(freeCADBridge),
+    createIsometricViewTool(freeCADBridge),
+    createFrontViewTool(freeCADBridge),
+    createTopViewTool(freeCADBridge),
+    createSideViewTool(freeCADBridge),
+    createSectionViewTool(freeCADBridge),
+    createProjectionGroupTool(freeCADBridge),
+    createDetailViewTool(freeCADBridge),
+    // Dimension tools
+    createTechDrawLinearDimensionTool(freeCADBridge),
+    createTechDrawRadialDimensionTool(freeCADBridge),
+    createTechDrawDiameterDimensionTool(freeCADBridge),
+    createTechDrawAngularDimensionTool(freeCADBridge),
+    // Annotation tools
+    createTextAnnotationTool(freeCADBridge),
+    createBalloonAnnotationTool(freeCADBridge),
+    createLeaderLineTool(freeCADBridge),
+    // Export tools
+    exportToSvgTool(freeCADBridge),
+    exportToPdfTool(freeCADBridge),
   ];
 }
 
@@ -5884,8 +5917,8 @@ from llm_bridge.draft_handlers import handle_create_linear_dimension
 import json
 params = json.loads('${JSON.stringify({ startX, startY, startZ: startZ || 0, endX, endY, endZ: endZ || 0, offset: offset || 0, name: name || null })}')
 result = handle_create_linear_dimension(
-    start_point=[params['startX'], params['startY'], params.get('startZ', 0)],
-    end_point=[params['endX'], params['endY'], params.get('endZ', 0)],
+    point1=[params['startX'], params['startY'], params.get('startZ', 0)],
+    point2=[params['endX'], params['endY'], params.get('endZ', 0)],
     offset=params.get('offset', 0),
     name=params['name']
 )
@@ -6105,9 +6138,10 @@ Example:
 from llm_bridge.draft_handlers import handle_create_ordinate_dimension
 import json
 params = json.loads('${JSON.stringify({ objectName, direction, originX: originX || 0, originY: originY || 0, originZ: originZ || 0, name: name || null })}')
+dir_value = 0 if params['direction'] == 'x' else 1
 result = handle_create_ordinate_dimension(
     point=params['objectName'],
-    direction=params['direction'],
+    direction=dir_value,
     origin=[params.get('originX', 0), params.get('originY', 0), params.get('originZ', 0)],
     name=params['name']
 )
@@ -6710,6 +6744,1618 @@ print(json.dumps(result))
         const result = await freeCADBridge.executePython(code);
         const parsed = JSON.parse(result.output || '{}');
         const formatted = formatModificationResult(parsed.data, 'split');
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+// ============================================================================
+// TechDraw Workbench Tools
+// ============================================================================
+
+/**
+ * Tool: create_drawing_page
+ *
+ * Create a new TechDraw page.
+ */
+function createDrawingPageTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_drawing_page',
+    `Create a new TechDraw page for creating 2D drawings from 3D models.
+
+Parameters:
+- template (optional): Template name to use. Common templates:
+  - "A4_Landscape" (default)
+  - "A4_Portrait"
+  - "A3_Landscape"
+  - "A3_Portrait"
+  - "Letter_Landscape"
+  - "Letter_Portrait"
+- paperSize (optional): Paper size override (e.g., "A4", "Letter"). If template is specified, this is optional.
+
+Returns:
+- success: Whether the page was created
+- pageName: Internal name of the page
+- pageLabel: User-friendly label
+- template: Template used
+- paperSize: Paper size used
+- message: Status message
+
+Use this tool when you need to create a new drawing sheet for technical documentation.
+
+Example:
+- Create A4 landscape page: {}
+- Create with specific template: { template: "A3_Landscape" }`,
+    {
+      template: z.string().optional().describe('Template name (e.g., "A4_Landscape", "A3_Portrait")'),
+      paperSize: z.string().optional().describe('Paper size override (e.g., "A4", "Letter")'),
+    },
+    async (input) => {
+      const { template, paperSize } = input;
+
+      const code = `
+from llm_bridge.techdraw_handlers import handle_create_drawing_page
+import json
+params = json.loads('${JSON.stringify({ template: template || null, paperSize: paperSize || null })}')
+result = handle_create_drawing_page(
+    template=params.get('template'),
+    paper_size=params.get('paperSize')
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatPageCreation(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: list_drawing_pages
+ *
+ * List all TechDraw pages in the document.
+ */
+function listDrawingPagesTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'list_drawing_pages',
+    `List all TechDraw pages in the current document.
+
+Parameters: None
+
+Returns:
+- success: Whether the query was successful
+- pages: Array of page objects with name, label, template, viewCount
+- pageCount: Number of pages found
+- message: Status message
+
+Use this tool when you need to see what drawing pages exist in the current document.
+
+Example:
+- List all pages: {}`,
+    {
+      // No parameters needed
+    },
+    async () => {
+      const code = `
+from llm_bridge.techdraw_handlers import handle_get_page_list
+import json
+result = handle_get_page_list()
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+
+        if (parsed.success) {
+          let output = `TechDraw Pages: ${parsed.pageCount || 0}\n\n`;
+          if (parsed.pages && parsed.pages.length > 0) {
+            output += formatTableRow(['Name', 'Label', 'Template', 'Views']);
+            output += '\n' + '─'.repeat(60) + '\n';
+            for (const page of parsed.pages) {
+              output += formatTableRow([
+                page.name || '-',
+                page.label || '-',
+                page.template || '-',
+                String(page.viewCount || 0)
+              ]);
+              output += '\n';
+            }
+          } else {
+            output += '(No TechDraw pages found)';
+          }
+          return {
+            content: [
+              {
+                type: 'text',
+                text: output,
+              },
+            ],
+          };
+        } else {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error: ${parsed.error}`,
+              },
+            ],
+          };
+        }
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: delete_drawing_page
+ *
+ * Delete a TechDraw page.
+ */
+function deleteDrawingPageTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'delete_drawing_page',
+    `Delete a TechDraw page from the document.
+
+Parameters:
+- pageName (required): Name of the page to delete
+
+Returns:
+- success: Whether the page was deleted
+- pageName: Name of the deleted page
+- message: Status message
+
+Use this tool when you want to remove an unwanted drawing page.
+
+Example:
+- Delete a page: { pageName: "Page1" }`,
+    {
+      pageName: z.string().describe('Name of the page to delete'),
+    },
+    async (input) => {
+      const { pageName } = input;
+
+      const code = `
+from llm_bridge.techdraw_handlers import handle_delete_page
+import json
+params = json.loads('${JSON.stringify({ pageName })}')
+result = handle_delete_page(page_name=params['pageName'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+
+        if (parsed.success) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Deleted TechDraw page: ${pageName}\n${parsed.message || ''}`,
+              },
+            ],
+          };
+        } else {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error: ${parsed.error}`,
+              },
+            ],
+          };
+        }
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: get_drawing_page_properties
+ *
+ * Get properties of a TechDraw page.
+ */
+function getDrawingPagePropertiesTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'get_drawing_page_properties',
+    `Get detailed properties of a TechDraw page.
+
+Parameters:
+- pageName (required): Name of the page to query
+
+Returns:
+- success: Whether the query was successful
+- pageName: Name of the page
+- pageLabel: User-friendly label
+- template: Template used
+- paperSize: Paper size
+- viewCount: Number of views on the page
+- views: Array of view objects with name, type, source object
+- message: Status message
+
+Use this tool when you need detailed information about a specific drawing page.
+
+Example:
+- Get page properties: { pageName: "Page1" }`,
+    {
+      pageName: z.string().describe('Name of the page to query'),
+    },
+    async (input) => {
+      const { pageName } = input;
+
+      const code = `
+from llm_bridge.techdraw_handlers import handle_get_page_properties
+import json
+params = json.loads('${JSON.stringify({ pageName })}')
+result = handle_get_page_properties(page_name=params['pageName'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatPageCreation(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: create_standard_view
+ *
+ * Create a standard projection view.
+ */
+function createStandardViewTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_standard_view',
+    `Create a standard projection view of a source object on a TechDraw page.
+
+Parameters:
+- sourceObject (required): Name of the 3D object to project
+- pageName (optional): Name of the page to add the view to. If omitted, uses the active page.
+- viewName (optional): Name for the view. If omitted, auto-generated.
+- projectionType (optional): Projection type - "Third" (Third angle, default) or "First" (First angle)
+
+Returns:
+- success: Whether the view was created
+- viewName: Internal name of the view
+- sourceObject: Name of the source 3D object
+- projectionType: Projection type used
+- pageName: Page containing the view
+- message: Status message
+
+Use this tool to add a basic projection view of a 3D model to a drawing page.
+
+Example:
+- Create third-angle view: { sourceObject: "Body", pageName: "Page1" }
+- First-angle projection: { sourceObject: "Part", projectionType: "First" }`,
+    {
+      sourceObject: z.string().describe('Name of the 3D object to project'),
+      pageName: z.string().optional().describe('Name of the page to add the view to'),
+      viewName: z.string().optional().describe('Name for the view'),
+      projectionType: z.enum(['Third', 'First']).optional().describe('Projection type (Third or First angle)'),
+    },
+    async (input) => {
+      const { sourceObject, pageName, viewName, projectionType } = input;
+
+      const code = `
+from llm_bridge.techdraw_handlers import handle_create_view
+import json
+params = json.loads('${JSON.stringify({ sourceObject, pageName: pageName || null, viewName: viewName || null, projectionType: projectionType || 'Third' })}')
+result = handle_create_view(
+    source_object=params['sourceObject'],
+    page_name=params.get('pageName'),
+    view_name=params.get('viewName'),
+    projection_type=params.get('projectionType', 'Third')
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatViewCreation(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: create_isometric_view
+ *
+ * Create an isometric (trimetric) view.
+ */
+function createIsometricViewTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_isometric_view',
+    `Create an isometric (trimetric) view of a source object on a TechDraw page.
+
+Parameters:
+- sourceObject (required): Name of the 3D object to project
+- pageName (optional): Name of the page to add the view to. If omitted, uses the active page.
+- viewName (optional): Name for the view. If omitted, auto-generated.
+
+Returns:
+- success: Whether the view was created
+- viewName: Internal name of the view
+- sourceObject: Name of the source 3D object
+- viewType: Type of view ("Isometric")
+- pageName: Page containing the view
+- message: Status message
+
+Use this tool to add an isometric view showing the 3D model from a 45-degree angle.
+
+Example:
+- Create isometric view: { sourceObject: "Body", pageName: "Page1" }
+- Named isometric view: { sourceObject: "Part", viewName: "IsoView" }`,
+    {
+      sourceObject: z.string().describe('Name of the 3D object to project'),
+      pageName: z.string().optional().describe('Name of the page to add the view to'),
+      viewName: z.string().optional().describe('Name for the view'),
+    },
+    async (input) => {
+      const { sourceObject, pageName, viewName } = input;
+
+      const code = `
+from llm_bridge.techdraw_handlers import handle_create_isometric_view
+import json
+params = json.loads('${JSON.stringify({ sourceObject, pageName: pageName || null, viewName: viewName || null })}')
+result = handle_create_isometric_view(
+    source_object=params['sourceObject'],
+    page_name=params.get('pageName'),
+    view_name=params.get('viewName')
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatViewCreation(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: create_front_view
+ *
+ * Create a front view.
+ */
+function createFrontViewTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_front_view',
+    `Create a front view of a source object on a TechDraw page.
+
+Parameters:
+- sourceObject (required): Name of the 3D object to project
+- pageName (optional): Name of the page to add the view to. If omitted, uses the active page.
+- viewName (optional): Name for the view. If omitted, auto-generated.
+
+Returns:
+- success: Whether the view was created
+- viewName: Internal name of the view
+- sourceObject: Name of the source 3D object
+- viewType: Type of view ("Front")
+- pageName: Page containing the view
+- message: Status message
+
+Use this tool to add a front elevation view to a drawing page.
+
+Example:
+- Create front view: { sourceObject: "Body", pageName: "Page1" }
+- Named front view: { sourceObject: "Part", viewName: "Front" }`,
+    {
+      sourceObject: z.string().describe('Name of the 3D object to project'),
+      pageName: z.string().optional().describe('Name of the page to add the view to'),
+      viewName: z.string().optional().describe('Name for the view'),
+    },
+    async (input) => {
+      const { sourceObject, pageName, viewName } = input;
+
+      const code = `
+from llm_bridge.techdraw_handlers import handle_create_front_view
+import json
+params = json.loads('${JSON.stringify({ sourceObject, pageName: pageName || null, viewName: viewName || null })}')
+result = handle_create_front_view(
+    source_object=params['sourceObject'],
+    page_name=params.get('pageName'),
+    view_name=params.get('viewName')
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatViewCreation(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: create_top_view
+ *
+ * Create a top (plan) view.
+ */
+function createTopViewTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_top_view',
+    `Create a top (plan) view of a source object on a TechDraw page.
+
+Parameters:
+- sourceObject (required): Name of the 3D object to project
+- pageName (optional): Name of the page to add the view to. If omitted, uses the active page.
+- viewName (optional): Name for the view. If omitted, auto-generated.
+
+Returns:
+- success: Whether the view was created
+- viewName: Internal name of the view
+- sourceObject: Name of the source 3D object
+- viewType: Type of view ("Top")
+- pageName: Page containing the view
+- message: Status message
+
+Use this tool to add a top plan view to a drawing page.
+
+Example:
+- Create top view: { sourceObject: "Body", pageName: "Page1" }
+- Named top view: { sourceObject: "Part", viewName: "Top" }`,
+    {
+      sourceObject: z.string().describe('Name of the 3D object to project'),
+      pageName: z.string().optional().describe('Name of the page to add the view to'),
+      viewName: z.string().optional().describe('Name for the view'),
+    },
+    async (input) => {
+      const { sourceObject, pageName, viewName } = input;
+
+      const code = `
+from llm_bridge.techdraw_handlers import handle_create_top_view
+import json
+params = json.loads('${JSON.stringify({ sourceObject, pageName: pageName || null, viewName: viewName || null })}')
+result = handle_create_top_view(
+    source_object=params['sourceObject'],
+    page_name=params.get('pageName'),
+    view_name=params.get('viewName')
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatViewCreation(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: create_side_view
+ *
+ * Create a side view (left or right).
+ */
+function createSideViewTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_side_view',
+    `Create a side view (left or right elevation) of a source object on a TechDraw page.
+
+Parameters:
+- sourceObject (required): Name of the 3D object to project
+- side (required): Side for the view - "Left" or "Right"
+- pageName (optional): Name of the page to add the view to. If omitted, uses the active page.
+- viewName (optional): Name for the view. If omitted, auto-generated.
+
+Returns:
+- success: Whether the view was created
+- viewName: Internal name of the view
+- sourceObject: Name of the source 3D object
+- viewType: Type of view ("LeftSide" or "RightSide")
+- pageName: Page containing the view
+- message: Status message
+
+Use this tool to add a side elevation view to a drawing page.
+
+Example:
+- Create right side view: { sourceObject: "Body", side: "Right", pageName: "Page1" }
+- Left side view: { sourceObject: "Part", side: "Left" }`,
+    {
+      sourceObject: z.string().describe('Name of the 3D object to project'),
+      side: z.enum(['Left', 'Right']).describe('Side for the view (Left or Right)'),
+      pageName: z.string().optional().describe('Name of the page to add the view to'),
+      viewName: z.string().optional().describe('Name for the view'),
+    },
+    async (input) => {
+      const { sourceObject, side, pageName, viewName } = input;
+
+      const code = `
+from llm_bridge.techdraw_handlers import handle_create_side_view
+import json
+params = json.loads('${JSON.stringify({ sourceObject, side, pageName: pageName || null, viewName: viewName || null })}')
+result = handle_create_side_view(
+    source_object=params['sourceObject'],
+    side=params['side'],
+    page_name=params.get('pageName'),
+    view_name=params.get('viewName')
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatViewCreation(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: create_section_view
+ *
+ * Create a section cut view.
+ */
+function createSectionViewTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_section_view',
+    `Create a section cut view of a source object on a TechDraw page.
+
+Parameters:
+- sourceObject (required): Name of the 3D object to project
+- cutLine (required): JSON object with two points defining the cut line: {"point1": {"x": 0, "y": 0}, "point2": {"x": 100, "y": 0}}
+- pageName (optional): Name of the page to add the view to. If omitted, uses the active page.
+- viewName (optional): Name for the view. If omitted, auto-generated.
+
+Returns:
+- success: Whether the view was created
+- viewName: Internal name of the view
+- sourceObject: Name of the source 3D object
+- viewType: Type of view ("Section")
+- cutLine: The cut line coordinates
+- pageName: Page containing the view
+- message: Status message
+
+Use this tool to create a cross-section view showing the interior of the model along a cut plane.
+
+Example:
+- Section through middle: { sourceObject: "Body", cutLine: {"point1": {"x": 0, "y": 50}, "point2": {"x": 100, "y": 50}}, pageName: "Page1" }`,
+    {
+      sourceObject: z.string().describe('Name of the 3D object to project'),
+      cutLine: z.object({
+        point1: z.object({ x: z.number(), y: z.number() }),
+        point2: z.object({ x: z.number(), y: z.number() })
+      }).describe('JSON object with point1 and point2 defining the cut line'),
+      pageName: z.string().optional().describe('Name of the page to add the view to'),
+      viewName: z.string().optional().describe('Name for the view'),
+    },
+    async (input) => {
+      const { sourceObject, cutLine, pageName, viewName } = input;
+
+      const code = `
+from llm_bridge.techdraw_handlers import handle_create_section_view
+import json
+params = json.loads('${JSON.stringify({ sourceObject, cutLine, pageName: pageName || null, viewName: viewName || null })}')
+result = handle_create_section_view(
+    source_object=params['sourceObject'],
+    cut_line=params['cutLine'],
+    page_name=params.get('pageName'),
+    view_name=params.get('viewName')
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatViewCreation(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: create_projection_group
+ *
+ * Create a projection group with multiple views.
+ */
+function createProjectionGroupTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_projection_group',
+    `Create a projection group containing multiple related views of a source object.
+
+Parameters:
+- sourceObject (required): Name of the 3D object to project
+- views (optional): Array of view types to create. Defaults to ["Front", "Top", "RightSide"].
+    Valid types: "Front", "Top", "RightSide", "LeftSide", "Rear", "Bottom", "Isometric"
+- pageName (optional): Name of the page to add the views to. If omitted, uses the active page.
+- groupName (optional): Name for the projection group. If omitted, auto-generated.
+
+Returns:
+- success: Whether the group was created
+- groupName: Internal name of the projection group
+- sourceObject: Name of the source 3D object
+- views: Array of created views with name and type
+- pageName: Page containing the views
+- message: Status message
+
+Use this tool to create a standard three-view projection (front, top, right side) or other view combinations.
+
+Example:
+- Standard three-view: { sourceObject: "Body", pageName: "Page1" }
+- Custom views: { sourceObject: "Part", views: ["Front", "Top", "LeftSide", "Isometric"] }`,
+    {
+      sourceObject: z.string().describe('Name of the 3D object to project'),
+      views: z.array(z.string()).optional().describe('Array of view types to create'),
+      pageName: z.string().optional().describe('Name of the page to add the views to'),
+      groupName: z.string().optional().describe('Name for the projection group'),
+    },
+    async (input) => {
+      const { sourceObject, views, pageName, groupName } = input;
+
+      const code = `
+from llm_bridge.techdraw_handlers import handle_create_projection_group
+import json
+params = json.loads('${JSON.stringify({ sourceObject, views: views || null, pageName: pageName || null, groupName: groupName || null })}')
+result = handle_create_projection_group(
+    source_object=params['sourceObject'],
+    views=params.get('views'),
+    page_name=params.get('pageName'),
+    group_name=params.get('groupName')
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatViewCreation(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: create_detail_view
+ *
+ * Create a detail (enlarged) view of a portion of a view.
+ */
+function createDetailViewTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_detail_view',
+    `Create a detail (enlarged) view showing a zoomed portion of a source view.
+
+Parameters:
+- sourceView (required): Name of the source view to detail
+- center (required): JSON object with x, y coordinates for the detail center: {"x": 50, "y": 50}
+- scale (optional): Scale factor for the detail view (e.g., 2.0 for 2x magnification). Default: 2.0
+- pageName (optional): Name of the page containing the source view. If omitted, finds automatically.
+- viewName (optional): Name for the detail view. If omitted, auto-generated.
+
+Returns:
+- success: Whether the view was created
+- viewName: Internal name of the detail view
+- sourceView: Name of the source view
+- scale: Scale factor used
+- pageName: Page containing the view
+- message: Status message
+
+Use this tool to create a magnified detail of a specific area of a drawing view.
+
+Example:
+- Detail of front view: { sourceView: "Front", center: {"x": 50, "y": 50}, scale: 2.0, pageName: "Page1" }`,
+    {
+      sourceView: z.string().describe('Name of the source view to detail'),
+      center: z.object({ x: z.number(), y: z.number() }).describe('JSON object with x, y coordinates for detail center'),
+      scale: z.number().optional().describe('Scale factor for magnification (default: 2.0)'),
+      pageName: z.string().optional().describe('Name of the page containing the source view'),
+      viewName: z.string().optional().describe('Name for the detail view'),
+    },
+    async (input) => {
+      const { sourceView, center, scale, pageName, viewName } = input;
+
+      const code = `
+from llm_bridge.techdraw_handlers import handle_create_detail_view
+import json
+params = json.loads('${JSON.stringify({ sourceView, center, scale: scale || 2.0, pageName: pageName || null, viewName: viewName || null })}')
+result = handle_create_detail_view(
+    source_view=params['sourceView'],
+    center=params['center'],
+    scale=params.get('scale', 2.0),
+    page_name=params.get('pageName'),
+    view_name=params.get('viewName')
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatViewCreation(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: create_linear_dimension
+ *
+ * Add a linear dimension to a TechDraw view.
+ */
+function createTechDrawLinearDimensionTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_linear_dimension',
+    `Add a linear dimension to a TechDraw view.
+
+Parameters:
+- pageName (required): Name of the page containing the view
+- viewName (required): Name of the view to dimension
+- startPoint (required): JSON object with x, y coordinates for start point: {"x": 10, "y": 20}
+- endPoint (required): JSON object with x, y coordinates for end point: {"x": 60, "y": 20}
+- direction (optional): Dimension direction - "Horizontal", "Vertical", or "Aligned" (default: "Aligned")
+
+Returns:
+- success: Whether the dimension was created
+- dimensionName: Internal name of the dimension
+- measurement: The measured distance in mm
+- startPoint: Start point coordinates
+- endPoint: End point coordinates
+- message: Status message
+
+Use this tool to add linear dimensions to drawing views.
+
+Example:
+- Horizontal dimension: { pageName: "Page1", viewName: "Front", startPoint: {"x": 0, "y": 0}, endPoint: {"x": 50, "y": 0}, direction: "Horizontal" }`,
+    {
+      pageName: z.string().describe('Name of the page containing the view'),
+      viewName: z.string().describe('Name of the view to dimension'),
+      startPoint: z.object({ x: z.number(), y: z.number() }).describe('JSON object with x, y coordinates for start point'),
+      endPoint: z.object({ x: z.number(), y: z.number() }).describe('JSON object with x, y coordinates for end point'),
+      direction: z.enum(['Horizontal', 'Vertical', 'Aligned']).optional().describe('Dimension direction'),
+    },
+    async (input) => {
+      const { pageName, viewName, startPoint, endPoint, direction } = input;
+
+      const code = `
+from llm_bridge.techdraw_handlers import handle_add_linear_dimension
+import json
+params = json.loads('${JSON.stringify({ pageName, viewName, startPoint, endPoint, direction: direction || 'Aligned' })}')
+result = handle_add_linear_dimension(
+    page_name=params['pageName'],
+    view_name=params['viewName'],
+    start_point=params['startPoint'],
+    end_point=params['endPoint'],
+    direction=params.get('direction', 'Aligned')
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatTechDrawDimension(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: create_radial_dimension
+ *
+ * Add a radial (radius) dimension to a circle in a TechDraw view.
+ */
+function createTechDrawRadialDimensionTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_radial_dimension',
+    `Add a radial (radius) dimension to a circle or arc in a TechDraw view.
+
+Parameters:
+- pageName (required): Name of the page containing the view
+- viewName (required): Name of the view containing the circle
+- circleName (required): Name of the circle object in the view to dimension
+
+Returns:
+- success: Whether the dimension was created
+- dimensionName: Internal name of the dimension
+- measurement: The radius value in mm
+- circleName: Name of the dimensioned circle
+- message: Status message
+
+Use this tool to add radius dimensions to circular features in drawings.
+
+Example:
+- Radius dimension: { pageName: "Page1", viewName: "Top", circleName: "Circle1" }`,
+    {
+      pageName: z.string().describe('Name of the page containing the view'),
+      viewName: z.string().describe('Name of the view containing the circle'),
+      circleName: z.string().describe('Name of the circle object to dimension'),
+    },
+    async (input) => {
+      const { pageName, viewName, circleName } = input;
+
+      const code = `
+from llm_bridge.techdraw_handlers import handle_add_radial_dimension
+import json
+params = json.loads('${JSON.stringify({ pageName, viewName, circleName })}')
+result = handle_add_radial_dimension(
+    page_name=params['pageName'],
+    view_name=params['viewName'],
+    circle_name=params['circleName']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatTechDrawDimension(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: create_diameter_dimension
+ *
+ * Add a diameter dimension to a circle in a TechDraw view.
+ */
+function createTechDrawDiameterDimensionTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_diameter_dimension',
+    `Add a diameter dimension to a circle or arc in a TechDraw view.
+
+Parameters:
+- pageName (required): Name of the page containing the view
+- viewName (required): Name of the view containing the circle
+- circleName (required): Name of the circle object in the view to dimension
+
+Returns:
+- success: Whether the dimension was created
+- dimensionName: Internal name of the dimension
+- measurement: The diameter value in mm
+- circleName: Name of the dimensioned circle
+- message: Status message
+
+Use this tool to add diameter dimensions to circular features when radius is not appropriate.
+
+Example:
+- Diameter dimension: { pageName: "Page1", viewName: "Top", circleName: "Circle1" }`,
+    {
+      pageName: z.string().describe('Name of the page containing the view'),
+      viewName: z.string().describe('Name of the view containing the circle'),
+      circleName: z.string().describe('Name of the circle object to dimension'),
+    },
+    async (input) => {
+      const { pageName, viewName, circleName } = input;
+
+      const code = `
+from llm_bridge.techdraw_handlers import handle_add_diameter_dimension
+import json
+params = json.loads('${JSON.stringify({ pageName, viewName, circleName })}')
+result = handle_add_diameter_dimension(
+    page_name=params['pageName'],
+    view_name=params['viewName'],
+    circle_name=params['circleName']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatTechDrawDimension(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: create_angular_dimension
+ *
+ * Add an angular dimension between two lines in a TechDraw view.
+ */
+function createTechDrawAngularDimensionTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_angular_dimension',
+    `Add an angular dimension between two lines in a TechDraw view.
+
+Parameters:
+- pageName (required): Name of the page containing the view
+- viewName (required): Name of the view containing the lines
+- line1Name (required): Name of the first line object
+- line2Name (required): Name of the second line object
+
+Returns:
+- success: Whether the dimension was created
+- dimensionName: Internal name of the dimension
+- measurement: The angle in degrees
+- line1Name: First line
+- line2Name: Second line
+- message: Status message
+
+Use this tool to add angular dimensions between intersecting lines.
+
+Example:
+- 90 degree angle: { pageName: "Page1", viewName: "Front", line1Name: "Line1", line2Name: "Line2" }`,
+    {
+      pageName: z.string().describe('Name of the page containing the view'),
+      viewName: z.string().describe('Name of the view containing the lines'),
+      line1Name: z.string().describe('Name of the first line object'),
+      line2Name: z.string().describe('Name of the second line object'),
+    },
+    async (input) => {
+      const { pageName, viewName, line1Name, line2Name } = input;
+
+      const code = `
+from llm_bridge.techdraw_handlers import handle_add_angular_dimension
+import json
+params = json.loads('${JSON.stringify({ pageName, viewName, line1Name, line2Name })}')
+result = handle_add_angular_dimension(
+    page_name=params['pageName'],
+    view_name=params['viewName'],
+    line1_name=params['line1Name'],
+    line2_name=params['line2Name']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatTechDrawDimension(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: create_text_annotation
+ *
+ * Add a text annotation to a TechDraw page.
+ */
+function createTextAnnotationTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_text_annotation',
+    `Add a text annotation to a TechDraw page.
+
+Parameters:
+- pageName (required): Name of the page to add the text to
+- text (required): The text string to display
+- x (optional): X coordinate for text position (default: 0)
+- y (optional): Y coordinate for text position (default: 0)
+
+Returns:
+- success: Whether the text was created
+- textName: Internal name of the text annotation
+- text: The text content
+- position: {x, y} position coordinates
+- pageName: Page containing the text
+- message: Status message
+
+Use this tool to add text labels, titles, or notes to drawing pages.
+
+Example:
+- Add title: { pageName: "Page1", text: "PART A - ISOMETRIC VIEW", x: 100, y: 200 }
+- Simple annotation: { pageName: "Page1", text: "SCALE 1:1" }`,
+    {
+      pageName: z.string().describe('Name of the page to add the text to'),
+      text: z.string().describe('The text string to display'),
+      x: z.number().optional().describe('X coordinate for text position (default: 0)'),
+      y: z.number().optional().describe('Y coordinate for text position (default: 0)'),
+    },
+    async (input) => {
+      const { pageName, text, x, y } = input;
+
+      const code = `
+from llm_bridge.techdraw_handlers import handle_add_text
+import json
+params = json.loads('${JSON.stringify({ pageName, text, x: x || 0, y: y || 0 })}')
+result = handle_add_text(
+    page_name=params['pageName'],
+    text=params['text'],
+    x=params.get('x', 0),
+    y=params.get('y', 0)
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatAnnotationCreation(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: create_balloon_annotation
+ *
+ * Add a balloon annotation to a TechDraw view.
+ */
+function createBalloonAnnotationTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_balloon_annotation',
+    `Add a balloon annotation (numbered callout) to a TechDraw view.
+
+Parameters:
+- pageName (required): Name of the page containing the view
+- viewName (optional): Name of the view to add the balloon to
+- targetPoint (required): JSON object with x, y coordinates for balloon anchor: {"x": 50, "y": 50}
+- text (optional): Text to display in the balloon (default: "1", auto-incrementing)
+
+Returns:
+- success: Whether the balloon was created
+- balloonName: Internal name of the balloon
+- text: Text displayed in the balloon
+- targetPoint: Anchor point coordinates
+- pageName: Page containing the balloon
+- message: Status message
+
+Use this tool to create numbered balloons for part identification in assembly drawings.
+
+Example:
+- Numbered balloon: { pageName: "Page1", viewName: "Isometric", targetPoint: {"x": 100, "y": 150} }
+- Custom text: { pageName: "Page1", targetPoint: {"x": 50, "y": 50}, text: "A" }`,
+    {
+      pageName: z.string().describe('Name of the page containing the view'),
+      viewName: z.string().optional().describe('Name of the view to add the balloon to'),
+      targetPoint: z.object({ x: z.number(), y: z.number() }).describe('JSON object with x, y coordinates for balloon anchor'),
+      text: z.string().optional().describe('Text to display in the balloon'),
+    },
+    async (input) => {
+      const { pageName, viewName, targetPoint, text } = input;
+
+      const code = `
+from llm_bridge.techdraw_handlers import handle_add_balloon
+import json
+params = json.loads('${JSON.stringify({ pageName, viewName: viewName || null, targetPoint, text: text || null })}')
+result = handle_add_balloon(
+    page_name=params['pageName'],
+    view_name=params.get('viewName'),
+    target_point=params['targetPoint'],
+    text=params.get('text')
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatAnnotationCreation(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: create_leader_line
+ *
+ * Add a leader line with optional text to a TechDraw view.
+ */
+function createLeaderLineTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_leader_line',
+    `Add a leader line with optional text annotation to a TechDraw view.
+
+Parameters:
+- pageName (required): Name of the page containing the view
+- viewName (optional): Name of the view to add the leader to
+- points (required): Array of [x, y] coordinates defining the leader line path
+- text (optional): Text to display at the end of the leader line
+
+Returns:
+- success: Whether the leader was created
+- leaderName: Internal name of the leader line
+- points: Array of [x, y] coordinates
+- text: Text displayed (if provided)
+- pageName: Page containing the leader
+- message: Status message
+
+Use this tool to create leader lines with annotations for pointing to specific features.
+
+Example:
+- Simple leader: { pageName: "Page1", viewName: "Front", points: [[10, 50], [10, 100], [50, 100]] }
+- With text: { pageName: "Page1", points: [[0, 0], [0, 50]], text: "MAX" }`,
+    {
+      pageName: z.string().describe('Name of the page containing the view'),
+      viewName: z.string().optional().describe('Name of the view to add the leader to'),
+      points: z.array(z.tuple([z.number(), z.number()])).describe('Array of [x, y] coordinates for leader path'),
+      text: z.string().optional().describe('Text to display at the end of the leader'),
+    },
+    async (input) => {
+      const { pageName, viewName, points, text } = input;
+
+      const code = `
+from llm_bridge.techdraw_handlers import handle_add_leader
+import json
+params = json.loads('${JSON.stringify({ pageName, viewName: viewName || null, points, text: text || null })}')
+result = handle_add_leader(
+    page_name=params['pageName'],
+    view_name=params.get('viewName'),
+    points=params['points'],
+    text=params.get('text')
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatAnnotationCreation(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: export_to_svg
+ *
+ * Export a TechDraw page to SVG format.
+ */
+function exportToSvgTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'export_to_svg',
+    `Export a TechDraw page to SVG (Scalable Vector Graphics) format.
+
+Parameters:
+- pageName (required): Name of the page to export
+- outputPath (required): Full path for the output SVG file
+
+Returns:
+- success: Whether the export was successful
+- pageName: Name of the exported page
+- outputPath: Path where the file was saved
+- message: Status message
+
+Use this tool when you need to export a drawing as a vector graphics file for sharing or further editing.
+
+Example:
+- Export to SVG: { pageName: "Page1", outputPath: "C:/Drawings/part.svg" }`,
+    {
+      pageName: z.string().describe('Name of the page to export'),
+      outputPath: z.string().describe('Full path for the output SVG file'),
+    },
+    async (input) => {
+      const { pageName, outputPath } = input;
+
+      // Validate file path
+      const validation = validateFilePath(outputPath);
+      if (!validation.isValid) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Error: ${validation.error}`,
+            },
+          ],
+        };
+      }
+
+      const code = `
+from llm_bridge.techdraw_handlers import handle_export_page_to_svg
+import json
+params = json.loads('${JSON.stringify({ pageName, outputPath })}')
+result = handle_export_page_to_svg(
+    page_name=params['pageName'],
+    output_path=params['outputPath']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatExportResult(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: export_to_pdf
+ *
+ * Export a TechDraw page to PDF format.
+ */
+function exportToPdfTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'export_to_pdf',
+    `Export a TechDraw page to PDF (Portable Document Format) format.
+
+Parameters:
+- pageName (required): Name of the page to export
+- outputPath (required): Full path for the output PDF file
+
+Returns:
+- success: Whether the export was successful
+- pageName: Name of the exported page
+- outputPath: Path where the file was saved
+- message: Status message
+
+Use this tool when you need to export a drawing as a PDF for printing or sharing documentation.
+
+Example:
+- Export to PDF: { pageName: "Page1", outputPath: "C:/Drawings/part.pdf" }`,
+    {
+      pageName: z.string().describe('Name of the page to export'),
+      outputPath: z.string().describe('Full path for the output PDF file'),
+    },
+    async (input) => {
+      const { pageName, outputPath } = input;
+
+      // Validate file path
+      const validation = validateFilePath(outputPath);
+      if (!validation.isValid) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Error: ${validation.error}`,
+            },
+          ],
+        };
+      }
+
+      const code = `
+from llm_bridge.techdraw_handlers import handle_export_page_to_pdf
+import json
+params = json.loads('${JSON.stringify({ pageName, outputPath })}')
+result = handle_export_page_to_pdf(
+    page_name=params['pageName'],
+    output_path=params['outputPath']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatExportResult(parsed.data);
         return {
           content: [
             {
