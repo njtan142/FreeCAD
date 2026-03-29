@@ -361,7 +361,7 @@ def handle_create_path_toolbit(geometry, name=None):
             return {
                 "success": True,
                 "data": {
-                    "baseObject": geometry,
+                    "baseObjects": [geometry],
                     "message": f"Toolbit creation from geometry '{geometry}' requires additional parameters",
                 },
             }
@@ -727,7 +727,11 @@ def handle_create_path_drill(centers, job_name=None, name=None):
             base_for_op = [(base, [])]
         elif isinstance(centers, list):
             if len(centers) > 0 and isinstance(centers[0], dict):
-                base_for_op = []
+                return {
+                    "success": False,
+                    "error": "Point coordinates not supported for drilling. Use object names instead.",
+                    "data": None,
+                }
             else:
                 base_for_op = []
                 for item in centers:
@@ -1103,12 +1107,24 @@ def handle_create_path_dressup_leadoff(job_name, lead_in=None, lead_out=None):
 
             if lead_in is not None:
                 dressup_obj.LeadIn = True
-                if lead_in and hasattr(dressup_obj, "StyleIn"):
+                if isinstance(lead_in, str) and hasattr(dressup_obj, "StyleIn"):
                     dressup_obj.StyleIn = lead_in
+                elif not isinstance(lead_in, str) and lead_in is not True:
+                    return {
+                        "success": False,
+                        "error": f"lead_in must be a string like 'Arc', 'Line', etc., got {type(lead_in).__name__}",
+                        "data": None,
+                    }
             if lead_out is not None:
                 dressup_obj.LeadOut = True
-                if lead_out and hasattr(dressup_obj, "StyleOut"):
+                if isinstance(lead_out, str) and hasattr(dressup_obj, "StyleOut"):
                     dressup_obj.StyleOut = lead_out
+                elif not isinstance(lead_out, str) and lead_out is not True:
+                    return {
+                        "success": False,
+                        "error": f"lead_out must be a string like 'Arc', 'Line', etc., got {type(lead_out).__name__}",
+                        "data": None,
+                    }
 
             dbo.setup(dressup_obj)
             doc.recompute()
@@ -1162,6 +1178,16 @@ def handle_export_gcode(job_name, file_path):
             return {
                 "success": False,
                 "error": f"Object '{job_name}' is not a PathJob",
+                "data": None,
+            }
+
+        import os
+
+        file_path = os.path.expanduser(file_path)
+        if os.path.isabs(file_path) or ".." in file_path:
+            return {
+                "success": False,
+                "error": "file_path must be a relative path without path traversal",
                 "data": None,
             }
 
