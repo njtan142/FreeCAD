@@ -54,6 +54,16 @@ import {
   formatSweepCreation,
   formatSurfaceOperation,
   formatSurfaceInfo,
+  formatSolverInit,
+  formatSolveResult,
+  formatDOFResult,
+  formatJointValue,
+  formatJointLimits,
+  formatDriveResult,
+  formatAnimationResult,
+  formatAnimationState,
+  formatKinematicPositions,
+  formatCollisionResult,
 } from './result-formatters';
 import {
   validateFilePath,
@@ -271,6 +281,19 @@ export function createAgentTools(freeCADBridge: FreeCADBridge) {
     getSurfaceInfoTool(freeCADBridge),
     listSurfacesTool(freeCADBridge),
     validateSurfaceTool(freeCADBridge),
+    // Kinematic solver and animation tools
+    initializeKinematicSolverTool(freeCADBridge),
+    solveAssemblyTool(freeCADBridge),
+    checkDegreesOfFreedomTool(freeCADBridge),
+    setJointValueTool(freeCADBridge),
+    getJointValueTool(freeCADBridge),
+    getJointLimitsTool(freeCADBridge),
+    driveJointTool(freeCADBridge),
+    animateAssemblyTool(freeCADBridge),
+    stopAnimationTool(freeCADBridge),
+    getAnimationStateTool(freeCADBridge),
+    getKinematicPositionsTool(freeCADBridge),
+    checkCollisionTool(freeCADBridge),
   ];
 }
 
@@ -10271,7 +10294,7 @@ print(json.dumps(result))
           content: [
             {
               type: 'text',
-              text: parsed.success ? formatted : `Error: \${parsed.error}`,
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
             },
           ],
         };
@@ -10280,7 +10303,789 @@ print(json.dumps(result))
           content: [
             {
               type: 'text',
-              text: `Tool execution error: \${error instanceof Error ? error.message : String(error)}`,
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: initialize_kinematic_solver
+ *
+ * Initialize the kinematic solver for an assembly.
+ */
+function initializeKinematicSolverTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'initialize_kinematic_solver',
+    `Initialize the kinematic solver for an assembly.
+
+Parameters:
+- assemblyName (required): Name of the assembly object
+
+Returns:
+- success: Whether the solver was initialized
+- assemblyName: Name of the assembly
+- dofCount: Number of degrees of freedom
+- jointCount: Number of joints in the assembly
+- message: Status message
+
+Use this tool to setup the kinematic solver before performing analysis or animation.
+
+Example:
+- Initialize solver: { assemblyName: "MainAssembly" }`,
+    {
+      assemblyName: z.string().describe('Name of the assembly to initialize solver for'),
+    },
+    async (input) => {
+      const { assemblyName } = input;
+
+      const code = `
+from llm_bridge.kinematic_handlers import handle_initialize_solver
+import json
+params = json.loads('${JSON.stringify({ assemblyName })}')
+result = handle_initialize_solver(assembly_name=params['assemblyName'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatSolverInit(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: solve_assembly
+ *
+ * Solve the kinematic positions for an assembly.
+ */
+function solveAssemblyTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'solve_assembly',
+    `Solve the kinematic positions for an assembly.
+
+Parameters:
+- assemblyName (required): Name of the assembly object
+- maxIterations (optional): Maximum solver iterations (default 100)
+
+Returns:
+- success: Whether solving succeeded
+- assemblyName: Name of the assembly
+- iterations: Number of iterations used
+- converged: Whether the solver converged
+- positions: Array of joint positions
+- message: Status message
+
+Use this tool to calculate the positions of all joints based on constraints.
+
+Example:
+- Solve assembly: { assemblyName: "MainAssembly" }
+- Solve with more iterations: { assemblyName: "MainAssembly", maxIterations: 200 }`,
+    {
+      assemblyName: z.string().describe('Name of the assembly to solve'),
+      maxIterations: z.number().optional().describe('Maximum solver iterations (default 100)'),
+    },
+    async (input) => {
+      const { assemblyName, maxIterations } = input;
+
+      const code = `
+from llm_bridge.kinematic_handlers import handle_solve_assembly
+import json
+params = json.loads('${JSON.stringify({ assemblyName, maxIterations })}')
+result = handle_solve_assembly(assembly_name=params['assemblyName'], max_iterations=params.get('maxIterations', 100))
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatSolveResult(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: check_degrees_of_freedom
+ *
+ * Perform degrees of freedom analysis on an assembly.
+ */
+function checkDegreesOfFreedomTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'check_degrees_of_freedom',
+    `Perform degrees of freedom (DOF) analysis on an assembly.
+
+Parameters:
+- assemblyName (required): Name of the assembly object
+
+Returns:
+- success: Whether the analysis succeeded
+- assemblyName: Name of the assembly
+- totalDof: Total degrees of freedom
+- constrainedDof: Constrained degrees of freedom
+- freeDof: Free degrees of freedom
+- message: Status message
+
+Use this tool to understand how many independent motions are possible in the assembly.
+
+Example:
+- Check DOF: { assemblyName: "MainAssembly" }`,
+    {
+      assemblyName: z.string().describe('Name of the assembly to analyze'),
+    },
+    async (input) => {
+      const { assemblyName } = input;
+
+      const code = `
+from llm_bridge.kinematic_handlers import handle_check_dof
+import json
+params = json.loads('${JSON.stringify({ assemblyName })}')
+result = handle_check_dof(assembly_name=params['assemblyName'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatDOFResult(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: set_joint_value
+ *
+ * Set the value of a joint/driver.
+ */
+function setJointValueTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'set_joint_value',
+    `Set the value of a joint or driver.
+
+Parameters:
+- jointName (required): Name of the joint or driver
+- value (required): Target value (degrees for angular, mm for linear)
+
+Returns:
+- success: Whether setting the value succeeded
+- jointName: Name of the joint
+- value: The new value
+- message: Status message
+
+Use this tool to directly set a joint to a specific position.
+
+Example:
+- Rotate hinge: { jointName: "HingeJoint", value: 45 }
+- Move slider: { jointName: "SliderJoint", value: 20 }`,
+    {
+      jointName: z.string().describe('Name of the joint or driver'),
+      value: z.number().describe('Target value (degrees for angular, mm for linear)'),
+    },
+    async (input) => {
+      const { jointName, value } = input;
+
+      const code = `
+from llm_bridge.kinematic_handlers import handle_set_joint_value
+import json
+params = json.loads('${JSON.stringify({ jointName, value })}')
+result = handle_set_joint_value(joint_name=params['jointName'], value=params['value'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatJointValue(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: get_joint_value
+ *
+ * Get the current value of a joint/driver.
+ */
+function getJointValueTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'get_joint_value',
+    `Get the current value of a joint or driver.
+
+Parameters:
+- jointName (required): Name of the joint or driver
+
+Returns:
+- success: Whether getting the value succeeded
+- jointName: Name of the joint
+- value: Current value
+- unit: Unit of the value (deg or mm)
+- message: Status message
+
+Use this tool to query the current position of a joint.
+
+Example:
+- Get hinge position: { jointName: "HingeJoint" }`,
+    {
+      jointName: z.string().describe('Name of the joint or driver'),
+    },
+    async (input) => {
+      const { jointName } = input;
+
+      const code = `
+from llm_bridge.kinematic_handlers import handle_get_joint_value
+import json
+params = json.loads('${JSON.stringify({ jointName })}')
+result = handle_get_joint_value(joint_name=params['jointName'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatJointValue(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: get_joint_limits
+ *
+ * Get the limits of a joint.
+ */
+function getJointLimitsTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'get_joint_limits',
+    `Get the limits (range of motion) of a joint.
+
+Parameters:
+- jointName (required): Name of the joint or driver
+
+Returns:
+- success: Whether getting limits succeeded
+- jointName: Name of the joint
+- minValue: Minimum value
+- maxValue: Maximum value
+- unit: Unit of the values (deg or mm)
+- hasLimits: Whether the joint has limits
+- message: Status message
+
+Use this tool to determine the range of motion for a joint.
+
+Example:
+- Get joint limits: { jointName: "HingeJoint" }`,
+    {
+      jointName: z.string().describe('Name of the joint or driver'),
+    },
+    async (input) => {
+      const { jointName } = input;
+
+      const code = `
+from llm_bridge.kinematic_handlers import handle_get_joint_limits
+import json
+params = json.loads('${JSON.stringify({ jointName })}')
+result = handle_get_joint_limits(joint_name=params['jointName'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatJointLimits(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: drive_joint
+ *
+ * Create a joint animation drive sequence.
+ */
+function driveJointTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'drive_joint',
+    `Create a joint animation drive sequence.
+
+Parameters:
+- jointName (required): Name of the joint or driver
+- startValue (required): Starting value
+- endValue (required): Ending value
+- duration (required): Duration in seconds
+- motionType (optional): Motion curve type - "linear", "ease_in_out", or "sine" (default "linear")
+
+Returns:
+- success: Whether creating the drive succeeded
+- jointName: Name of the joint
+- startValue: Starting value
+- endValue: Ending value
+- duration: Duration in seconds
+- motionType: Type of motion curve
+- frames: Number of frames in the animation
+- message: Status message
+
+Use this tool to create an animation sequence for a single joint.
+
+Example:
+- Open hinge over 2 seconds: { jointName: "HingeJoint", startValue: 0, endValue: 90, duration: 2 }
+- Smooth slider motion: { jointName: "SliderJoint", startValue: 0, endValue: 50, duration: 3, motionType: "ease_in_out" }`,
+    {
+      jointName: z.string().describe('Name of the joint or driver'),
+      startValue: z.number().describe('Starting value'),
+      endValue: z.number().describe('Ending value'),
+      duration: z.number().describe('Duration in seconds'),
+      motionType: z.enum(['linear', 'ease_in_out', 'sine']).optional().describe('Motion curve type'),
+    },
+    async (input) => {
+      const { jointName, startValue, endValue, duration, motionType } = input;
+
+      const code = `
+from llm_bridge.kinematic_handlers import handle_add_drive
+import json
+params = json.loads('${JSON.stringify({ jointName, startValue, endValue, duration, motionType: motionType || 'linear' })}')
+result = handle_add_drive(joint_name=params['jointName'], start_value=params['startValue'], end_value=params['endValue'], duration=params['duration'], motion_type=params['motionType'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatDriveResult(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: animate_assembly
+ *
+ * Run a full assembly animation.
+ */
+function animateAssemblyTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'animate_assembly',
+    `Run a full assembly animation.
+
+Parameters:
+- assemblyName (required): Name of the assembly object
+- duration (required): Animation duration in seconds
+- frameRate (optional): Frames per second (default 30)
+
+Returns:
+- success: Whether starting the animation succeeded
+- assemblyName: Name of the assembly
+- duration: Animation duration in seconds
+- frameRate: Frames per second
+- totalFrames: Total number of frames
+- message: Status message
+
+Use this tool to run the full animation with all joint drives.
+
+Example:
+- Animate for 5 seconds: { assemblyName: "MainAssembly", duration: 5 }
+- Higher frame rate: { assemblyName: "MainAssembly", duration: 10, frameRate: 60 }`,
+    {
+      assemblyName: z.string().describe('Name of the assembly to animate'),
+      duration: z.number().describe('Animation duration in seconds'),
+      frameRate: z.number().optional().describe('Frames per second (default 30)'),
+    },
+    async (input) => {
+      const { assemblyName, duration, frameRate } = input;
+
+      const code = `
+from llm_bridge.kinematic_handlers import handle_animate_assembly
+import json
+params = json.loads('${JSON.stringify({ assemblyName, duration, frameRate: frameRate || 30 })}')
+result = handle_animate_assembly(assembly_name=params['assemblyName'], duration=params['duration'], frame_rate=params['frameRate'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatAnimationResult(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: stop_animation
+ *
+ * Stop the currently running animation.
+ */
+function stopAnimationTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'stop_animation',
+    `Stop the currently running animation.
+
+Parameters: None
+
+Returns:
+- success: Whether stopping succeeded
+- message: Status message
+
+Use this tool to stop a running animation.
+
+Example:
+- Stop animation: {}`,
+    {},
+    async () => {
+      const code = `
+from llm_bridge.kinematic_handlers import handle_stop_animation
+import json
+result = handle_stop_animation()
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? parsed.message : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: get_animation_state
+ *
+ * Get the current animation state.
+ */
+function getAnimationStateTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'get_animation_state',
+    `Get the current animation state.
+
+Parameters: None
+
+Returns:
+- success: Whether getting state succeeded
+- isPlaying: Whether animation is playing
+- currentFrame: Current frame number
+- totalFrames: Total number of frames
+- duration: Total duration in seconds
+- message: Status message
+
+Use this tool to check the status of a running or completed animation.
+
+Example:
+- Get state: {}`,
+    {},
+    async () => {
+      const code = `
+from llm_bridge.kinematic_handlers import handle_get_animation_state
+import json
+result = handle_get_animation_state()
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatAnimationState(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: get_kinematic_positions
+ *
+ * Get all joint positions after solving.
+ */
+function getKinematicPositionsTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'get_kinematic_positions',
+    `Get all joint positions after solving.
+
+Parameters:
+- assemblyName (required): Name of the assembly object
+
+Returns:
+- success: Whether getting positions succeeded
+- assemblyName: Name of the assembly
+- positions: Array of {joint, value, unit}
+- message: Status message
+
+Use this tool to retrieve the current configuration of all joints in the assembly.
+
+Example:
+- Get positions: { assemblyName: "MainAssembly" }`,
+    {
+      assemblyName: z.string().describe('Name of the assembly'),
+    },
+    async (input) => {
+      const { assemblyName } = input;
+
+      const code = `
+from llm_bridge.kinematic_handlers import handle_get_kinematic_positions
+import json
+params = json.loads('${JSON.stringify({ assemblyName })}')
+result = handle_get_kinematic_positions(assembly_name=params['assemblyName'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatKinematicPositions(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: check_collision
+ *
+ * Check for collisions during motion.
+ */
+function checkCollisionTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'check_collision',
+    `Check for collisions during motion.
+
+Parameters:
+- assemblyName (required): Name of the assembly object
+- duringMotion (optional): Whether to check during animation (default false)
+
+Returns:
+- success: Whether the check succeeded
+- assemblyName: Name of the assembly
+- hasCollision: Whether collisions were detected
+- collisionPairs: Array of colliding object pairs
+- message: Status message
+
+Use this tool to detect interference between parts during motion.
+
+Example:
+- Check for collisions: { assemblyName: "MainAssembly" }
+- Check during motion: { assemblyName: "MainAssembly", duringMotion: true }`,
+    {
+      assemblyName: z.string().describe('Name of the assembly to check'),
+      duringMotion: z.boolean().optional().describe('Whether to check during animation'),
+    },
+    async (input) => {
+      const { assemblyName, duringMotion } = input;
+
+      const code = `
+from llm_bridge.kinematic_handlers import handle_check_collision
+import json
+params = json.loads('${JSON.stringify({ assemblyName, duringMotion: duringMotion || false })}')
+result = handle_check_collision(during_motion=params['duringMotion'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatCollisionResult(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
             },
           ],
         };
