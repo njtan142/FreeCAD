@@ -197,6 +197,34 @@ from .animation_export_handlers import (
     handle_get_animation_capture_state,
 )
 
+from .mesh_handlers import (
+    handle_convert_to_mesh,
+    handle_convert_to_shape,
+    handle_mesh_boolean_union,
+    handle_mesh_boolean_difference,
+    handle_mesh_boolean_intersection,
+    handle_mesh_decimate,
+    handle_mesh_fill_holes,
+    handle_mesh_fix_normals,
+    handle_mesh_remove_duplicates,
+    handle_mesh_validate,
+    handle_mesh_is_watertight,
+    handle_mesh_get_info,
+    handle_mesh_scale,
+    handle_mesh_offset,
+    handle_mesh_smooth,
+)
+
+from .mesh_export_handlers import (
+    handle_export_stl,
+    handle_export_3mf,
+    handle_export_obj,
+    handle_export_ply,
+    handle_import_stl,
+    handle_import_3mf,
+    handle_import_obj,
+)
+
 __all__ = [
     "handle_document_overview",
     "handle_object_details",
@@ -355,4 +383,26 @@ __all__ = [
     "handle_export_animation",
     "handle_create_gif",
     "handle_get_animation_capture_state",
+    "handle_convert_to_mesh",
+    "handle_convert_to_shape",
+    "handle_mesh_boolean_union",
+    "handle_mesh_boolean_difference",
+    "handle_mesh_boolean_intersection",
+    "handle_mesh_decimate",
+    "handle_mesh_fill_holes",
+    "handle_mesh_fix_normals",
+    "handle_mesh_remove_duplicates",
+    "handle_mesh_validate",
+    "handle_mesh_is_watertight",
+    "handle_mesh_get_info",
+    "handle_mesh_scale",
+    "handle_mesh_offset",
+    "handle_mesh_smooth",
+    "handle_export_stl",
+    "handle_export_3mf",
+    "handle_export_obj",
+    "handle_export_ply",
+    "handle_import_stl",
+    "handle_import_3mf",
+    "handle_import_obj",
 ]
