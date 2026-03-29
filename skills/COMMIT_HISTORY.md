@@ -978,3 +978,46 @@ The original large commit for Spreadsheet Workbench Tools (BOM & Parametric Tabl
 - **Files modified**: 4 (__init__.py, agent-tools.ts, result-formatters.ts, workflow_handlers.py)
 - **Total insertions**: ~2,150 lines
 - **Total deletions**: ~0 lines
+
+---
+
+## Cycle 25 - Incremental Commits
+
+The original large commit for BIM Workbench Tools (Architecture-Specific Operations) have been refactored into 2 incremental commits.
+
+| Commit Hash | Message | Files Changed |
+|-------------|---------|---------------|
+| `7065258bd2` | feat(llm): add BIM/Arch workbench handlers | bim_handlers.py, __init__.py |
+| `874a42942d` | feat(llm): complete BIM/Arch workbench tools with TypeScript definitions and formatters | agent-tools.ts, result-formatters.ts, skills/* |
+
+### Commit Progression
+
+1. **Python BIM handlers**: Added `bim_handlers.py` with 35 handlers for BIM/Arch operations:
+   - Building structure: handle_create_site, handle_create_building, handle_create_building_part, handle_create_building_level, handle_get_building_hierarchy
+   - Architectural elements: handle_create_wall, handle_create_window, handle_create_door, handle_create_roof, handle_create_stairs, handle_create_curtain_wall, handle_create_space
+   - Structural elements: handle_create_column, handle_create_beam, handle_create_slab, handle_create_frame, handle_create_truss, handle_create_fence
+   - Equipment & infrastructure: handle_create_equipment, handle_create_pipe, handle_create_pipe_connector, handle_create_panel
+   - Annotation & grids: handle_create_axis, handle_create_grid, handle_create_section_plane, handle_create_schedule
+   - IFC data management: handle_set_ifc_type, handle_get_ifc_properties, handle_set_ifc_property, handle_get_bim_material, handle_assign_material
+   - Quick building construction: handle_quick_wall, handle_quick_window, handle_quick_door, handle_quick_floor
+
+   Updated `__init__.py` to export all 35 new handlers
+
+2. **TypeScript BIM tools and formatters**: Added 35 BIM tools to agent-tools.ts:
+   - Building structure tools (5): createSite, createBuilding, createBuildingPart, createBuildingLevel, getBuildingHierarchy
+   - Architectural element tools (7): createWall, createWindow, createDoor, createRoof, createStairs, createCurtainWall, createSpace
+   - Structural element tools (6): createColumn, createBeam, createSlab, createFrame, createTruss, createFence
+   - Equipment & infrastructure tools (4): createEquipment, createPipe, createPipeConnector, createPanel
+   - Annotation & grid tools (4): createAxis, createGrid, createSectionPlane, createSchedule
+   - IFC data tools (5): setIfcType, getIfcProperties, setIfcProperty, getBimMaterial, assignMaterial
+   - Quick construction tools (4): quickWall, quickWindow, quickDoor, quickFloor
+
+   Added 32 result formatters to result-formatters.ts for human-readable BIM operation output
+
+### Summary
+
+- **Total commits**: 2
+- **Files created**: 1 (bim_handlers.py)
+- **Files modified**: 5 (__init__.py, agent-tools.ts, result-formatters.ts, CURRENT_PLAN.md, PROJECT.md)
+- **Total insertions**: ~4,110 lines
+- **Total deletions**: ~214 lines
