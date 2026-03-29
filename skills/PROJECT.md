@@ -119,3 +119,19 @@ This is a diverging fork. We modify FreeCAD directly without worrying about upst
   - Implemented shape validation and healing with tolerance checking
   - All end-to-end test scenarios passed (basic fuse/union, cut/difference, common/intersection, multi-object fuse, compound creation, shape validation, shape healing, shape info query, error handling)
 - [ ] Define additional custom tools as needed
+- [ ] **Multi-Agent Backend Support** — Support alternative LLM agents beyond Claude Code CLI
+  - [ ] **OpenCode integration** — Add OpenCode as an alternative agent backend
+    - OpenCode supports multiple LLM providers (OpenAI, Anthropic, Google, local models)
+    - Would allow users to use GPT-4, Gemini, or local models for CAD operations
+    - Requires adapter layer to translate between OpenCode's tool protocol and our MCP tools
+  - [ ] **Gemini CLI integration** — Add Google's Gemini CLI as an agent backend
+    - Direct access to Gemini models (Gemini 2.5 Pro, Flash, etc.)
+    - May offer faster/cheaper inference for simpler CAD tasks
+    - Requires adapter for Gemini's function calling format to our MCP tool interface
+  - [ ] **Agent backend abstraction layer** — Refactor sidecar to support pluggable agent backends
+    - Current architecture is tightly coupled to `@anthropic-ai/claude-agent-sdk`
+    - Need an `AgentBackend` interface that abstracts: prompt submission, tool dispatch, streaming responses
+    - Backend selection via config/UI dropdown in the LLM dock widget
+    - Each backend adapter translates between its native tool format and our MCP tool definitions
+    - Shared: FreeCAD bridge, MCP tool definitions, session management, context injection
+    - Per-backend: prompt format, authentication, tool calling protocol, response parsing
