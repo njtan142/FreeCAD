@@ -525,3 +525,47 @@ The original large commits for Surface Modeling Tools have been refactored into 
 - **Files modified**: 5 (__init__.py, agent-tools.ts, result-formatters.ts, sidecar/README.md, CURRENT_PLAN.md, CURRENT_REVIEW.md, CYCLE_COUNT.md)
 - **Total insertions**: ~2,100 lines
 - **Total deletions**: ~0 lines
+
+---
+
+## Cycle 16 - Incremental Commits
+
+The original large commit for Kinematic Solver and Motion Animation Tools have been refactored into 4 incremental commits.
+
+| Commit Hash | Message | Files Changed |
+|-------------|---------|---------------|
+| `cab90aeaf6` | feat(llm_bridge): implement kinematic solver and motion animation handlers | kinematic_handlers.py, __init__.py |
+| `94258db9fa` | feat(sidecar): add kinematic solver and animation tools to agent-tools | agent-tools.ts |
+| `072e1fe649` | feat(sidecar): add kinematic result formatters | result-formatters.ts |
+| `920fbc9abc` | docs(sidecar): add kinematic solver and motion animation tools documentation | sidecar/README.md |
+
+### Commit Progression
+
+1. **Python kinematic handlers**: Added kinematic_handlers.py with 12 handlers for kinematic operations:
+   - Solver management: handle_initialize_solver, handle_solve_assembly
+   - DOF analysis: handle_check_dof
+   - Joint control: handle_set_joint_value, handle_get_joint_value, handle_get_joint_limits
+   - Animation: handle_add_drive, handle_drive_joint, handle_animate_assembly, handle_stop_animation, handle_get_animation_state
+   - Analysis: handle_get_kinematic_positions, handle_check_collision
+   - Supports Assembly3, A2plus, and built-in Assembly modules with multi-solver fallback
+
+2. **Agent tools implementation**: Added 12 kinematic tools to agent-tools.ts:
+   - initialize_kinematic_solver, solve_assembly, check_degrees_of_freedom
+   - set_joint_value, get_joint_value, get_joint_limits
+   - drive_joint, animate_assembly, stop_animation, get_animation_state
+   - get_kinematic_positions, check_collision
+
+3. **Result formatters**: Added 10 kinematic-specific result formatters to result-formatters.ts:
+   - formatSolverInit, formatSolveResult, formatDOFResult
+   - formatJointValue, formatJointLimits, formatDriveResult
+   - formatAnimationResult, formatAnimationState, formatKinematicPositions, formatCollisionResult
+
+4. **Sidecar documentation**: Updated sidecar/README.md with comprehensive documentation for all 12 kinematic tools including usage examples, parameter descriptions, natural language examples, and common kinematic workflows (hinge rotation, slider animation, range of motion analysis, crank-slider mechanism)
+
+### Summary
+
+- **Total commits**: 4
+- **Files created**: 1 (kinematic_handlers.py)
+- **Files modified**: 5 (__init__.py, agent-tools.ts, result-formatters.ts, sidecar/README.md)
+- **Total insertions**: ~2,483 lines
+- **Total deletions**: ~125 lines
