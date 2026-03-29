@@ -1,76 +1,53 @@
-# Cycle 22 Review: Advanced Surface Modeling Tools
+# Cycle 23 Review: Workflow and Measurement Tools
 
-## Summary
+## Status: COMPLETE
 
-Cycle 22 implementation adds 6 TypeScript tools and 6 result formatters for surface modeling operations. The Python `__all__` list was already complete (no changes needed per plan).
+## Fixes Verified
 
----
+### 1. Handler/Formatter Contract Mismatch - FIXED ✓
 
-## Checklist Assessment
+Python handlers now return `data.success: True` inside the `data` object:
+- `handle_undo`: Returns `data.success`, `data.undoneObject`
+- `handle_redo`: Returns `data.success`, `data.redoneObject`
+- `handle_get_undo_stack_size`: Returns `data.success`, `data.undoSize`, `data.redoSize`, `data.canUndo`, `data.canRedo`
+- All visibility handlers: Return `data.success`
 
-| Item | Status |
-|------|--------|
-| `__all__` list updated (Python) | N/A - Already complete |
-| 6 new surface tools added (TypeScript) | ✓ |
-| 6 new result formatters added | ✓ |
-| All tools integrated in createAgentTools() | ✓ |
-| Tools use Zod schema validation | ✓ |
-| Tools call appropriate Python handlers | ✓ |
+TypeScript formatters check `data.success` which now matches the handler response structure.
 
----
+### 2. Wrong Formatter for getVisibleObjectsTool - FIXED ✓
 
-## Issues Found
+`getVisibleObjectsTool` now correctly uses `formatVisibleObjectsList` instead of `formatVisibilityChange`.
 
-### 1. Unrelated Changes in path_handlers.py
+Handler returns `data.count` and `data.objects` array - matches formatter expectations.
 
-The commit includes bug fixes to `path_handlers.py` that were **not part of the Cycle 22 plan**:
+### 3. Missing undoneObject/redoneObject Fields - FIXED ✓
 
-- `handle_create_path_toolbit`: Changed `baseObject` to `baseObjects` (list)
-- `handle_create_path_drill`: Added validation for point coordinates
-- `handle_create_path_dressup_leadoff`: Added type checking for `lead_in`/`lead_out`
-- `handle_export_gcode`: Added path traversal protection
+- `handle_undo` now includes `undoneObject` field
+- `handle_redo` now includes `redoneObject` field
 
-**These changes appear to be from Cycle 21 review fixes but were not included in that cycle's review.**
+## Verification
 
-### 2. Minor Issues in Result Formatters (result-formatters.ts:3152-3155)
+| Tool | Handler | Formatter | Data Fields |
+|------|---------|-----------|-------------|
+| undo | handle_undo | formatUndoResult | undoneObject, success ✓ |
+| redo | handle_redo | formatRedoResult | redoneObject, success ✓ |
+| get_undo_stack_size | handle_get_undo_stack_size | formatUndoStackSize | undoSize, redoSize, canUndo, canRedo, success ✓ |
+| get_visible_objects | handle_get_visible_objects | formatVisibleObjectsList | count, objects, success ✓ |
+| show_object/hide_object/toggle | handlers | formatVisibilityChange | objectName, objectLabel, visible, success ✓ |
 
-`formatPathOperation` handles both `baseObjects` (array) and `baseObject` (string) with fallback. This was fixed in Cycle 21 but appears again in this diff - likely a merge/rebase artifact.
+## No New Issues Introduced
 
----
+- Handlers follow consistent `{"success": bool, "data": {...}, "error": ...}` pattern
+- Formatters correctly access `data.success` at nested level
+- No type mismatches or missing field errors detected
 
-## Code Quality Assessment
+## Code Correctness
 
-### TypeScript Tools
-
-| Tool | Zod Schema | Error Handling | Formatter |
-|------|------------|----------------|-----------|
-| createBlendSurfaceTool | ✓ | ✓ | formatBlendSurface |
-| createOffsetSurfaceTool | ✓ | ✓ | formatOffsetSurface |
-| analyzeSurfaceTool | ✓ | ✓ | formatSurfaceAnalysis |
-| rebuildSurfaceTool | ✓ | ✓ | formatSurfaceRebuild |
-| getLoftInfoTool | ✓ | ✓ | formatLoftInfo |
-| getSweepInfoTool | ✓ | ✓ | formatSweepInfo |
-
-### Security Review
-
-- **No new security issues introduced** in surface modeling tools
-- Path traversal check in `handle_export_gcode` (path_handlers.py) is properly implemented
-- JSON.stringify with `replace(/'/g, "\\'")` prevents injection in Python code strings
-
-### Bug Review
-
-- No obvious bugs in the new surface modeling tools
-- All handlers follow the `{"success": bool, "data": ..., "error": ...}` pattern
-- Formatters properly handle null/undefined data
+The code is correct. All handler/formatter pairs are properly aligned.
 
 ---
 
-## Verdict
-
-**Approved with note.** The 6 surface modeling tools and 6 formatters are correctly implemented per the Cycle 22 plan. However, the commit includes unrelated bug fixes from Cycle 21 that should have been reviewed separately.
-
-The path_handlers.py changes are valid fixes but belong in a follow-up cycle or should have been part of Cycle 21's review closure.
-
-**Action Items:**
-- [ ] Consider splitting path_handlers.py fixes into a separate PR/cycle
-- [ ] Surface modeling tools are ready for use
+**Review Date**: 2026-03-30  
+**Reviewer**: Code Review Agent  
+**Cycle**: 23  
+**Verdict**: PASS

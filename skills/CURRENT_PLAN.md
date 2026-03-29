@@ -1,225 +1,236 @@
-## Status: IN PROGRESS (Cycle 23)
+## Status: PLANNED (Cycle 24)
 
-# Cycle 23: Undo/Redo, Visibility, and Measurement Tools
+# Cycle 24: Spreadsheet Workbench Tools (BOM & Parametric Tables)
 
 ## Overview
 
-Add critical workflow tools that are missing from the current implementation:
-- **Undo/Redo tools** — Essential for LLM workflows since the LLM will make mistakes and need to revert changes
-- **Visibility management tools** — Toggle object visibility in the viewport
-- **Measurement tools** — Measure distances, angles, and other geometric properties
+Add tools for FreeCAD's Spreadsheet workbench, enabling LLM-powered CAD operations to:
+- Create and manage spreadsheets within CAD documents
+- Perform cell-level operations (read/write, expressions, formatting)
+- Generate Bills of Materials (BOM) from CAD model data
+- Create parametric lookup tables linked to model properties
 
-These tools form a coherent unit focused on **workflow fundamentals** that improve the LLM's ability to iterate and verify CAD operations.
+These tools form a coherent unit focused on **manufacturing/engineering workflow fundamentals** that connect CAD models to downstream processes (planning, costing, ordering).
 
 ## Prerequisites
 
 - `src/Mod/LLMBridge/llm_bridge/__init__.py` - Existing module structure
 - `sidecar/src/agent-tools.ts` - Existing tool definitions
 - `sidecar/src/result-formatters.ts` - Existing result formatters
+- FreeCAD Spreadsheet module (`Spreadsheet::Sheet` type)
 
 ## Tasks
 
-### 1. Create workflow_handlers.py (Python)
+### 1. Create spreadsheet_handlers.py (Python)
 
-**File**: `src/Mod/LLMBridge/llm_bridge/workflow_handlers.py` (create new)
+**File**: `src/Mod/LLMBridge/llm_bridge/spreadsheet_handlers.py` (create new)
 
-Handlers for undo/redo and visibility management:
+Handlers for spreadsheet operations:
 
-#### Undo/Redo Functions
-- `handle_undo()` — Undo the last operation
-- `handle_redo()` — Redo the last undone operation
-- `handle_get_undo_stack_size()` — Get current undo/redo stack depth
+#### Spreadsheet Lifecycle
+- `handle_create_spreadsheet(name)` — Create a new spreadsheet in the document
+- `handle_delete_spreadsheet(name)` — Delete a spreadsheet
+- `handle_rename_spreadsheet(old_name, new_name)` — Rename a spreadsheet
+- `handle_list_spreadsheets()` — List all spreadsheets in the document
+- `handle_get_spreadsheet_info(name)` — Get spreadsheet metadata (rows, columns, used range)
 
-#### Visibility Functions
-- `handle_show_object(obj_name)` — Show a hidden object
-- `handle_hide_object(obj_name)` — Hide an object
-- `handle_toggle_visibility(obj_name)` — Toggle visibility state
-- `handle_show_all()` — Show all objects in document
-- `handle_hide_all()` — Hide all objects in document
-- `handle_get_visible_objects()` — List currently visible objects
-- `handle_set_object_visibility(obj_name, visible)` — Set visibility state explicitly
+#### Cell Operations
+- `handle_set_cell(spreadsheet_name, address, value)` — Set cell value (string, number, or expression)
+- `handle_get_cell(spreadsheet_name, address)` — Get cell value at address
+- `handle_set_cell_expression(spreadsheet_name, address, expression)` — Set cell formula/expression
+- `handle_get_cell_expression(spreadsheet_name, address)` — Get cell formula
+- `handle_clear_cell(spreadsheet_name, address)` — Clear a cell
+- `handle_clear_range(spreadsheet_name, start_address, end_address)` — Clear a range of cells
 
-#### Selection Functions (related workflow)
-- `handle_select_object(obj_name)` — Select an object
-- `handle_deselect_object(obj_name)` — Deselect an object
-- `handle_select_all()` — Select all objects
-- `handle_clear_selection()` — Clear current selection
-- `handle_is_selected(obj_name)` — Check if object is selected
+#### Alias Operations
+- `handle_set_alias(spreadsheet_name, address, alias_name)` — Set cell alias for parametric access
+- `handle_get_alias(spreadsheet_name, alias_name)` — Get cell value by alias
+- `handle_remove_alias(spreadsheet_name, alias_name)` — Remove a cell alias
+- `handle_list_aliases(spreadsheet_name)` — List all aliases in a spreadsheet
+
+#### BOM Generation
+- `handle_generate_bom(options)` — Generate Bill of Materials from document objects
+  - Options: include_hidden, group_by_type, include_properties, output_format
+- `handle_get_object_bom_data(object_names, properties)` — Extract structured data from objects for BOM
+- `handle_export_bom_to_spreadsheet(bom_data, spreadsheet_name, start_address)` — Write BOM data to spreadsheet
+
+#### Parametric Tables
+- `handle_create_parametric_table(spreadsheet_name, headers, data)` — Create a parametric lookup table
+- `handle_update_parametric_table(spreadsheet_name, row_key, updates)` — Update a row in a parametric table
+- `handle_lookup_value(spreadsheet_name, column_key, lookup_value)` — Lookup value in table by key
+
+#### Spreadsheet Formatting (Basic)
+- `handle_set_column_width(spreadsheet_name, column, width)` — Set column width
+- `handle_set_row_height(spreadsheet_name, row, height)` — Set row height
+- `handle_set_cell_background(spreadsheet_name, address, color)` — Set cell background color
 
 **Acceptance Criteria**:
 - [ ] All handlers return JSON with success/error structure
-- [ ] Undo/redo properly use FreeCAD's Document.Undo/Redo stack
-- [ ] Visibility changes update the GUI correctly
+- [ ] Cell addresses support both A1 and $A$1 notation
+- [ ] Expressions are properly prefixed with = when needed
+- [ ] BOM generation works with Part, PartDesign, and Draft objects
 
-### 2. Create measurement_handlers.py (Python)
-
-**File**: `src/Mod/LLMBridge/llm_bridge/measurement_handlers.py` (create new)
-
-Handlers for geometric measurement:
-
-#### Distance Measurement
-- `handle_measure_distance(point1, point2)` — Measure distance between two points
-- `handle_measure_object_distance(obj1_name, obj2_name)` — Measure minimum distance between two objects
-
-#### Angle Measurement
-- `handle_measure_angle(point1, point2, point3)` — Measure angle at point2 formed by point1-point2-point3
-
-#### Length Measurement
-- `handle_measure_length(obj_name)` — Get length of a line/wire/edge
-
-#### Area Measurement
-- `handle_measure_area(obj_name)` — Get surface area of a face or object
-
-#### Measurement Utilities
-- `handle_get_measure_info(obj_name)` — Get all measurement info for an object
-
-**Acceptance Criteria**:
-- [ ] All measurements return numeric values with units
-- [ ] Measurements work with Draft, Part, and PartDesign objects
-
-### 3. Add Tool Definitions to agent-tools.ts
+### 2. Add Tool Definitions to agent-tools.ts
 
 **File**: `sidecar/src/agent-tools.ts` (modify)
 
-Add undo/redo/visibility tools after existing tools in `createAgentTools()`:
+Add spreadsheet tools after existing tools in `createAgentTools()`:
 
 ```typescript
-// Undo/Redo tools
-createUndoTool(freeCADBridge),
-createRedoTool(freeCADBridge),
-getUndoStackSizeTool(freeCADBridge),
+// Spreadsheet lifecycle tools
+createSpreadsheetTool(freeCADBridge),
+deleteSpreadsheetTool(freeCADBridge),
+renameSpreadsheetTool(freeCADBridge),
+listSpreadsheetsTool(freeCADBridge),
+getSpreadsheetInfoTool(freeCADBridge),
 
-// Visibility tools
-showObjectTool(freeCADBridge),
-hideObjectTool(freeCADBridge),
-toggleVisibilityTool(freeCADBridge),
-showAllObjectsTool(freeCADBridge),
-hideAllObjectsTool(freeCADBridge),
-getVisibleObjectsTool(freeCADBridge),
-setObjectVisibilityTool(freeCADBridge),
+// Cell operation tools
+setCellTool(freeCADBridge),
+getCellTool(freeCADBridge),
+setCellExpressionTool(freeCADBridge),
+getCellExpressionTool(freeCADBridge),
+clearCellTool(freeCADBridge),
+clearRangeTool(freeCADBridge),
 
-// Selection tools (workflow helpers)
-selectObjectTool(freeCADBridge),
-deselectObjectTool(freeCADBridge),
-selectAllObjectsTool(freeCADBridge),
-clearSelectionTool(freeCADBridge),
-isObjectSelectedTool(freeCADBridge),
+// Alias tools
+setAliasTool(freeCADBridge),
+getAliasTool(freeCADBridge),
+removeAliasTool(freeCADBridge),
+listAliasesTool(freeCADBridge),
 
-// Measurement tools
-measureDistanceTool(freeCADBridge),
-measureObjectDistanceTool(freeCADBridge),
-measureAngleTool(freeCADBridge),
-measureLengthTool(freeCADBridge),
-measureAreaTool(freeCADBridge),
-getMeasureInfoTool(freeCADBridge),
+// BOM tools
+generateBomTool(freeCADBridge),
+getObjectBomDataTool(freeCADBridge),
+exportBomToSpreadsheetTool(freeCADBridge),
+
+// Parametric table tools
+createParametricTableTool(freeCADBridge),
+updateParametricTableTool(freeCADBridge),
+lookupValueTool(freeCADBridge),
+
+// Formatting tools
+setColumnWidthTool(freeCADBridge),
+setRowHeightTool(freeCADBridge),
+setCellBackgroundTool(freeCADBridge),
 ```
 
-### 4. Add Result Formatters
+### 3. Add Result Formatters
 
 **File**: `sidecar/src/result-formatters.ts` (modify)
 
 Add formatters:
 ```typescript
-formatUndoResult(data)
-formatRedoResult(data)
-formatUndoStackSize(data)
-formatVisibilityChange(data)
-formatVisibleObjectsList(data)
-formatSelectionChange(data)
-formatMeasurement(data)
-formatDistanceMeasurement(data)
-formatAngleMeasurement(data)
+formatSpreadsheetCreate(data)
+formatSpreadsheetDelete(data)
+formatSpreadsheetInfo(data)
+formatCellValue(data)
+formatCellExpression(data)
+formatAliasList(data)
+formatBomGeneration(data)
+formatBomData(data)
+formatParametricTable(data)
+formatTableLookup(data)
+formatColumnWidth(data)
+formatRowHeight(data)
+formatCellBackground(data)
 ```
 
-### 5. Update __init__.py Exports
+### 4. Update __init__.py Exports
 
 **File**: `src/Mod/LLMBridge/llm_bridge/__init__.py` (modify)
 
 Add exports for new handlers to `__all__`:
 ```python
-# From workflow_handlers.py
-'handle_undo',
-'handle_redo', 
-'handle_get_undo_stack_size',
-'handle_show_object',
-'handle_hide_object',
-'handle_toggle_visibility',
-'handle_show_all',
-'handle_hide_all',
-'handle_get_visible_objects',
-'handle_set_object_visibility',
-'handle_select_object',
-'handle_deselect_object',
-'handle_select_all',
-'handle_clear_selection',
-'handle_is_selected',
-# From measurement_handlers.py
-'handle_measure_distance',
-'handle_measure_object_distance',
-'handle_measure_angle',
-'handle_measure_length',
-'handle_measure_area',
-'handle_get_measure_info',
+# From spreadsheet_handlers.py
+'handle_create_spreadsheet',
+'handle_delete_spreadsheet',
+'handle_rename_spreadsheet',
+'handle_list_spreadsheets',
+'handle_get_spreadsheet_info',
+'handle_set_cell',
+'handle_get_cell',
+'handle_set_cell_expression',
+'handle_get_cell_expression',
+'handle_clear_cell',
+'handle_clear_range',
+'handle_set_alias',
+'handle_get_alias',
+'handle_remove_alias',
+'handle_list_aliases',
+'handle_generate_bom',
+'handle_get_object_bom_data',
+'handle_export_bom_to_spreadsheet',
+'handle_create_parametric_table',
+'handle_update_parametric_table',
+'handle_lookup_value',
+'handle_set_column_width',
+'handle_set_row_height',
+'handle_set_cell_background',
 ```
 
 ## Files to Create/Modify
 
 ### New Files:
-1. `src/Mod/LLMBridge/llm_bridge/workflow_handlers.py` - Undo/redo and visibility handlers
-2. `src/Mod/LLMBridge/llm_bridge/measurement_handlers.py` - Measurement handlers
+1. `src/Mod/LLMBridge/llm_bridge/spreadsheet_handlers.py` - Spreadsheet operation handlers (~500 lines)
 
 ### Modified Files:
-1. `src/Mod/LLMBridge/llm_bridge/__init__.py` - Add exports for new handlers
-2. `sidecar/src/agent-tools.ts` - Add 16 new tools
-3. `sidecar/src/result-formatters.ts` - Add 9 new formatters
+1. `src/Mod/LLMBridge/llm_bridge/__init__.py` - Add exports for 23 new handlers
+2. `sidecar/src/agent-tools.ts` - Add 23 new tools
+3. `sidecar/src/result-formatters.ts` - Add 12 new formatters
 
 ## Test Scenarios
 
-1. **Undo/Redo Flow**:
-   - Create a box, undo, verify it's removed, redo, verify it returns
-   - Create multiple features, undo stack shows correct depth
+1. **Spreadsheet Lifecycle**:
+   - Create a spreadsheet, verify it appears in document
+   - Rename spreadsheet, verify name change
+   - Delete spreadsheet, verify removal
 
-2. **Visibility Toggle**:
-   - Create two cubes, hide one, verify only one is visible
-   - Toggle visibility on an object, verify state changes
-   - Show all / hide all operations
+2. **Cell Operations**:
+   - Set cell value, get cell value, verify round-trip
+   - Set cell expression (=A1+B1), verify formula stored
+   - Clear cell, verify empty
 
-3. **Selection Management**:
-   - Select object, verify it's in selection
-   - Deselect, clear selection, select all operations
+3. **Alias Operations**:
+   - Set alias on cell, use alias in PartDesign feature dimension
+   - Get value by alias, verify correct
+   - Remove alias, verify unlink
 
-4. **Distance Measurement**:
-   - Measure between two points, verify correct distance
-   - Measure between two cubes, verify minimum distance
+4. **BOM Generation**:
+   - Create 3 boxes with different dimensions, generate BOM
+   - Verify BOM includes name, type, dimensions, volume
+   - Export BOM to spreadsheet, verify data layout
 
-5. **Angle Measurement**:
-   - Create three points, measure angle, verify correct value
+5. **Parametric Tables**:
+   - Create lookup table with material properties
+   - Lookup value by material name
+   - Update table row, verify change
 
-6. **Length/Area Measurement**:
-   - Create a line, measure length, verify correct value
-   - Create a face, measure area, verify correct value
+6. **Integration with other tools**:
+   - Create spreadsheet, set cell with expression referencing Part object
+   - Change Part dimension, verify spreadsheet updates on recompute
 
-**Acceptance Criteria**:
-- [ ] All 16 new tools defined with Zod schema validation
-- [ ] All 9 new result formatters implemented
+## Acceptance Criteria
+
+- [ ] spreadsheet_handlers.py created with 23 handlers
 - [ ] All handlers properly export from __init__.py
-- [ ] Test scenarios pass
+- [ ] 23 new tools added to agent-tools.ts with Zod schema validation
+- [ ] 12 new result formatters added
+- [ ] All tools integrated in createAgentTools()
+- [ ] End-to-end test scenarios pass
 
 ## Definition of Done
 
-- [ ] workflow_handlers.py created with 14 handlers
-- [ ] measurement_handlers.py created with 6 handlers
+- [ ] spreadsheet_handlers.py created with 23 handlers
 - [ ] All handlers exported in __init__.py
-- [ ] 16 new tools added to agent-tools.ts
-- [ ] 9 new result formatters added
+- [ ] 23 new tools added to agent-tools.ts
+- [ ] 12 new result formatters added
 - [ ] All tools integrated in createAgentTools()
 - [ ] End-to-end test scenarios pass
 - [ ] Plan marked COMPLETED and moved to PROJECT.md progress
 
 ## Next Step After This
 
-After workflow fundamentals are complete, potential next cycles:
-- Spreadsheet workbench tools (BOM, parametric tables)
+After spreadsheet tools are complete, potential next cycles:
 - BIM workbench tools (architecture-specific operations)
 - Advanced error handling and recovery tools
 - Gemini CLI integration (alternative backend)

@@ -125,6 +125,7 @@ This is a diverging fork. We modify FreeCAD directly without worrying about upst
 - [x] **Cycle 20: Multi-Agent Backend Support - OpenCode Integration** (COMPLETED)
 - [x] **Cycle 21: CAM/Path Workbench Tools for CNC Operations** (COMPLETED)
 - [x] **Cycle 22: Advanced Surface Modeling Tools** (COMPLETED)
+- [x] **Cycle 23: Essential Workflow Tools (Undo/Redo, Visibility, Selection, Measurement)** (COMPLETED)
 - [ ] Define additional custom tools as needed
 - [ ] **Multi-Agent Backend Support** — Support alternative LLM agents beyond Claude Code CLI
   - [x] **OpenCode integration** — Add OpenCode as an alternative agent backend (COMPLETED - Cycle 20)
