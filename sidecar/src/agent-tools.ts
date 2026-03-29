@@ -79,6 +79,12 @@ import {
   formatMeshOffset,
   formatMeshExport,
   formatMeshImport,
+  formatFEAAnalysis,
+  formatFEAMesh,
+  formatFEAMaterial,
+  formatFEAConstraint,
+  formatFEASolver,
+  formatFEAResults,
 } from './result-formatters';
 import {
   validateFilePath,
@@ -359,6 +365,37 @@ export function createAgentTools(freeCADBridge: FreeCADBridge) {
     importStlTool(freeCADBridge),
     import3mfTool(freeCADBridge),
     importObjTool(freeCADBridge),
+    // FEA (Finite Element Analysis) tools
+    // Analysis management
+    createFeaAnalysisTool(freeCADBridge),
+    deleteFeaAnalysisTool(freeCADBridge),
+    listFeaAnalysesTool(freeCADBridge),
+    getFeaAnalysisTool(freeCADBridge),
+    // Mesh generation
+    createFeaMeshTool(freeCADBridge),
+    refineFeaMeshTool(freeCADBridge),
+    getFeaMeshInfoTool(freeCADBridge),
+    // Material assignment
+    setFeaMaterialTool(freeCADBridge),
+    getFeaMaterialTool(freeCADBridge),
+    // Boundary conditions
+    addFeaFixedConstraintTool(freeCADBridge),
+    addFeaForceConstraintTool(freeCADBridge),
+    addFeaPressureConstraintTool(freeCADBridge),
+    addFeaDisplacementConstraintTool(freeCADBridge),
+    addFeaSelfWeightTool(freeCADBridge),
+    listFeaConstraintsTool(freeCADBridge),
+    // Solver
+    setFeaSolverTool(freeCADBridge),
+    configureFeaSolverTool(freeCADBridge),
+    getFeaSolverStatusTool(freeCADBridge),
+    // Execution
+    runFeaAnalysisTool(freeCADBridge),
+    stopFeaAnalysisTool(freeCADBridge),
+    // Results
+    getFeaDisplacementTool(freeCADBridge),
+    getFeaStressTool(freeCADBridge),
+    getFeaReactionsTool(freeCADBridge),
   ];
 }
 
@@ -13613,6 +13650,1520 @@ print(json.dumps(result))
         const result = await freeCADBridge.executePython(code);
         const parsed = parseLastJsonLine(result.output);
         const formatted = formatMeshImport(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function createFeaAnalysisTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_fea_analysis',
+    `Create a new FEA (Finite Element Analysis) analysis.
+
+Parameters:
+- analysisName (optional): Name for the new analysis (auto-generated if not provided)
+
+Returns:
+- success: Whether creation succeeded
+- analysisName: Name of the created analysis
+- analysisLabel: Label of the analysis
+- message: Status message
+
+Use this tool to set up a new FEA analysis for stress analysis. After creation, you need to:
+1. Create a mesh from a shape object
+2. Assign a material
+3. Add boundary conditions (fixed constraints, forces, etc.)
+4. Configure and run the solver
+
+Example:
+- Create analysis: { analysisName: "StaticAnalysis" }
+- Create with default name: {}`,
+    {
+      analysisName: z.string().optional().describe('Optional name for the analysis'),
+    },
+    async (input) => {
+      const { analysisName } = input;
+
+      const code = `
+from llm_bridge.fea_handlers import handle_create_fea_analysis
+import json
+params = json.loads('${JSON.stringify({ analysisName })}')
+result = handle_create_fea_analysis(
+    analysis_name=params.get('analysisName') or "FEAAnalysis"
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatFEAAnalysis(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function deleteFeaAnalysisTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'delete_fea_analysis',
+    `Delete an FEA analysis.
+
+Parameters:
+- analysisName (required): Name of the analysis to delete
+
+Returns:
+- success: Whether deletion succeeded
+- deletedAnalysis: Name of the deleted analysis
+- message: Status message
+
+Use this tool to remove an FEA analysis and all its associated constraints and results.
+
+Example:
+- Delete analysis: { analysisName: "StaticAnalysis" }`,
+    {
+      analysisName: z.string().describe('Name of the analysis to delete'),
+    },
+    async (input) => {
+      const { analysisName } = input;
+
+      const code = `
+from llm_bridge.fea_handlers import handle_delete_fea_analysis
+import json
+params = json.loads('${JSON.stringify({ analysisName })}')
+result = handle_delete_fea_analysis(
+    analysis_name=params['analysisName']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatFEAAnalysis(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function listFeaAnalysesTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'list_fea_analyses',
+    `List all FEA analyses in the active document.
+
+Parameters: None
+
+Returns:
+- success: Whether listing succeeded
+- analyses: Array of analysis objects with name and label
+- count: Number of analyses found
+- message: Status message
+
+Use this tool to see all available FEA analyses in the current document.
+
+Example:
+- List all: {}`,
+    {},
+    async () => {
+      const code = `
+from llm_bridge.fea_handlers import handle_list_fea_analyses
+import json
+result = handle_list_fea_analyses()
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatFEAAnalysis(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function getFeaAnalysisTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'get_fea_analysis',
+    `Get detailed information about an FEA analysis.
+
+Parameters:
+- analysisName (required): Name of the analysis to query
+
+Returns:
+- success: Whether query succeeded
+- analysisName: Name of the analysis
+- analysisLabel: Label of the analysis
+- meshInfo: Information about the mesh (if any)
+- memberCount: Number of members (constraints, solver, etc.)
+- members: List of member names
+- status: Analysis status (Ready, Empty, etc.)
+- message: Status message
+
+Use this tool to check the current state of an analysis including its mesh, constraints, and solver.
+
+Example:
+- Get info: { analysisName: "StaticAnalysis" }`,
+    {
+      analysisName: z.string().describe('Name of the analysis to get info'),
+    },
+    async (input) => {
+      const { analysisName } = input;
+
+      const code = `
+from llm_bridge.fea_handlers import handle_get_fea_analysis
+import json
+params = json.loads('${JSON.stringify({ analysisName })}')
+result = handle_get_fea_analysis(
+    analysis_name=params['analysisName']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatFEAAnalysis(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function createFeaMeshTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_fea_mesh',
+    `Create a FEM mesh from a shape object for FEA analysis.
+
+Parameters:
+- objectName (required): Name of the shape object to mesh
+- meshType (optional): Mesh generator type ("netgen" or "gmsh", default "netgen")
+- maxSize (optional): Maximum element size (default 1.0)
+- secondOrder (optional): Use second order elements (default false)
+
+Returns:
+- success: Whether mesh creation succeeded
+- meshName: Name of the created mesh
+- meshLabel: Label of the mesh
+- sourceObject: Name of the source shape
+- meshType: Type of mesh generator used
+- nodeCount: Number of nodes in the mesh
+- elementCount: Number of elements in the mesh
+- message: Status message
+
+Use this tool to generate a finite element mesh from a CAD shape. The mesh is required for FEA analysis.
+
+Example:
+- Create mesh: { objectName: "Box" }
+- Fine mesh: { objectName: "Box", maxSize: 0.5 }
+- Gmsh mesh: { objectName: "Box", meshType: "gmsh" }`,
+    {
+      objectName: z.string().describe('Name of the shape object to mesh'),
+      meshType: z.enum(['netgen', 'gmsh']).optional().describe('Mesh generator type'),
+      maxSize: z.number().optional().describe('Maximum element size'),
+      secondOrder: z.boolean().optional().describe('Use second order elements'),
+    },
+    async (input) => {
+      const { objectName, meshType, maxSize, secondOrder } = input;
+
+      const code = `
+from llm_bridge.fea_handlers import handle_create_fea_mesh
+import json
+params = json.loads('${JSON.stringify({ objectName, meshType, maxSize, secondOrder })}')
+result = handle_create_fea_mesh(
+    object_name=params['objectName'],
+    mesh_type=params.get('meshType', 'netgen'),
+    max_size=params.get('maxSize', 1.0),
+    second_order=params.get('secondOrder', False)
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatFEAMesh(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function refineFeaMeshTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'refine_fea_mesh',
+    `Refine an existing FEM mesh by increasing element density.
+
+Parameters:
+- meshName (required): Name of the mesh to refine
+- refineLevel (required): Refinement level (1 = double resolution, 2 = quadruple, etc.)
+
+Returns:
+- success: Whether refinement succeeded
+- meshName: Name of the refined mesh
+- meshLabel: Label of the refined mesh
+- sourceMesh: Name of the source mesh
+- refineLevel: Applied refinement level
+- originalNodeCount: Node count before refinement
+- newNodeCount: Node count after refinement
+- originalElementCount: Element count before refinement
+- newElementCount: Element count after refinement
+- message: Status message
+
+Use this tool to create a denser mesh from an existing one. Higher refinement levels produce more elements.
+
+Example:
+- Refine level 1: { meshName: "Box_Mesh", refineLevel: 1 }
+- Aggressive refinement: { meshName: "Box_Mesh", refineLevel: 2 }`,
+    {
+      meshName: z.string().describe('Name of the mesh to refine'),
+      refineLevel: z.number().int().min(1).describe('Refinement level (1, 2, 3, etc.)'),
+    },
+    async (input) => {
+      const { meshName, refineLevel } = input;
+
+      const code = `
+from llm_bridge.fea_handlers import handle_refine_fea_mesh
+import json
+params = json.loads('${JSON.stringify({ meshName, refineLevel })}')
+result = handle_refine_fea_mesh(
+    mesh_name=params['meshName'],
+    refine_level=params['refineLevel']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatFEAMesh(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function getFeaMeshInfoTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'get_fea_mesh_info',
+    `Get detailed information about a FEM mesh.
+
+Parameters:
+- meshName (required): Name of the mesh object to query
+
+Returns:
+- success: Whether query succeeded
+- meshName: Name of the mesh
+- meshLabel: Label of the mesh
+- meshType: Type of mesh (Fem::FemMesh, etc.)
+- nodeCount: Number of nodes
+- elementCount: Number of elements
+- elementTypes: Object with counts of each element type
+- message: Status message
+
+Use this tool to get mesh statistics and verify mesh quality.
+
+Example:
+- Get info: { meshName: "Box_Mesh" }`,
+    {
+      meshName: z.string().describe('Name of the mesh to get info'),
+    },
+    async (input) => {
+      const { meshName } = input;
+
+      const code = `
+from llm_bridge.fea_handlers import handle_get_fea_mesh_info
+import json
+params = json.loads('${JSON.stringify({ meshName })}')
+result = handle_get_fea_mesh_info(
+    mesh_name=params['meshName']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatFEAMesh(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function setFeaMaterialTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'set_fea_material',
+    `Assign a material to an object for FEA analysis.
+
+Parameters:
+- objectName (required): Name of the object to assign material to
+- materialName (required): Material preset (Steel, Aluminum, Copper, Brass, Titanium, Plastic)
+
+Returns:
+- success: Whether material assignment succeeded
+- objectName: Name of the object
+- materialName: Name of the assigned material
+- youngsModulus: Young's modulus in MPa
+- poissonsRatio: Poisson's ratio
+- density: Density in kg/mm^3
+- yieldStrength: Yield strength in MPa
+- message: Status message
+
+Use this tool to assign a material preset to a shape. The material properties affect stress and deformation results.
+
+Material Properties:
+- Steel: E=210000 MPa, nu=0.3, yield=250 MPa
+- Aluminum: E=70000 MPa, nu=0.33, yield=270 MPa
+- Copper: E=130000 MPa, nu=0.34, yield=33 MPa
+- Brass: E=100000 MPa, nu=0.34, yield=180 MPa
+- Titanium: E=110000 MPa, nu=0.34, yield=140 MPa
+- Plastic: E=2200 MPa, nu=0.35, yield=50 MPa
+
+Example:
+- Assign steel: { objectName: "Box", materialName: "Steel" }
+- Assign aluminum: { objectName: "Box", materialName: "Aluminum" }`,
+    {
+      objectName: z.string().describe('Name of the object to assign material to'),
+      materialName: z.enum(['Steel', 'Aluminum', 'Copper', 'Brass', 'Titanium', 'Plastic']).describe('Material preset name'),
+    },
+    async (input) => {
+      const { objectName, materialName } = input;
+
+      const code = `
+from llm_bridge.fea_handlers import handle_set_fea_material
+import json
+params = json.loads('${JSON.stringify({ objectName, materialName })}')
+result = handle_set_fea_material(
+    object_name=params['objectName'],
+    material_name=params['materialName']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatFEAMaterial(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function getFeaMaterialTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'get_fea_material',
+    `Get the current material assignment for an object.
+
+Parameters:
+- objectName (required): Name of the object to query
+
+Returns:
+- success: Whether query succeeded
+- objectName: Name of the object
+- materialName: Name of the material (or "Custom" if not a preset)
+- youngsModulus: Young's modulus in MPa
+- poissonsRatio: Poisson's ratio
+- materialData: Full material data dictionary
+- message: Status message
+
+Use this tool to check what material is currently assigned to an object.
+
+Example:
+- Get material: { objectName: "Box" }`,
+    {
+      objectName: z.string().describe('Name of the object to get material from'),
+    },
+    async (input) => {
+      const { objectName } = input;
+
+      const code = `
+from llm_bridge.fea_handlers import handle_get_fea_material
+import json
+params = json.loads('${JSON.stringify({ objectName })}')
+result = handle_get_fea_material(
+    object_name=params['objectName']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatFEAMaterial(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function addFeaFixedConstraintTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'add_fea_fixed_constraint',
+    `Add a fixed boundary condition (constrains all translations).
+
+Parameters:
+- analysisName (required): Name of the analysis
+- faceReferences (required): List of face references (e.g., ["Face1", "Face2"])
+
+Returns:
+- success: Whether constraint was added
+- constraintName: Name of the created constraint
+- constraintType: Type of constraint ("Fixed")
+- facesConstrained: List of constrained faces
+- analysisName: Name of the analysis
+- message: Status message
+
+Use this tool to fix faces or edges so they cannot move. Typically used to constrain the part at mounting points.
+
+Example:
+- Fix bottom face: { analysisName: "StaticAnalysis", faceReferences: ["Face1"] }
+- Fix multiple: { analysisName: "StaticAnalysis", faceReferences: ["Face1", "Face2"] }`,
+    {
+      analysisName: z.string().describe('Name of the analysis'),
+      faceReferences: z.array(z.string()).describe('List of face references to fix'),
+    },
+    async (input) => {
+      const { analysisName, faceReferences } = input;
+
+      const code = `
+from llm_bridge.fea_handlers import handle_add_fea_fixed_constraint
+import json
+params = json.loads('${JSON.stringify({ analysisName, faceReferences })}')
+result = handle_add_fea_fixed_constraint(
+    analysis_name=params['analysisName'],
+    face_names=params['faceReferences']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatFEAConstraint(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function addFeaForceConstraintTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'add_fea_force_constraint',
+    `Add a force constraint (applied load).
+
+Parameters:
+- analysisName (required): Name of the analysis
+- faceReference (required): Face reference to apply force to (e.g., "Face1")
+- forceValue (required): Force value in Newtons
+- forceDirection (optional): Direction vector with x, y, z components (defaults to +Z)
+
+Returns:
+- success: Whether constraint was added
+- constraintName: Name of the created constraint
+- constraintType: Type of constraint ("Force")
+- faceName: Face the force is applied to
+- forceValue: Force value in N
+- forceDirection: Direction vector
+- analysisName: Name of the analysis
+- message: Status message
+
+Use this tool to apply a concentrated force to a face. The force is distributed over the face area.
+
+Example:
+- Apply 1000N in Z: { analysisName: "StaticAnalysis", faceReference: "Face1", forceValue: 1000 }
+- With direction: { analysisName: "StaticAnalysis", faceReference: "Face1", forceValue: 500, forceDirection: {"x": 1, "y": 0, "z": 0} }`,
+    {
+      analysisName: z.string().describe('Name of the analysis'),
+      faceReference: z.string().describe('Face reference to apply force to'),
+      forceValue: z.number().describe('Force value in Newtons'),
+      forceDirection: z.object({
+        x: z.number(),
+        y: z.number(),
+        z: z.number(),
+      }).optional().describe('Direction vector'),
+    },
+    async (input) => {
+      const { analysisName, faceReference, forceValue, forceDirection } = input;
+
+      const code = `
+from llm_bridge.fea_handlers import handle_add_fea_force_constraint
+import json
+params = json.loads('${JSON.stringify({ analysisName, faceReference, forceValue, forceDirection })}')
+result = handle_add_fea_force_constraint(
+    analysis_name=params['analysisName'],
+    face_name=params['faceReference'],
+    force_value=params['forceValue'],
+    force_direction=params.get('forceDirection')
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatFEAConstraint(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function addFeaPressureConstraintTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'add_fea_pressure_constraint',
+    `Add a pressure constraint (uniform pressure load).
+
+Parameters:
+- analysisName (required): Name of the analysis
+- faceReference (required): Face reference to apply pressure to (e.g., "Face1")
+- pressureValue (required): Pressure value in MPa
+
+Returns:
+- success: Whether constraint was added
+- constraintName: Name of the created constraint
+- constraintType: Type of constraint ("Pressure")
+- faceName: Face the pressure is applied to
+- pressureValue: Pressure value in MPa
+- analysisName: Name of the analysis
+- message: Status message
+
+Use this tool to apply uniform pressure to a face. Pressure is force per unit area.
+
+Example:
+- Apply 10 MPa: { analysisName: "StaticAnalysis", faceReference: "Face1", pressureValue: 10 }`,
+    {
+      analysisName: z.string().describe('Name of the analysis'),
+      faceReference: z.string().describe('Face reference to apply pressure to'),
+      pressureValue: z.number().describe('Pressure value in MPa'),
+    },
+    async (input) => {
+      const { analysisName, faceReference, pressureValue } = input;
+
+      const code = `
+from llm_bridge.fea_handlers import handle_add_fea_pressure_constraint
+import json
+params = json.loads('${JSON.stringify({ analysisName, faceReference, pressureValue })}')
+result = handle_add_fea_pressure_constraint(
+    analysis_name=params['analysisName'],
+    face_name=params['faceReference'],
+    pressure_value=params['pressureValue']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatFEAConstraint(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function addFeaDisplacementConstraintTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'add_fea_displacement_constraint',
+    `Add a displacement constraint (prescribed displacement boundary condition).
+
+Parameters:
+- analysisName (required): Name of the analysis
+- faceReference (required): Face reference to apply displacement to
+- x (optional): X displacement value (0 = fixed, non-zero = prescribed)
+- y (optional): Y displacement value (0 = fixed, non-zero = prescribed)
+- z (optional): Z displacement value (0 = fixed, non-zero = prescribed)
+
+Returns:
+- success: Whether constraint was added
+- constraintName: Name of the created constraint
+- constraintType: Type of constraint ("Displacement")
+- faceName: Face the constraint is applied to
+- displacements: Object with x, y, z values
+- analysisName: Name of the analysis
+- message: Status message
+
+Use this tool to constrain specific displacement components. Set a value to 0 to fix that direction, or use a non-zero value to prescribe a specific displacement.
+
+Example:
+- Fix only Z: { analysisName: "StaticAnalysis", faceReference: "Face1", z: 0 }
+- Allow thermal expansion in Z: { analysisName: "StaticAnalysis", faceReference: "Face1", x: 0, y: 0, z: 0.01 }`,
+    {
+      analysisName: z.string().describe('Name of the analysis'),
+      faceReference: z.string().describe('Face reference to apply displacement to'),
+      x: z.number().optional().describe('X displacement (0 = fixed)'),
+      y: z.number().optional().describe('Y displacement (0 = fixed)'),
+      z: z.number().optional().describe('Z displacement (0 = fixed)'),
+    },
+    async (input) => {
+      const { analysisName, faceReference, x, y, z } = input;
+
+      const code = `
+from llm_bridge.fea_handlers import handle_add_fea_displacement_constraint
+import json
+params = json.loads('${JSON.stringify({ analysisName, faceReference, x, y, z })}')
+result = handle_add_fea_displacement_constraint(
+    analysis_name=params['analysisName'],
+    face_name=params['faceReference'],
+    x=params.get('x'),
+    y=params.get('y'),
+    z=params.get('z')
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatFEAConstraint(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function addFeaSelfWeightTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'add_fea_self_weight',
+    `Add self-weight (gravity) constraint to the analysis.
+
+Parameters:
+- analysisName (required): Name of the analysis
+- gravity (optional): Gravity acceleration in m/s^2 (default 9.81)
+
+Returns:
+- success: Whether constraint was added
+- constraintName: Name of the created constraint
+- constraintType: Type of constraint ("SelfWeight")
+- gravity: Gravity value in m/s^2
+- analysisName: Name of the analysis
+- message: Status message
+
+Use this tool to add gravitational loading to the entire model. The weight of the part itself creates the load.
+
+Example:
+- Add with default gravity: { analysisName: "StaticAnalysis" }
+- Moon gravity: { analysisName: "StaticAnalysis", gravity: 1.62 }`,
+    {
+      analysisName: z.string().describe('Name of the analysis'),
+      gravity: z.number().optional().describe('Gravity in m/s^2 (default 9.81)'),
+    },
+    async (input) => {
+      const { analysisName, gravity } = input;
+
+      const code = `
+from llm_bridge.fea_handlers import handle_add_fea_self_weight
+import json
+params = json.loads('${JSON.stringify({ analysisName, gravity })}')
+result = handle_add_fea_self_weight(
+    analysis_name=params['analysisName'],
+    gravity=params.get('gravity', 9.81)
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatFEAConstraint(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function listFeaConstraintsTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'list_fea_constraints',
+    `List all constraints in an FEA analysis.
+
+Parameters:
+- analysisName (required): Name of the analysis
+
+Returns:
+- success: Whether listing succeeded
+- analysisName: Name of the analysis
+- constraintCount: Number of constraints
+- constraints: Array of constraint objects with name, type, and properties
+- message: Status message
+
+Use this tool to see all boundary conditions and loads applied to an analysis.
+
+Example:
+- List constraints: { analysisName: "StaticAnalysis" }`,
+    {
+      analysisName: z.string().describe('Name of the analysis'),
+    },
+    async (input) => {
+      const { analysisName } = input;
+
+      const code = `
+from llm_bridge.fea_handlers import handle_list_fea_constraints
+import json
+params = json.loads('${JSON.stringify({ analysisName })}')
+result = handle_list_fea_constraints(
+    analysis_name=params['analysisName']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatFEAConstraint(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function setFeaSolverTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'set_fea_solver',
+    `Set the solver type for an FEA analysis.
+
+Parameters:
+- analysisName (required): Name of the analysis
+- solverType (optional): Solver type ("calculix", "elmer", "z88", default "calculix")
+
+Returns:
+- success: Whether solver was set
+- solverName: Name of the solver object
+- solverType: Type of solver
+- analysisName: Name of the analysis
+- message: Status message
+
+Use this tool to configure which solver to use for the analysis. CalculiX is the default and most commonly used.
+
+Available solvers:
+- calculix: Default solver, good for most static analysis
+- elmer: Multi-physics solver
+- z88: Fast solver for simple problems
+
+Example:
+- Set CalculiX: { analysisName: "StaticAnalysis" }
+- Use Elmer: { analysisName: "StaticAnalysis", solverType: "elmer" }`,
+    {
+      analysisName: z.string().describe('Name of the analysis'),
+      solverType: z.enum(['calculix', 'elmer', 'z88']).optional().describe('Solver type'),
+    },
+    async (input) => {
+      const { analysisName, solverType } = input;
+
+      const code = `
+from llm_bridge.fea_handlers import handle_set_fea_solver
+import json
+params = json.loads('${JSON.stringify({ analysisName, solverType })}')
+result = handle_set_fea_solver(
+    analysis_name=params['analysisName'],
+    solver_type=params.get('solverType', 'calculix')
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatFEASolver(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function configureFeaSolverTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'configure_fea_solver',
+    `Configure solver parameters for an FEA analysis.
+
+Parameters:
+- analysisName (required): Name of the analysis
+- config (required): Configuration dictionary with solver parameters
+
+Returns:
+- success: Whether configuration succeeded
+- solverName: Name of the solver
+- solverType: Type of solver
+- appliedConfig: Dictionary of applied configuration parameters
+- analysisName: Name of the analysis
+- message: Status message
+
+Use this tool to set advanced solver options. Common parameters include:
+- analysis_type: "static", "frequency", "thermomechanical"
+- working_dir: Directory for solver files
+
+Example:
+- Set static analysis: { analysisName: "StaticAnalysis", config: {"analysis_type": "static"} }`,
+    {
+      analysisName: z.string().describe('Name of the analysis'),
+      config: z.record(z.string(), z.any()).describe('Configuration dictionary'),
+    },
+    async (input) => {
+      const { analysisName, config } = input;
+
+      const code = `
+from llm_bridge.fea_handlers import handle_configure_fea_solver
+import json
+params = json.loads('${JSON.stringify({ analysisName, config })}')
+result = handle_configure_fea_solver(
+    analysis_name=params['analysisName'],
+    config=params['config']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatFEASolver(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function getFeaSolverStatusTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'get_fea_solver_status',
+    `Get the current solver status for an FEA analysis.
+
+Parameters:
+- analysisName (required): Name of the analysis
+
+Returns:
+- success: Whether query succeeded
+- solverName: Name of the solver
+- solverType: Type of solver
+- status: Current solver status
+- analysisName: Name of the analysis
+- message: Status message
+
+Use this tool to check if a solver is configured and ready, or if an analysis is currently running.
+
+Example:
+- Get status: { analysisName: "StaticAnalysis" }`,
+    {
+      analysisName: z.string().describe('Name of the analysis'),
+    },
+    async (input) => {
+      const { analysisName } = input;
+
+      const code = `
+from llm_bridge.fea_handlers import handle_get_fea_solver_status
+import json
+params = json.loads('${JSON.stringify({ analysisName })}')
+result = handle_get_fea_solver_status(
+    analysis_name=params['analysisName']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatFEASolver(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function runFeaAnalysisTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'run_fea_analysis',
+    `Run the FEA analysis.
+
+Parameters:
+- analysisName (required): Name of the analysis to run
+
+Returns:
+- success: Whether analysis started successfully
+- analysisName: Name of the analysis
+- solverName: Name of the solver used
+- resultCount: Number of result objects created
+- resultNames: Names of result objects
+- message: Status message
+
+Use this tool to execute the finite element analysis. The solver will compute displacement, stress, and strain results based on the mesh, material, and boundary conditions.
+
+Example:
+- Run analysis: { analysisName: "StaticAnalysis" }`,
+    {
+      analysisName: z.string().describe('Name of the analysis to run'),
+    },
+    async (input) => {
+      const { analysisName } = input;
+
+      const code = `
+from llm_bridge.fea_handlers import handle_run_fea_analysis
+import json
+params = json.loads('${JSON.stringify({ analysisName })}')
+result = handle_run_fea_analysis(
+    analysis_name=params['analysisName']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatFEAResults(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function stopFeaAnalysisTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'stop_fea_analysis',
+    `Stop a running FEA analysis.
+
+Parameters:
+- analysisName (required): Name of the analysis to stop
+
+Returns:
+- success: Whether stop was requested
+- analysisName: Name of the analysis
+- solverName: Name of the solver
+- message: Status message
+
+Use this tool to cancel a running analysis. Results computed so far may be available.
+
+Example:
+- Stop analysis: { analysisName: "StaticAnalysis" }`,
+    {
+      analysisName: z.string().describe('Name of the analysis to stop'),
+    },
+    async (input) => {
+      const { analysisName } = input;
+
+      const code = `
+from llm_bridge.fea_handlers import handle_stop_fea_analysis
+import json
+params = json.loads('${JSON.stringify({ analysisName })}')
+result = handle_stop_fea_analysis(
+    analysis_name=params['analysisName']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatFEAResults(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function getFeaDisplacementTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'get_fea_displacement',
+    `Get displacement results from an FEA analysis.
+
+Parameters:
+- analysisName (required): Name of the analysis
+
+Returns:
+- success: Whether results were retrieved
+- analysisName: Name of the analysis
+- resultName: Name of the result object
+- displacementCount: Number of displacement values
+- displacements: Array of displacement vectors (x, y, z)
+- maxDisplacement: Maximum displacement magnitude
+- message: Status message
+
+Use this tool to retrieve nodal displacement results. Displacement shows how much the structure deforms under load.
+
+Example:
+- Get displacements: { analysisName: "StaticAnalysis" }`,
+    {
+      analysisName: z.string().describe('Name of the analysis'),
+    },
+    async (input) => {
+      const { analysisName } = input;
+
+      const code = `
+from llm_bridge.fea_handlers import handle_get_fea_displacement
+import json
+params = json.loads('${JSON.stringify({ analysisName })}')
+result = handle_get_fea_displacement(
+    analysis_name=params['analysisName']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatFEAResults(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function getFeaStressTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'get_fea_stress',
+    `Get stress results (von Mises) from an FEA analysis.
+
+Parameters:
+- analysisName (required): Name of the analysis
+
+Returns:
+- success: Whether results were retrieved
+- analysisName: Name of the analysis
+- resultName: Name of the result object
+- stressCount: Number of stress values
+- stresses: Array of stress vectors (x, y, z)
+- maxVonMises: Maximum von Mises stress
+- message: Status message
+
+Use this tool to retrieve stress results. Von Mises stress is compared to yield strength to check for plastic failure.
+
+Example:
+- Get stresses: { analysisName: "StaticAnalysis" }`,
+    {
+      analysisName: z.string().describe('Name of the analysis'),
+    },
+    async (input) => {
+      const { analysisName } = input;
+
+      const code = `
+from llm_bridge.fea_handlers import handle_get_fea_stress
+import json
+params = json.loads('${JSON.stringify({ analysisName })}')
+result = handle_get_fea_stress(
+    analysis_name=params['analysisName']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatFEAResults(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function getFeaReactionsTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'get_fea_reactions',
+    `Get reaction forces from an FEA analysis.
+
+Parameters:
+- analysisName (required): Name of the analysis
+
+Returns:
+- success: Whether results were retrieved
+- analysisName: Name of the analysis
+- resultName: Name of the result object
+- reactionCount: Number of reaction forces
+- reactions: Array of reaction force vectors (x, y, z)
+- totalForce: Sum of all reaction forces
+- message: Status message
+
+Use this tool to retrieve reaction forces at constraint locations. Reactions should balance applied loads for a valid analysis.
+
+Example:
+- Get reactions: { analysisName: "StaticAnalysis" }`,
+    {
+      analysisName: z.string().describe('Name of the analysis'),
+    },
+    async (input) => {
+      const { analysisName } = input;
+
+      const code = `
+from llm_bridge.fea_handlers import handle_get_fea_reactions
+import json
+params = json.loads('${JSON.stringify({ analysisName })}')
+result = handle_get_fea_reactions(
+    analysis_name=params['analysisName']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatFEAResults(parsed.data);
         return {
           content: [
             {
