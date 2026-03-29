@@ -939,6 +939,7 @@ The original large commit for Spreadsheet Workbench Tools (BOM & Parametric Tabl
 | `d662a627da` | feat(llm): add spreadsheet workbench handlers | __init__.py, spreadsheet_handlers.py |
 | `793fec0210` | feat(sidecar): add spreadsheet workbench tools | agent-tools.ts, result-formatters.ts |
 | `e3c9c067a1` | fix(sidecar): align handler/formatter contract | workflow_handlers.py |
+| `02a7d0357f` | fix(sidecar): add missing formatRowHeight and formatCellBackground formatters | result-formatters.ts |
 
 ### Commit Progression
 
@@ -972,8 +973,8 @@ The original large commit for Spreadsheet Workbench Tools (BOM & Parametric Tabl
 
 ### Summary
 
-- **Total commits**: 3
+- **Total commits**: 4
 - **Files created**: 1 (spreadsheet_handlers.py)
 - **Files modified**: 4 (__init__.py, agent-tools.ts, result-formatters.ts, workflow_handlers.py)
-- **Total insertions**: ~2,100 lines
+- **Total insertions**: ~2,150 lines
 - **Total deletions**: ~0 lines
