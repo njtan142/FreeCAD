@@ -883,3 +883,47 @@ The original large commit for Advanced Surface Modeling Tools have been refactor
 - **Files modified**: 2 (agent-tools.ts, result-formatters.ts)
 - **Total insertions**: ~698 lines
 - **Total deletions**: ~4 lines
+
+---
+
+## Cycle 23 - Incremental Commits
+
+The original large commit for Undo/Redo, Visibility, and Measurement Tools have been refactored into 2 incremental commits.
+
+| Commit Hash | Message | Files Changed |
+|-------------|---------|---------------|
+| `e31e204a24` | feat(llm): add workflow and measurement handlers | __init__.py, measurement_handlers.py, workflow_handlers.py |
+| `873217311f` | feat(sidecar): add workflow and measurement tools | agent-tools.ts, result-formatters.ts |
+
+### Commit Progression
+
+1. **Python workflow and measurement handlers**: Added `workflow_handlers.py` with 14 handlers:
+   - Undo/Redo: handle_undo, handle_redo, handle_get_undo_stack_size
+   - Visibility: handle_show_object, handle_hide_object, handle_toggle_visibility, handle_show_all, handle_hide_all, handle_get_visible_objects, handle_set_object_visibility
+   - Selection: handle_select_object, handle_deselect_object, handle_select_all, handle_clear_selection, handle_is_selected
+
+   Added `measurement_handlers.py` with 6 handlers:
+   - handle_measure_distance, handle_measure_object_distance, handle_measure_angle
+   - handle_measure_length, handle_measure_area, handle_get_measure_info
+
+   Updated `__init__.py` to export all 20 new handlers
+
+2. **Sidecar agent tools and result formatters**: Added 16 workflow/measurement tools to agent-tools.ts:
+   - Undo/Redo: createUndoTool, createRedoTool, getUndoStackSizeTool
+   - Visibility: showObjectTool, hideObjectTool, toggleVisibilityTool, showAllObjectsTool, hideAllObjectsTool, getVisibleObjectsTool, setObjectVisibilityTool
+   - Selection: selectObjectTool, deselectObjectTool, selectAllObjectsTool, clearSelectionTool, isObjectSelectedTool
+   - Measurement: measureDistanceTool, measureObjectDistanceTool, measureAngleTool, measureLengthTool, measureAreaTool, getMeasureInfoTool
+
+   Added 9 result formatters to result-formatters.ts:
+   - formatUndoResult, formatRedoResult, formatUndoStackSize
+   - formatVisibilityChange, formatVisibleObjectsList
+   - formatSelectionChange
+   - formatMeasurement, formatDistanceMeasurement, formatAngleMeasurement
+
+### Summary
+
+- **Total commits**: 2
+- **Files created**: 2 (workflow_handlers.py, measurement_handlers.py)
+- **Files modified**: 3 (__init__.py, agent-tools.ts, result-formatters.ts)
+- **Total insertions**: ~2,435 lines
+- **Total deletions**: ~0 lines
