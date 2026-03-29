@@ -3890,7 +3890,7 @@ export function formatUndoResult(data: any): string {
 
   if (data.success) {
     lines.push('Undo: Successful');
-    if (data undoneObject) {
+    if (data.undoneObject) {
       lines.push(`Undone: ${data.undoneObject}`);
     }
   } else {
