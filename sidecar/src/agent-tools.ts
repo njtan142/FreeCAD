@@ -69,6 +69,16 @@ import {
   formatAnimationCapture,
   formatVideoExport,
   formatMaterialResult,
+  formatMeshConversion,
+  formatMeshBoolean,
+  formatMeshDecimation,
+  formatMeshRepair,
+  formatMeshValidation,
+  formatMeshInfo,
+  formatMeshScale,
+  formatMeshOffset,
+  formatMeshExport,
+  formatMeshImport,
 } from './result-formatters';
 import {
   validateFilePath,
@@ -317,6 +327,38 @@ export function createAgentTools(freeCADBridge: FreeCADBridge) {
     captureAnimationFrameTool(freeCADBridge),
     stopAnimationCaptureTool(freeCADBridge),
     exportAnimationTool(freeCADBridge),
+    // Mesh operation tools
+    // Conversion tools
+    shapeToMeshTool(freeCADBridge),
+    meshToShapeTool(freeCADBridge),
+    // Boolean operations
+    meshBooleanUnionTool(freeCADBridge),
+    meshBooleanDifferenceTool(freeCADBridge),
+    meshBooleanIntersectionTool(freeCADBridge),
+    // Decimation and optimization
+    decimateMeshTool(freeCADBridge),
+    optimizeMeshTool(freeCADBridge),
+    // Repair tools
+    repairMeshTool(freeCADBridge),
+    fillHolesTool(freeCADBridge),
+    fixMeshNormalsTool(freeCADBridge),
+    // Validation tools
+    validateMeshTool(freeCADBridge),
+    checkWatertightTool(freeCADBridge),
+    // Info tools
+    getMeshInfoTool(freeCADBridge),
+    // Scale and offset
+    scaleMeshTool(freeCADBridge),
+    offsetMeshTool(freeCADBridge),
+    // Export tools
+    exportStlTool(freeCADBridge),
+    export3mfTool(freeCADBridge),
+    exportObjTool(freeCADBridge),
+    exportPlyTool(freeCADBridge),
+    // Import tools
+    importStlTool(freeCADBridge),
+    import3mfTool(freeCADBridge),
+    importObjTool(freeCADBridge),
   ];
 }
 
@@ -9632,7 +9674,7 @@ Example:
       const code = `
 from llm_bridge.surface_handlers import handle_create_loft
 import json
-params = json.loads('\${JSON.stringify({ profiles, solid, closed, name: name || null }).replace(/'/g, "\\'")}')
+params = json.loads('${JSON.stringify({ profiles, solid, closed, name: name || null }).replace(/'/g, "\\'")}')
 result = handle_create_loft(
     profiles=params['profiles'],
     solid=params.get('solid', True),
@@ -9650,7 +9692,7 @@ print(json.dumps(result))
           content: [
             {
               type: 'text',
-              text: parsed.success ? formatted : `Error: \${parsed.error}`,
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
             },
           ],
         };
@@ -9659,7 +9701,7 @@ print(json.dumps(result))
           content: [
             {
               type: 'text',
-              text: `Tool execution error: \${error instanceof Error ? error.message : String(error)}`,
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
             },
           ],
         };
@@ -9708,7 +9750,7 @@ Example:
       const code = `
 from llm_bridge.surface_handlers import handle_create_section_loft
 import json
-params = json.loads('\${JSON.stringify({ profiles, path, solid, name: name || null }).replace(/'/g, "\\'")}')
+params = json.loads('${JSON.stringify({ profiles, path, solid, name: name || null }).replace(/'/g, "\\'")}')
 result = handle_create_section_loft(
     profiles=params['profiles'],
     path=params['path'],
@@ -9726,7 +9768,7 @@ print(json.dumps(result))
           content: [
             {
               type: 'text',
-              text: parsed.success ? formatted : `Error: \${parsed.error}`,
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
             },
           ],
         };
@@ -9735,7 +9777,7 @@ print(json.dumps(result))
           content: [
             {
               type: 'text',
-              text: `Tool execution error: \${error instanceof Error ? error.message : String(error)}`,
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
             },
           ],
         };
@@ -9789,7 +9831,7 @@ Example:
       const code = `
 from llm_bridge.surface_handlers import handle_create_sweep
 import json
-params = json.loads('\${JSON.stringify({ profile, path, solid, frenet, name: name || null }).replace(/'/g, "\\'")}')
+params = json.loads('${JSON.stringify({ profile, path, solid, frenet, name: name || null }).replace(/'/g, "\\'")}')
 result = handle_create_sweep(
     profile=params['profile'],
     path=params['path'],
@@ -9808,7 +9850,7 @@ print(json.dumps(result))
           content: [
             {
               type: 'text',
-              text: parsed.success ? formatted : `Error: \${parsed.error}`,
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
             },
           ],
         };
@@ -9817,7 +9859,7 @@ print(json.dumps(result))
           content: [
             {
               type: 'text',
-              text: `Tool execution error: \${error instanceof Error ? error.message : String(error)}`,
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
             },
           ],
         };
@@ -9866,7 +9908,7 @@ Example:
       const code = `
 from llm_bridge.surface_handlers import handle_create_pipe
 import json
-params = json.loads('\${JSON.stringify({ profile, path, solid, name: name || null }).replace(/'/g, "\\'")}')
+params = json.loads('${JSON.stringify({ profile, path, solid, name: name || null }).replace(/'/g, "\\'")}')
 result = handle_create_pipe(
     profile=params['profile'],
     path=params['path'],
@@ -9884,7 +9926,7 @@ print(json.dumps(result))
           content: [
             {
               type: 'text',
-              text: parsed.success ? formatted : `Error: \${parsed.error}`,
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
             },
           ],
         };
@@ -9893,7 +9935,7 @@ print(json.dumps(result))
           content: [
             {
               type: 'text',
-              text: `Tool execution error: \${error instanceof Error ? error.message : String(error)}`,
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
             },
           ],
         };
@@ -9942,7 +9984,7 @@ Example:
       const code = `
 from llm_bridge.surface_handlers import handle_create_multisweep
 import json
-params = json.loads('\${JSON.stringify({ profiles, path, solid, name: name || null }).replace(/'/g, "\\'")}')
+params = json.loads('${JSON.stringify({ profiles, path, solid, name: name || null }).replace(/'/g, "\\'")}')
 result = handle_create_multisweep(
     profiles=params['profiles'],
     path=params['path'],
@@ -9960,7 +10002,7 @@ print(json.dumps(result))
           content: [
             {
               type: 'text',
-              text: parsed.success ? formatted : `Error: \${parsed.error}`,
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
             },
           ],
         };
@@ -9969,7 +10011,7 @@ print(json.dumps(result))
           content: [
             {
               type: 'text',
-              text: `Tool execution error: \${error instanceof Error ? error.message : String(error)}`,
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
             },
           ],
         };
@@ -10016,7 +10058,7 @@ Example:
       const code = `
 from llm_bridge.surface_handlers import handle_create_ruled_surface
 import json
-params = json.loads('\${JSON.stringify({ curve1, curve2, name: name || null }).replace(/'/g, "\\'")}')
+params = json.loads('${JSON.stringify({ curve1, curve2, name: name || null }).replace(/'/g, "\\'")}')
 result = handle_create_ruled_surface(
     curve1=params['curve1'],
     curve2=params['curve2'],
@@ -10033,7 +10075,7 @@ print(json.dumps(result))
           content: [
             {
               type: 'text',
-              text: parsed.success ? formatted : `Error: \${parsed.error}`,
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
             },
           ],
         };
@@ -10042,7 +10084,7 @@ print(json.dumps(result))
           content: [
             {
               type: 'text',
-              text: `Tool execution error: \${error instanceof Error ? error.message : String(error)}`,
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
             },
           ],
         };
@@ -10086,7 +10128,7 @@ Example:
       const code = `
 from llm_bridge.surface_handlers import handle_create_surface_from_edges
 import json
-params = json.loads('\${JSON.stringify({ edges, name: name || null }).replace(/'/g, "\\'")}')
+params = json.loads('${JSON.stringify({ edges, name: name || null }).replace(/'/g, "\\'")}')
 result = handle_create_surface_from_edges(
     edges=params['edges'],
     name=params['name']
@@ -10102,7 +10144,7 @@ print(json.dumps(result))
           content: [
             {
               type: 'text',
-              text: parsed.success ? formatted : `Error: \${parsed.error}`,
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
             },
           ],
         };
@@ -10111,7 +10153,7 @@ print(json.dumps(result))
           content: [
             {
               type: 'text',
-              text: `Tool execution error: \${error instanceof Error ? error.message : String(error)}`,
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
             },
           ],
         };
@@ -10160,7 +10202,7 @@ Example:
       const code = `
 from llm_bridge.surface_handlers import handle_extend_surface
 import json
-params = json.loads('\${JSON.stringify({ surfaceName, distance, direction, name: name || null }).replace(/'/g, "\\'")}')
+params = json.loads('${JSON.stringify({ surfaceName, distance, direction, name: name || null }).replace(/'/g, "\\'")}')
 result = handle_extend_surface(
     surface_name=params['surfaceName'],
     distance=params['distance'],
@@ -10178,7 +10220,7 @@ print(json.dumps(result))
           content: [
             {
               type: 'text',
-              text: parsed.success ? formatted : `Error: \${parsed.error}`,
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
             },
           ],
         };
@@ -10187,7 +10229,7 @@ print(json.dumps(result))
           content: [
             {
               type: 'text',
-              text: `Tool execution error: \${error instanceof Error ? error.message : String(error)}`,
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
             },
           ],
         };
@@ -10233,7 +10275,7 @@ Example:
       const code = `
 from llm_bridge.surface_handlers import handle_trim_surface
 import json
-params = json.loads('\${JSON.stringify({ surfaceName, tool, name: name || null }).replace(/'/g, "\\'")}')
+params = json.loads('${JSON.stringify({ surfaceName, tool, name: name || null }).replace(/'/g, "\\'")}')
 result = handle_trim_surface(
     surface_name=params['surfaceName'],
     tool=params['tool'],
@@ -10250,7 +10292,7 @@ print(json.dumps(result))
           content: [
             {
               type: 'text',
-              text: parsed.success ? formatted : `Error: \${parsed.error}`,
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
             },
           ],
         };
@@ -10259,7 +10301,7 @@ print(json.dumps(result))
           content: [
             {
               type: 'text',
-              text: `Tool execution error: \${error instanceof Error ? error.message : String(error)}`,
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
             },
           ],
         };
@@ -10304,7 +10346,7 @@ Example:
       const code = `
 from llm_bridge.surface_handlers import handle_get_surface_info
 import json
-params = json.loads('\${JSON.stringify({ surfaceName }).replace(/'/g, "\\'")}')
+params = json.loads('${JSON.stringify({ surfaceName }).replace(/'/g, "\\'")}')
 result = handle_get_surface_info(surface_name=params['surfaceName'])
 print(json.dumps(result))
 `.trim();
@@ -11234,7 +11276,7 @@ Example:
       const code = `
 from llm_bridge.surface_handlers import handle_validate_surface
 import json
-params = json.loads('\${JSON.stringify({ surfaceName }).replace(/'/g, "\\'")}')
+params = json.loads('${JSON.stringify({ surfaceName }).replace(/'/g, "\\'")}')
 result = handle_validate_surface(surface_name=params['surfaceName'])
 print(json.dumps(result))
 `.trim();
@@ -11247,7 +11289,7 @@ print(json.dumps(result))
           content: [
             {
               type: 'text',
-              text: parsed.success ? formatted : `Error: \${parsed.error}`,
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
             },
           ],
         };
@@ -11256,7 +11298,7 @@ print(json.dumps(result))
           content: [
             {
               type: 'text',
-              text: `Tool execution error: \${error instanceof Error ? error.message : String(error)}`,
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
             },
           ],
         };
@@ -11310,7 +11352,7 @@ print(json.dumps(result))
           content: [
             {
               type: 'text',
-              text: parsed.success ? formatted : `Error: \${parsed.error}`,
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
             },
           ],
         };
@@ -11319,7 +11361,7 @@ print(json.dumps(result))
           content: [
             {
               type: 'text',
-              text: `Tool execution error: \${error instanceof Error ? error.message : String(error)}`,
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
             },
           ],
         };
@@ -11365,7 +11407,7 @@ print(json.dumps(result))
           content: [
             {
               type: 'text',
-              text: parsed.success ? formatted : `Error: \${parsed.error}`,
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
             },
           ],
         };
@@ -11374,7 +11416,7 @@ print(json.dumps(result))
           content: [
             {
               type: 'text',
-              text: `Tool execution error: \${error instanceof Error ? error.message : String(error)}`,
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
             },
           ],
         };
@@ -11439,7 +11481,7 @@ print(json.dumps(result))
           content: [
             {
               type: 'text',
-              text: parsed.success ? formatted : `Error: \${parsed.error}`,
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
             },
           ],
         };
@@ -11448,7 +11490,7 @@ print(json.dumps(result))
           content: [
             {
               type: 'text',
-              text: `Tool execution error: \${error instanceof Error ? error.message : String(error)}`,
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
             },
           ],
         };
@@ -11509,7 +11551,7 @@ print(json.dumps(result))
           content: [
             {
               type: 'text',
-              text: parsed.success ? formatted : `Error: \${parsed.error}`,
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
             },
           ],
         };
@@ -11518,7 +11560,7 @@ print(json.dumps(result))
           content: [
             {
               type: 'text',
-              text: `Tool execution error: \${error instanceof Error ? error.message : String(error)}`,
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
             },
           ],
         };
@@ -11572,7 +11614,7 @@ print(json.dumps(result))
           content: [
             {
               type: 'text',
-              text: parsed.success ? formatted : `Error: \${parsed.error}`,
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
             },
           ],
         };
@@ -11581,7 +11623,7 @@ print(json.dumps(result))
           content: [
             {
               type: 'text',
-              text: `Tool execution error: \${error instanceof Error ? error.message : String(error)}`,
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
             },
           ],
         };
@@ -11635,7 +11677,7 @@ print(json.dumps(result))
           content: [
             {
               type: 'text',
-              text: parsed.success ? formatted : `Error: \${parsed.error}`,
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
             },
           ],
         };
@@ -11644,7 +11686,7 @@ print(json.dumps(result))
           content: [
             {
               type: 'text',
-              text: `Tool execution error: \${error instanceof Error ? error.message : String(error)}`,
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
             },
           ],
         };
@@ -11701,7 +11743,7 @@ print(json.dumps(result))
           content: [
             {
               type: 'text',
-              text: parsed.success ? formatted : `Error: \${parsed.error}`,
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
             },
           ],
         };
@@ -11710,7 +11752,7 @@ print(json.dumps(result))
           content: [
             {
               type: 'text',
-              text: `Tool execution error: \${error instanceof Error ? error.message : String(error)}`,
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
             },
           ],
         };
@@ -11774,7 +11816,7 @@ print(json.dumps(result))
           content: [
             {
               type: 'text',
-              text: parsed.success ? formatted : `Error: \${parsed.error}`,
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
             },
           ],
         };
@@ -11783,7 +11825,7 @@ print(json.dumps(result))
           content: [
             {
               type: 'text',
-              text: `Tool execution error: \${error instanceof Error ? error.message : String(error)}`,
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
             },
           ],
         };
@@ -11837,7 +11879,7 @@ print(json.dumps(result))
           content: [
             {
               type: 'text',
-              text: parsed.success ? formatted : `Error: \${parsed.error}`,
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
             },
           ],
         };
@@ -11846,7 +11888,7 @@ print(json.dumps(result))
           content: [
             {
               type: 'text',
-              text: `Tool execution error: \${error instanceof Error ? error.message : String(error)}`,
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
             },
           ],
         };
@@ -11903,7 +11945,7 @@ print(json.dumps(result))
           content: [
             {
               type: 'text',
-              text: parsed.success ? formatted : `Error: \${parsed.error}`,
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
             },
           ],
         };
@@ -11912,7 +11954,7 @@ print(json.dumps(result))
           content: [
             {
               type: 'text',
-              text: `Tool execution error: \${error instanceof Error ? error.message : String(error)}`,
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
             },
           ],
         };
@@ -11959,7 +12001,7 @@ print(json.dumps(result))
           content: [
             {
               type: 'text',
-              text: parsed.success ? formatted : `Error: \${parsed.error}`,
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
             },
           ],
         };
@@ -11968,7 +12010,7 @@ print(json.dumps(result))
           content: [
             {
               type: 'text',
-              text: `Tool execution error: \${error instanceof Error ? error.message : String(error)}`,
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
             },
           ],
         };
@@ -12026,7 +12068,7 @@ print(json.dumps(result))
           content: [
             {
               type: 'text',
-              text: parsed.success ? formatted : `Error: \${parsed.error}`,
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
             },
           ],
         };
@@ -12035,7 +12077,7 @@ print(json.dumps(result))
           content: [
             {
               type: 'text',
-              text: `Tool execution error: \${error instanceof Error ? error.message : String(error)}`,
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
             },
           ],
         };
@@ -12098,7 +12140,7 @@ print(json.dumps(result))
           content: [
             {
               type: 'text',
-              text: parsed.success ? formatted : `Error: \${parsed.error}`,
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
             },
           ],
         };
@@ -12107,7 +12149,1484 @@ print(json.dumps(result))
           content: [
             {
               type: 'text',
-              text: `Tool execution error: \${error instanceof Error ? error.message : String(error)}`,
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}// ============================================================================
+// Mesh Operation Tools
+// ============================================================================
+
+function shapeToMeshTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'shape_to_mesh',
+    `Convert a Part shape to a mesh object.
+
+Parameters:
+- shapeName (required): Name of the shape to convert
+- meshName (optional): Name for the resulting mesh object
+
+Returns:
+- success: Whether conversion succeeded
+- meshName: Name of the created mesh
+- triangleCount: Number of triangles in the mesh
+- vertexCount: Number of vertices
+- message: Status message
+
+Use this tool when you need to convert CAD geometry to mesh format for 3D printing or export.
+
+Example:
+- Convert Box to mesh: { shapeName: "Box" }
+- Convert to mesh with name: { shapeName: "Body", meshName: "BodyMesh" }`,
+    {
+      shapeName: z.string().describe('Name of the shape to convert to mesh'),
+      meshName: z.string().optional().describe('Optional name for the resulting mesh'),
+    },
+    async (input) => {
+      const { shapeName, meshName } = input;
+
+      const code = `
+from llm_bridge.mesh_handlers import handle_shape_to_mesh
+import json
+params = json.loads('${JSON.stringify({ shapeName, meshName })}')
+result = handle_shape_to_mesh(
+    shape_name=params['shapeName'],
+    mesh_name=params.get('meshName')
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatMeshConversion(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function meshToShapeTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'mesh_to_shape',
+    `Convert a mesh object to a Part shape.
+
+Parameters:
+- meshName (required): Name of the mesh to convert
+- shapeName (optional): Name for the resulting shape
+
+Returns:
+- success: Whether conversion succeeded
+- shapeName: Name of the created shape
+- volume: Volume of the solid shape
+- message: Status message
+
+Use this tool when you need to convert mesh geometry to CAD geometry for further modeling.
+
+Example:
+- Convert Mesh to shape: { meshName: "Mesh" }
+- Convert with name: { meshName: "MyMesh", shapeName: "Solid" }`,
+    {
+      meshName: z.string().describe('Name of the mesh to convert to shape'),
+      shapeName: z.string().optional().describe('Optional name for the resulting shape'),
+    },
+    async (input) => {
+      const { meshName, shapeName } = input;
+
+      const code = `
+from llm_bridge.mesh_handlers import handle_mesh_to_shape
+import json
+params = json.loads('${JSON.stringify({ meshName, shapeName })}')
+result = handle_mesh_to_shape(
+    mesh_name=params['meshName'],
+    shape_name=params.get('shapeName')
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatMeshConversion(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function meshBooleanUnionTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'mesh_boolean_union',
+    `Union multiple meshes into a single mesh.
+
+Parameters:
+- meshNames (required): Array of mesh names to union
+- resultName (optional): Name for the resulting mesh
+
+Returns:
+- success: Whether operation succeeded
+- resultMesh: Name of the resulting mesh
+- triangleCount: Number of triangles in result
+- message: Status message
+
+Use this tool when you need to combine multiple mesh objects into one.
+
+Example:
+- Union meshes: { meshNames: ["Mesh1", "Mesh2"] }
+- Union with name: { meshNames: ["Part1", "Part2"], resultName: "Combined" }`,
+    {
+      meshNames: z.array(z.string()).describe('Array of mesh names to union'),
+      resultName: z.string().optional().describe('Optional name for the result'),
+    },
+    async (input) => {
+      const { meshNames, resultName } = input;
+
+      const code = `
+from llm_bridge.mesh_handlers import handle_mesh_boolean_union
+import json
+params = json.loads('${JSON.stringify({ meshNames, resultName })}')
+result = handle_mesh_boolean_union(
+    mesh_names=params['meshNames'],
+    result_name=params.get('resultName')
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatMeshBoolean(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function meshBooleanDifferenceTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'mesh_boolean_difference',
+    `Subtract meshes from a base mesh (cut holes).
+
+Parameters:
+- baseMesh (required): Name of the base mesh
+- toolMeshes (required): Array of mesh names to subtract
+- resultName (optional): Name for the resulting mesh
+
+Returns:
+- success: Whether operation succeeded
+- resultMesh: Name of the resulting mesh
+- triangleCount: Number of triangles in result
+- message: Status message
+
+Use this tool when you need to cut one mesh from another.
+
+Example:
+- Cut holes: { baseMesh: "Cube", toolMeshes: ["Cylinder"] }
+- Cut with name: { baseMesh: "Box", toolMeshes: ["Hole1", "Hole2"], resultName: "CutBox" }`,
+    {
+      baseMesh: z.string().describe('Name of the base mesh to subtract from'),
+      toolMeshes: z.array(z.string()).describe('Array of mesh names to subtract'),
+      resultName: z.string().optional().describe('Optional name for the result'),
+    },
+    async (input) => {
+      const { baseMesh, toolMeshes, resultName } = input;
+
+      const code = `
+from llm_bridge.mesh_handlers import handle_mesh_boolean_difference
+import json
+params = json.loads('${JSON.stringify({ baseMesh, toolMeshes, resultName })}')
+result = handle_mesh_boolean_difference(
+    base_mesh=params['baseMesh'],
+    tool_meshes=params['toolMeshes'],
+    result_name=params.get('resultName')
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatMeshBoolean(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function meshBooleanIntersectionTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'mesh_boolean_intersection',
+    `Intersect multiple meshes to find common volume.
+
+Parameters:
+- meshNames (required): Array of mesh names to intersect
+- resultName (optional): Name for the resulting mesh
+
+Returns:
+- success: Whether operation succeeded
+- resultMesh: Name of the resulting mesh
+- triangleCount: Number of triangles in result
+- message: Status message
+
+Use this tool when you need to find the overlap between meshes.
+
+Example:
+- Find overlap: { meshNames: ["Mesh1", "Mesh2"] }
+- Intersection with name: { meshNames: ["Part1", "Part2"], resultName: "Overlap" }`,
+    {
+      meshNames: z.array(z.string()).describe('Array of mesh names to intersect'),
+      resultName: z.string().optional().describe('Optional name for the result'),
+    },
+    async (input) => {
+      const { meshNames, resultName } = input;
+
+      const code = `
+from llm_bridge.mesh_handlers import handle_mesh_boolean_intersection
+import json
+params = json.loads('${JSON.stringify({ meshNames, resultName })}')
+result = handle_mesh_boolean_intersection(
+    mesh_names=params['meshNames'],
+    result_name=params.get('resultName')
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatMeshBoolean(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function decimateMeshTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'decimate_mesh',
+    `Reduce mesh complexity by removing triangles.
+
+Parameters:
+- meshName (required): Name of the mesh to decimate
+- targetRatio (required): Target reduction ratio (0.0 to 1.0), e.g., 0.5 = 50% of original
+- resultName (optional): Name for the resulting mesh
+
+Returns:
+- success: Whether operation succeeded
+- originalTriangles: Original triangle count
+- newTriangles: New triangle count after decimation
+- reduction: Actual reduction ratio achieved
+- message: Status message
+
+Use this tool to simplify meshes for faster rendering or export.
+
+Example:
+- Decimate to 50%: { meshName: "Mesh", targetRatio: 0.5 }
+- Decimate with name: { meshName: "HighRes", targetRatio: 0.25, resultName: "LowRes" }`,
+    {
+      meshName: z.string().describe('Name of the mesh to decimate'),
+      targetRatio: z.number().min(0).max(1).describe('Target reduction ratio (0.0-1.0)'),
+      resultName: z.string().optional().describe('Optional name for the result'),
+    },
+    async (input) => {
+      const { meshName, targetRatio, resultName } = input;
+
+      const code = `
+from llm_bridge.mesh_handlers import handle_decimate_mesh
+import json
+params = json.loads('${JSON.stringify({ meshName, targetRatio, resultName })}')
+result = handle_decimate_mesh(
+    mesh_name=params['meshName'],
+    target_ratio=params['targetRatio'],
+    result_name=params.get('resultName')
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatMeshDecimation(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function optimizeMeshTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'optimize_mesh',
+    `Optimize mesh topology and reduce file size.
+
+Parameters:
+- meshName (required): Name of the mesh to optimize
+- tolerance (optional): Optimization tolerance
+- resultName (optional): Name for the resulting mesh
+
+Returns:
+- success: Whether operation succeeded
+- resultMesh: Name of the resulting mesh
+- message: Status message
+
+Use this tool to clean up mesh topology without significant geometry loss.
+
+Example:
+- Optimize mesh: { meshName: "Mesh" }
+- Optimize with tolerance: { meshName: "Mesh", tolerance: 0.001 }`,
+    {
+      meshName: z.string().describe('Name of the mesh to optimize'),
+      tolerance: z.number().optional().describe('Optimization tolerance'),
+      resultName: z.string().optional().describe('Optional name for the result'),
+    },
+    async (input) => {
+      const { meshName, tolerance, resultName } = input;
+
+      const code = `
+from llm_bridge.mesh_handlers import handle_optimize_mesh
+import json
+params = json.loads('${JSON.stringify({ meshName, tolerance, resultName })}')
+result = handle_optimize_mesh(
+    mesh_name=params['meshName'],
+    tolerance=params.get('tolerance'),
+    result_name=params.get('resultName')
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatMeshDecimation(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function repairMeshTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'repair_mesh',
+    `Perform comprehensive mesh repair.
+
+Parameters:
+- meshName (required): Name of the mesh to repair
+- options (optional): Object with repair options
+  - fixHoles: Fill holes in the mesh
+  - fixNormals: Correct face normals
+  - removeDuplicates: Remove duplicate triangles
+
+Returns:
+- success: Whether repair succeeded
+- repairedMesh: Name of the repaired mesh
+- fixesApplied: Number of fixes applied
+- message: Status message
+
+Use this tool to fix common mesh issues before 3D printing.
+
+Example:
+- Repair mesh: { meshName: "Mesh" }
+- Full repair: { meshName: "Mesh", options: { fixHoles: true, fixNormals: true, removeDuplicates: true } }`,
+    {
+      meshName: z.string().describe('Name of the mesh to repair'),
+      options: z.object({
+        fixHoles: z.boolean().optional(),
+        fixNormals: z.boolean().optional(),
+        removeDuplicates: z.boolean().optional(),
+      }).optional().describe('Repair options'),
+    },
+    async (input) => {
+      const { meshName, options } = input;
+
+      const code = `
+from llm_bridge.mesh_handlers import handle_repair_mesh
+import json
+params = json.loads('${JSON.stringify({ meshName, options })}')
+result = handle_repair_mesh(
+    mesh_name=params['meshName'],
+    repair_options=params.get('options')
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatMeshRepair(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function fillHolesTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'fill_holes',
+    `Fill holes in a mesh.
+
+Parameters:
+- meshName (required): Name of the mesh
+- maxHoleSize (optional): Maximum hole size to fill
+
+Returns:
+- success: Whether operation succeeded
+- filledMesh: Name of the resulting mesh
+- holesFilled: Number of holes filled
+- message: Status message
+
+Use this tool to make a mesh watertight by filling holes.
+
+Example:
+- Fill holes: { meshName: "Mesh" }
+- Fill small holes: { meshName: "Mesh", maxHoleSize: 10 }`,
+    {
+      meshName: z.string().describe('Name of the mesh to fill holes in'),
+      maxHoleSize: z.number().optional().describe('Maximum hole size to fill'),
+    },
+    async (input) => {
+      const { meshName, maxHoleSize } = input;
+
+      const code = `
+from llm_bridge.mesh_handlers import handle_fill_holes
+import json
+params = json.loads('${JSON.stringify({ meshName, maxHoleSize })}')
+result = handle_fill_holes(
+    mesh_name=params['meshName'],
+    max_hole_size=params.get('maxHoleSize')
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatMeshRepair(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function fixMeshNormalsTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'fix_mesh_normals',
+    `Fix face normals of a mesh.
+
+Parameters:
+- meshName (required): Name of the mesh
+
+Returns:
+- success: Whether operation succeeded
+- fixedMesh: Name of the resulting mesh
+- normalsFixed: Number of normals corrected
+- message: Status message
+
+Use this tool to correct inverted or inconsistent face normals.
+
+Example:
+- Fix normals: { meshName: "Mesh" }`,
+    {
+      meshName: z.string().describe('Name of the mesh to fix normals'),
+    },
+    async (input) => {
+      const { meshName } = input;
+
+      const code = `
+from llm_bridge.mesh_handlers import handle_fix_normals
+import json
+params = json.loads('${JSON.stringify({ meshName })}')
+result = handle_fix_normals(mesh_name=params['meshName'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatMeshRepair(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function validateMeshTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'validate_mesh',
+    `Validate mesh integrity and check for issues.
+
+Parameters:
+- meshName (required): Name of the mesh to validate
+
+Returns:
+- success: Whether validation completed
+- isValid: Whether mesh is valid
+- issues: Array of detected issues
+- triangleCount: Number of triangles
+- message: Status message
+
+Use this tool to check mesh quality before 3D printing.
+
+Example:
+- Validate mesh: { meshName: "Mesh" }`,
+    {
+      meshName: z.string().describe('Name of the mesh to validate'),
+    },
+    async (input) => {
+      const { meshName } = input;
+
+      const code = `
+from llm_bridge.mesh_handlers import handle_validate_mesh
+import json
+params = json.loads('${JSON.stringify({ meshName })}')
+result = handle_validate_mesh(mesh_name=params['meshName'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatMeshValidation(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function checkWatertightTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'check_watertight',
+    `Check if a mesh is watertight (closed, printable).
+
+Parameters:
+- meshName (required): Name of the mesh to check
+
+Returns:
+- success: Whether check completed
+- isWatertight: Whether mesh is watertight
+- holesCount: Number of holes detected
+- message: Status message
+
+Use this tool to verify a mesh is ready for 3D printing.
+
+Example:
+- Check watertight: { meshName: "Mesh" }`,
+    {
+      meshName: z.string().describe('Name of the mesh to check'),
+    },
+    async (input) => {
+      const { meshName } = input;
+
+      const code = `
+from llm_bridge.mesh_handlers import handle_check_watertight
+import json
+params = json.loads('${JSON.stringify({ meshName })}')
+result = handle_check_watertight(mesh_name=params['meshName'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatMeshValidation(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function getMeshInfoTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'get_mesh_info',
+    `Get detailed information about a mesh.
+
+Parameters:
+- meshName (required): Name of the mesh
+
+Returns:
+- success: Whether operation succeeded
+- triangleCount: Number of triangles
+- vertexCount: Number of vertices
+- area: Surface area
+- volume: Volume (if closed)
+- bounds: Bounding box dimensions
+- message: Status message
+
+Use this tool to get mesh statistics and properties.
+
+Example:
+- Get mesh info: { meshName: "Mesh" }`,
+    {
+      meshName: z.string().describe('Name of the mesh to get info'),
+    },
+    async (input) => {
+      const { meshName } = input;
+
+      const code = `
+from llm_bridge.mesh_handlers import handle_get_mesh_info
+import json
+params = json.loads('${JSON.stringify({ meshName })}')
+result = handle_get_mesh_info(mesh_name=params['meshName'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatMeshInfo(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function scaleMeshTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'scale_mesh',
+    `Scale a mesh uniformly.
+
+Parameters:
+- meshName (required): Name of the mesh to scale
+- scaleFactor (required): Scale factor (e.g., 2.0 = double size, 0.5 = half)
+- resultName (optional): Name for the resulting mesh
+
+Returns:
+- success: Whether operation succeeded
+- scaledMesh: Name of the resulting mesh
+- scaleFactor: Applied scale factor
+- originalSize: Original bounding box size
+- newSize: New bounding box size
+- message: Status message
+
+Use this tool to resize a mesh.
+
+Example:
+- Double size: { meshName: "Mesh", scaleFactor: 2.0 }
+- Half size: { meshName: "Mesh", scaleFactor: 0.5 }`,
+    {
+      meshName: z.string().describe('Name of the mesh to scale'),
+      scaleFactor: z.number().describe('Scale factor (e.g., 2.0 = double, 0.5 = half)'),
+      resultName: z.string().optional().describe('Optional name for the result'),
+    },
+    async (input) => {
+      const { meshName, scaleFactor, resultName } = input;
+
+      const code = `
+from llm_bridge.mesh_handlers import handle_scale_mesh
+import json
+params = json.loads('${JSON.stringify({ meshName, scaleFactor, resultName })}')
+result = handle_scale_mesh(
+    mesh_name=params['meshName'],
+    scale_factor=params['scaleFactor'],
+    result_name=params.get('resultName')
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatMeshScale(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function offsetMeshTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'offset_mesh',
+    `Create an offset (shell) mesh.
+
+Parameters:
+- meshName (required): Name of the mesh
+- offsetDistance (required): Offset distance (positive = outward, negative = inward)
+- resultName (optional): Name for the resulting mesh
+
+Returns:
+- success: Whether operation succeeded
+- offsetMesh: Name of the resulting mesh
+- offsetDistance: Applied offset distance
+- triangleCount: Number of triangles in result
+- message: Status message
+
+Use this tool to create a shelled or inflated/deflated version of a mesh.
+
+Example:
+- Shell outward: { meshName: "Mesh", offsetDistance: 1.0 }
+- Shell inward: { meshName: "Mesh", offsetDistance: -0.5 }`,
+    {
+      meshName: z.string().describe('Name of the mesh to offset'),
+      offsetDistance: z.number().describe('Offset distance (positive = outward)'),
+      resultName: z.string().optional().describe('Optional name for the result'),
+    },
+    async (input) => {
+      const { meshName, offsetDistance, resultName } = input;
+
+      const code = `
+from llm_bridge.mesh_handlers import handle_offset_mesh
+import json
+params = json.loads('${JSON.stringify({ meshName, offsetDistance, resultName })}')
+result = handle_offset_mesh(
+    mesh_name=params['meshName'],
+    offset_distance=params['offsetDistance'],
+    result_name=params.get('resultName')
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatMeshOffset(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function exportStlTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'export_stl',
+    `Export a mesh to STL format for 3D printing.
+
+Parameters:
+- meshName (required): Name of the mesh to export
+- outputPath (required): Full path for the output STL file
+- binary (optional): Export as binary STL (default true), false for ASCII
+- precision (optional): Angular deflection precision
+
+Returns:
+- success: Whether export succeeded
+- outputPath: Path where file was saved
+- fileSize: Size of the exported file
+- triangleCount: Number of triangles exported
+- message: Status message
+
+Use this tool when you need to export a mesh for 3D printing.
+
+Example:
+- Export STL: { meshName: "Mesh", outputPath: "C:/print.stl" }
+- ASCII export: { meshName: "Mesh", outputPath: "C:/print.stl", binary: false }`,
+    {
+      meshName: z.string().describe('Name of the mesh to export'),
+      outputPath: z.string().describe('Full path for the output STL file'),
+      binary: z.boolean().optional().describe('Export as binary STL (default true)'),
+      precision: z.number().optional().describe('Angular deflection precision'),
+    },
+    async (input) => {
+      const { meshName, outputPath, binary, precision } = input;
+
+      const validation = validateFilePath(outputPath);
+      if (!validation.isValid) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Error: ${validation.error}`,
+            },
+          ],
+        };
+      }
+
+      const code = `
+from llm_bridge.mesh_export_handlers import handle_export_stl
+import json
+params = json.loads('${JSON.stringify({ meshName, outputPath, binary, precision })}')
+result = handle_export_stl(
+    mesh_name=params['meshName'],
+    output_path=params['outputPath'],
+    binary=params.get('binary', True),
+    precision=params.get('precision')
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatMeshExport(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function export3mfTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'export_3mf',
+    `Export a mesh to 3MF format (preserves colors and materials).
+
+Parameters:
+- meshName (required): Name of the mesh to export
+- outputPath (required): Full path for the output 3MF file
+
+Returns:
+- success: Whether export succeeded
+- outputPath: Path where file was saved
+- fileSize: Size of the exported file
+- triangleCount: Number of triangles exported
+- message: Status message
+
+Use this tool for full 3D printing metadata preservation.
+
+Example:
+- Export 3MF: { meshName: "Mesh", outputPath: "C:/print.3mf" }`,
+    {
+      meshName: z.string().describe('Name of the mesh to export'),
+      outputPath: z.string().describe('Full path for the output 3MF file'),
+    },
+    async (input) => {
+      const { meshName, outputPath } = input;
+
+      const validation = validateFilePath(outputPath);
+      if (!validation.isValid) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Error: ${validation.error}`,
+            },
+          ],
+        };
+      }
+
+      const code = `
+from llm_bridge.mesh_export_handlers import handle_export_3mf
+import json
+params = json.loads('${JSON.stringify({ meshName, outputPath })}')
+result = handle_export_3mf(
+    mesh_name=params['meshName'],
+    output_path=params['outputPath']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatMeshExport(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function exportObjTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'export_obj',
+    `Export a mesh to OBJ format (Wavefront).
+
+Parameters:
+- meshName (required): Name of the mesh to export
+- outputPath (required): Full path for the output OBJ file
+- includeMaterials (optional): Include MTL material file (default true)
+
+Returns:
+- success: Whether export succeeded
+- outputPath: Path where file was saved
+- fileSize: Size of the exported file
+- triangleCount: Number of triangles exported
+- message: Status message
+
+Use this tool for exchange with other 3D software.
+
+Example:
+- Export OBJ: { meshName: "Mesh", outputPath: "C:/model.obj" }`,
+    {
+      meshName: z.string().describe('Name of the mesh to export'),
+      outputPath: z.string().describe('Full path for the output OBJ file'),
+      includeMaterials: z.boolean().optional().describe('Include MTL material file'),
+    },
+    async (input) => {
+      const { meshName, outputPath, includeMaterials } = input;
+
+      const validation = validateFilePath(outputPath);
+      if (!validation.isValid) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Error: ${validation.error}`,
+            },
+          ],
+        };
+      }
+
+      const code = `
+from llm_bridge.mesh_export_handlers import handle_export_obj
+import json
+params = json.loads('${JSON.stringify({ meshName, outputPath, includeMaterials })}')
+result = handle_export_obj(
+    mesh_name=params['meshName'],
+    output_path=params['outputPath'],
+    include_materials=params.get('includeMaterials', True)
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatMeshExport(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function exportPlyTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'export_ply',
+    `Export a mesh to PLY format.
+
+Parameters:
+- meshName (required): Name of the mesh to export
+- outputPath (required): Full path for the output PLY file
+
+Returns:
+- success: Whether export succeeded
+- outputPath: Path where file was saved
+- fileSize: Size of the exported file
+- triangleCount: Number of triangles exported
+- message: Status message
+
+Use this tool for polygon mesh export with color support.
+
+Example:
+- Export PLY: { meshName: "Mesh", outputPath: "C:/model.ply" }`,
+    {
+      meshName: z.string().describe('Name of the mesh to export'),
+      outputPath: z.string().describe('Full path for the output PLY file'),
+    },
+    async (input) => {
+      const { meshName, outputPath } = input;
+
+      const validation = validateFilePath(outputPath);
+      if (!validation.isValid) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Error: ${validation.error}`,
+            },
+          ],
+        };
+      }
+
+      const code = `
+from llm_bridge.mesh_export_handlers import handle_export_ply
+import json
+params = json.loads('${JSON.stringify({ meshName, outputPath })}')
+result = handle_export_ply(
+    mesh_name=params['meshName'],
+    output_path=params['outputPath']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatMeshExport(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function importStlTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'import_stl',
+    `Import an STL file as a mesh object.
+
+Parameters:
+- inputPath (required): Full path to the STL file to import
+- meshName (optional): Name for the imported mesh object
+
+Returns:
+- success: Whether import succeeded
+- meshName: Name of the imported mesh
+- triangleCount: Number of triangles
+- vertexCount: Number of vertices
+- message: Status message
+
+Use this tool to load mesh files into FreeCAD.
+
+Example:
+- Import STL: { inputPath: "C:/part.stl" }
+- Import with name: { inputPath: "C:/part.stl", meshName: "ImportedMesh" }`,
+    {
+      inputPath: z.string().describe('Full path to the STL file to import'),
+      meshName: z.string().optional().describe('Optional name for the mesh'),
+    },
+    async (input) => {
+      const { inputPath, meshName } = input;
+
+      const code = `
+from llm_bridge.mesh_export_handlers import handle_import_stl
+import json
+params = json.loads('${JSON.stringify({ inputPath, meshName })}')
+result = handle_import_stl(
+    input_path=params['inputPath'],
+    mesh_name=params.get('meshName')
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatMeshImport(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function import3mfTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'import_3mf',
+    `Import a 3MF file as a mesh object (preserves colors and materials).
+
+Parameters:
+- inputPath (required): Full path to the 3MF file to import
+- meshName (optional): Name for the imported mesh object
+
+Returns:
+- success: Whether import succeeded
+- meshName: Name of the imported mesh
+- triangleCount: Number of triangles
+- vertexCount: Number of vertices
+- message: Status message
+
+Use this tool to load 3MF files with full metadata.
+
+Example:
+- Import 3MF: { inputPath: "C:/part.3mf" }
+- Import with name: { inputPath: "C:/part.3mf", meshName: "ColorMesh" }`,
+    {
+      inputPath: z.string().describe('Full path to the 3MF file to import'),
+      meshName: z.string().optional().describe('Optional name for the mesh'),
+    },
+    async (input) => {
+      const { inputPath, meshName } = input;
+
+      const code = `
+from llm_bridge.mesh_export_handlers import handle_import_3mf
+import json
+params = json.loads('${JSON.stringify({ inputPath, meshName })}')
+result = handle_import_3mf(
+    input_path=params['inputPath'],
+    mesh_name=params.get('meshName')
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatMeshImport(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function importObjTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'import_obj',
+    `Import an OBJ file as a mesh object.
+
+Parameters:
+- inputPath (required): Full path to the OBJ file to import
+- meshName (optional): Name for the imported mesh object
+
+Returns:
+- success: Whether import succeeded
+- meshName: Name of the imported mesh
+- triangleCount: Number of triangles
+- vertexCount: Number of vertices
+- message: Status message
+
+Use this tool to load OBJ files into FreeCAD.
+
+Example:
+- Import OBJ: { inputPath: "C:/model.obj" }
+- Import with name: { inputPath: "C:/model.obj", meshName: "ImportedObj" }`,
+    {
+      inputPath: z.string().describe('Full path to the OBJ file to import'),
+      meshName: z.string().optional().describe('Optional name for the mesh'),
+    },
+    async (input) => {
+      const { inputPath, meshName } = input;
+
+      const code = `
+from llm_bridge.mesh_export_handlers import handle_import_obj
+import json
+params = json.loads('${JSON.stringify({ inputPath, meshName })}')
+result = handle_import_obj(
+    input_path=params['inputPath'],
+    mesh_name=params.get('meshName')
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatMeshImport(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
             },
           ],
         };
