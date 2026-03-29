@@ -2793,3 +2793,218 @@ export function formatMeshImport(data: any): string {
 
   return lines.join('\n');
 }
+
+export function formatFEAAnalysis(data: any): string {
+  if (!data) return 'No FEA analysis data';
+
+  const lines: string[] = [];
+
+  if (data.success) {
+    lines.push(`Analysis: ${data.analysisName || data.name}`);
+    lines.push(`Type: ${data.analysisType || 'Static'}`);
+    if (data.objectName) {
+      lines.push(`Object: ${data.objectName}`);
+    }
+    lines.push(`Status: ${data.status || 'Created'}`);
+    if (data.meshName) {
+      lines.push(`Mesh: ${data.meshName}`);
+    }
+    if (data.solverName) {
+      lines.push(`Solver: ${data.solverName}`);
+    }
+    if (data.resultCount !== undefined) {
+      lines.push(`Results: ${data.resultCount}`);
+    }
+  } else {
+    lines.push(`Analysis failed: ${data.error || 'Unknown error'}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatFEAMesh(data: any): string {
+  if (!data) return 'No FEA mesh data';
+
+  const lines: string[] = [];
+
+  if (data.success) {
+    lines.push(`Mesh: ${data.meshName || data.name}`);
+    if (data.elementType) {
+      lines.push(`Element Type: ${data.elementType}`);
+    }
+    if (data.nodeCount !== undefined) {
+      lines.push(`Nodes: ${data.nodeCount.toLocaleString()}`);
+    }
+    if (data.elementCount !== undefined) {
+      lines.push(`Elements: ${data.elementCount.toLocaleString()}`);
+    }
+    if (data.avgElementSize !== undefined) {
+      lines.push(`Avg Element Size: ${data.avgElementSize.toFixed(4)}`);
+    }
+    if (data.minElementSize !== undefined) {
+      lines.push(`Min Element Size: ${data.minElementSize.toFixed(4)}`);
+    }
+    if (data.maxElementSize !== undefined) {
+      lines.push(`Max Element Size: ${data.maxElementSize.toFixed(4)}`);
+    }
+  } else {
+    lines.push(`Mesh failed: ${data.error || 'Unknown error'}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatFEAMaterial(data: any): string {
+  if (!data) return 'No FEA material data';
+
+  const lines: string[] = [];
+
+  if (data.success) {
+    lines.push(`Material: ${data.materialName || data.name}`);
+    if (data.model) {
+      lines.push(`Model: ${data.model}`);
+    }
+    if (data.youngsModulus !== undefined) {
+      lines.push(`Young's Modulus: ${data.youngsModulus.toFixed(2e6)} MPa`);
+    }
+    if (data.poissonsRatio !== undefined) {
+      lines.push(`Poisson's Ratio: ${data.poissonsRatio}`);
+    }
+    if (data.density !== undefined) {
+      lines.push(`Density: ${data.density} kg/mm³`);
+    }
+    if (data.yieldStrength !== undefined) {
+      lines.push(`Yield Strength: ${data.yieldStrength} MPa`);
+    }
+    if (data.assignedTo) {
+      lines.push(`Assigned to: ${data.assignedTo}`);
+    }
+  } else {
+    lines.push(`Material assignment failed: ${data.error || 'Unknown error'}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatFEAConstraint(data: any): string {
+  if (!data) return 'No FEA constraint data';
+
+  const lines: string[] = [];
+
+  if (data.success) {
+    lines.push(`Constraint: ${data.constraintType}`);
+    if (data.name) {
+      lines.push(`Name: ${data.name}`);
+    }
+    if (data.objectName) {
+      lines.push(`Object: ${data.objectName}`);
+    }
+    if (data.geometry !== undefined) {
+      lines.push(`Geometry: ${Array.isArray(data.geometry) ? data.geometry.join(', ') : data.geometry}`);
+    }
+    if (data.value !== undefined) {
+      lines.push(`Value: ${data.value}`);
+    }
+    if (data.direction !== undefined) {
+      lines.push(`Direction: ${data.direction}`);
+    }
+  } else {
+    lines.push(`Constraint failed: ${data.error || 'Unknown error'}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatFEASolver(data: any): string {
+  if (!data) return 'No FEA solver data';
+
+  const lines: string[] = [];
+
+  if (data.success) {
+    lines.push(`Solver: ${data.solverType || data.solver || 'CalculiX'}`);
+    if (data.status) {
+      lines.push(`Status: ${data.status}`);
+    }
+    if (data.convergence !== undefined) {
+      lines.push(`Convergence: ${data.convergence ? 'Achieved' : 'Not achieved'}`);
+    }
+    if (data.iterations !== undefined) {
+      lines.push(`Iterations: ${data.iterations}`);
+    }
+    if (data.runtime !== undefined) {
+      lines.push(`Runtime: ${data.runtime.toFixed(2)}s`);
+    }
+    if (data.error !== undefined && data.error !== 0) {
+      lines.push(`Error: ${data.error}`);
+    }
+  } else {
+    lines.push(`Solver error: ${data.error || 'Unknown error'}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatFEAResults(data: any): string {
+  if (!data) return 'No FEA results data';
+
+  const lines: string[] = [];
+
+  if (data.success) {
+    lines.push(`Results: ${data.resultType || 'Displacement'}`);
+    if (data.resultObject) {
+      lines.push(`Result Object: ${data.resultObject}`);
+    }
+    if (data.maxValue !== undefined) {
+      lines.push(`Max: ${typeof data.maxValue === 'number' ? data.maxValue.toFixed(4) : data.maxValue}`);
+    }
+    if (data.minValue !== undefined) {
+      lines.push(`Min: ${typeof data.minValue === 'number' ? data.minValue.toFixed(4) : data.minValue}`);
+    }
+    if (data.maxLocation) {
+      lines.push(`Max Location: ${Array.isArray(data.maxLocation) ? data.maxLocation.map(v => v.toFixed(2)).join(', ') : data.maxLocation}`);
+    }
+    if (data.minLocation) {
+      lines.push(`Min Location: ${Array.isArray(data.minLocation) ? data.minLocation.map(v => v.toFixed(2)).join(', ') : data.minLocation}`);
+    }
+    if (data.unit) {
+      lines.push(`Unit: ${data.unit}`);
+    }
+    if (data.component) {
+      lines.push(`Component: ${data.component}`);
+    }
+  } else {
+    lines.push(`Results error: ${data.error || 'Unknown error'}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
