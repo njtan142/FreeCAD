@@ -482,3 +482,46 @@ The original large commit for Pattern and Array Tools have been refactored into 
 - **Files modified**: 4 (__init__.py, agent-tools.ts, result-formatters.ts, sidecar/README.md)
 - **Total insertions**: ~1,730 lines
 - **Total deletions**: ~9 lines
+
+---
+
+## Cycle 15 - Incremental Commits
+
+The original large commits for Surface Modeling Tools have been refactored into 5 incremental commits.
+
+| Commit Hash | Message | Files Changed |
+|-------------|---------|---------------|
+| eb52e8c79d | feat(python): add surface modeling handlers for FreeCAD loft and sweep operations | surface_handlers.py, __init__.py |
+| 103324f917 | feat(sidecar): add surface modeling tools to agent-tools | agent-tools.ts |
+| 9051d0ba33 | feat(sidecar): add result formatters for surface modeling operations | result-formatters.ts |
+| ff0574c8ad | docs(sidecar): document surface modeling tools in README | sidecar/README.md |
+| fe7e52cbc2 | docs(skills): update plan for Cycle 15 surface modeling tools | CURRENT_PLAN.md, CURRENT_REVIEW.md, CYCLE_COUNT.md |
+
+### Commit Progression
+
+1. **Python surface handlers**: Added surface_handlers.py with 20 handlers for surface modeling operations:
+   - Loft operations: handle_create_loft, handle_create_section_loft, handle_create_loft_with_transition, handle_get_loft_info
+   - Sweep operations: handle_create_sweep, handle_create_pipe, handle_create_multisweep, handle_create_multi_section_sweep, handle_get_sweep_info
+   - Surface operations: handle_create_ruled_surface, handle_create_surface_from_edges, handle_extend_surface, handle_trim_surface
+   - Analysis: handle_analyze_surface, handle_validate_surface, handle_rebuild_surface
+   - Utilities: handle_get_surface_info, handle_list_surfaces, handle_create_blend_surface, handle_create_offset_surface
+
+2. **Agent tools implementation**: Added 14 surface modeling tools to agent-tools.ts:
+   - 2 loft tools (create_loft, create_section_loft)
+   - 3 sweep tools (create_sweep, create_pipe, create_multi_sweep)
+   - 4 surface operation tools (create_ruled_surface, create_surface_from_edges, extend_surface, trim_surface)
+   - 3 utility tools (get_surface_info, list_surfaces, validate_surface)
+
+3. **Result formatters**: Added 4 surface-specific result formatters to result-formatters.ts (formatLoftCreation, formatSweepCreation, formatSurfaceOperation, formatSurfaceInfo)
+
+4. **Sidecar documentation**: Updated sidecar/README.md with comprehensive documentation for all 14 surface tools including usage examples, parameter descriptions, and surface workflow guidance
+
+5. **Skills documentation updates**: Updated CURRENT_PLAN.md, CURRENT_REVIEW.md, and CYCLE_COUNT.md to reflect Cycle 15 implementation
+
+### Summary
+
+- **Total commits**: 5
+- **Files created**: 1 (surface_handlers.py)
+- **Files modified**: 5 (__init__.py, agent-tools.ts, result-formatters.ts, sidecar/README.md, CURRENT_PLAN.md, CURRENT_REVIEW.md, CYCLE_COUNT.md)
+- **Total insertions**: ~2,100 lines
+- **Total deletions**: ~0 lines
