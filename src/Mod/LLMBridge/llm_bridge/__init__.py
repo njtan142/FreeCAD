@@ -198,8 +198,8 @@ from .animation_export_handlers import (
 )
 
 from .mesh_handlers import (
-    handle_convert_to_mesh,
-    handle_convert_to_shape,
+    handle_shape_to_mesh,
+    handle_mesh_to_shape,
     handle_mesh_boolean_union,
     handle_mesh_boolean_difference,
     handle_mesh_boolean_intersection,
@@ -208,11 +208,13 @@ from .mesh_handlers import (
     handle_mesh_fix_normals,
     handle_mesh_remove_duplicates,
     handle_mesh_validate,
-    handle_mesh_is_watertight,
+    handle_check_watertight,
     handle_mesh_get_info,
     handle_mesh_scale,
     handle_mesh_offset,
     handle_mesh_smooth,
+    handle_repair_mesh,
+    handle_optimize_mesh,
 )
 
 from .mesh_export_handlers import (
@@ -223,6 +225,24 @@ from .mesh_export_handlers import (
     handle_import_stl,
     handle_import_3mf,
     handle_import_obj,
+)
+
+from .fea_handlers import (
+    handle_create_fea_analysis,
+    handle_delete_fea_analysis,
+    handle_list_fea_analyses,
+    handle_get_fea_analysis,
+    handle_create_fea_mesh,
+    handle_refine_fea_mesh,
+    handle_get_fea_mesh_info,
+    handle_set_fea_material,
+    handle_get_fea_material,
+    handle_add_fea_fixed_constraint,
+    handle_add_fea_force_constraint,
+    handle_add_fea_pressure_constraint,
+    handle_add_fea_displacement_constraint,
+    handle_add_fea_self_weight,
+    handle_list_fea_constraints,
 )
 
 __all__ = [
@@ -383,8 +403,8 @@ __all__ = [
     "handle_export_animation",
     "handle_create_gif",
     "handle_get_animation_capture_state",
-    "handle_convert_to_mesh",
-    "handle_convert_to_shape",
+    "handle_shape_to_mesh",
+    "handle_mesh_to_shape",
     "handle_mesh_boolean_union",
     "handle_mesh_boolean_difference",
     "handle_mesh_boolean_intersection",
@@ -393,11 +413,13 @@ __all__ = [
     "handle_mesh_fix_normals",
     "handle_mesh_remove_duplicates",
     "handle_mesh_validate",
-    "handle_mesh_is_watertight",
+    "handle_check_watertight",
     "handle_mesh_get_info",
     "handle_mesh_scale",
     "handle_mesh_offset",
     "handle_mesh_smooth",
+    "handle_repair_mesh",
+    "handle_optimize_mesh",
     "handle_export_stl",
     "handle_export_3mf",
     "handle_export_obj",
@@ -405,4 +427,19 @@ __all__ = [
     "handle_import_stl",
     "handle_import_3mf",
     "handle_import_obj",
+    "handle_create_fea_analysis",
+    "handle_delete_fea_analysis",
+    "handle_list_fea_analyses",
+    "handle_get_fea_analysis",
+    "handle_create_fea_mesh",
+    "handle_refine_fea_mesh",
+    "handle_get_fea_mesh_info",
+    "handle_set_fea_material",
+    "handle_get_fea_material",
+    "handle_add_fea_fixed_constraint",
+    "handle_add_fea_force_constraint",
+    "handle_add_fea_pressure_constraint",
+    "handle_add_fea_displacement_constraint",
+    "handle_add_fea_self_weight",
+    "handle_list_fea_constraints",
 ]
