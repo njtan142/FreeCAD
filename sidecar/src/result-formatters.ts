@@ -4130,3 +4130,740 @@ export function formatAngleMeasurement(data: any): string {
 
   return lines.join('\n');
 }
+
+// ============================================================================
+// BIM/Arch Workbench Formatters
+// ============================================================================
+
+export function formatSiteCreation(data: any): string {
+  if (!data) return 'No site data';
+
+  const lines: string[] = [];
+  lines.push(`Created Site: ${data.objectLabel || data.objectName} (${data.objectName})`);
+  lines.push(`Type: ${data.ifcType || 'Site'}`);
+
+  if (data.latitude !== undefined && data.longitude !== undefined) {
+    lines.push(`Location: ${data.latitude}, ${data.longitude}`);
+  }
+
+  if (data.terrainHeight !== undefined) {
+    lines.push(`Terrain Height: ${data.terrainHeight.toFixed(2)} mm`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatBuildingCreation(data: any): string {
+  if (!data) return 'No building data';
+
+  const lines: string[] = [];
+  lines.push(`Created Building: ${data.objectLabel || data.objectName} (${data.objectName})`);
+  lines.push(`Type: ${data.ifcType || 'Building'}`);
+
+  if (data.childrenCount !== undefined) {
+    lines.push(`Children: ${data.childrenCount} object(s)`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatBuildingPartCreation(data: any): string {
+  if (!data) return 'No building part data';
+
+  const lines: string[] = [];
+  lines.push(`Created Building Part: ${data.objectLabel || data.objectName} (${data.objectName})`);
+  lines.push(`Type: ${data.ifcType || 'BuildingPart'}`);
+
+  if (data.childrenCount !== undefined) {
+    lines.push(`Children: ${data.childrenCount} object(s)`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatBuildingLevel(data: any): string {
+  if (!data) return 'No building level data';
+
+  const lines: string[] = [];
+  lines.push(`Created Building Level: ${data.objectLabel || data.objectName} (${data.objectName})`);
+
+  if (data.elevation !== undefined) {
+    lines.push(`Elevation: ${data.elevation.toFixed(2)} mm`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatBuildingHierarchy(data: any): string {
+  if (!data) return 'No hierarchy data';
+
+  const lines: string[] = [];
+  lines.push('Building Hierarchy:');
+
+  if (data.sites && Array.isArray(data.sites)) {
+    for (const site of data.sites) {
+      lines.push(`  Site: ${site.name || site.objectLabel} (${site.objectName})`);
+      if (site.buildings) {
+        for (const building of site.buildings) {
+          lines.push(`    Building: ${building.name || building.objectLabel} (${building.objectName})`);
+          if (building.levels) {
+            for (const level of building.levels) {
+              lines.push(`      Level: ${level.name || level.objectLabel} (${level.objectName})`);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatWallCreation(data: any): string {
+  if (!data) return 'No wall data';
+
+  const lines: string[] = [];
+  lines.push(`Created Wall: ${data.objectLabel || data.objectName} (${data.objectName})`);
+
+  if (data.dimensions) {
+    const { length, width, height } = data.dimensions;
+    lines.push(`Dimensions: ${(length || 0).toFixed(2)} x ${(width || 0).toFixed(2)} x ${(height || 0).toFixed(2)} mm`);
+  }
+
+  if (data.ifcType) {
+    lines.push(`IFC Type: ${data.ifcType}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatWindowCreation(data: any): string {
+  if (!data) return 'No window data';
+
+  const lines: string[] = [];
+  lines.push(`Created Window: ${data.objectLabel || data.objectName} (${data.objectName})`);
+
+  if (data.dimensions) {
+    const { width, height } = data.dimensions;
+    lines.push(`Dimensions: ${(width || 0).toFixed(2)} x ${(height || 0).toFixed(2)} mm`);
+  }
+
+  if (data.ifcType) {
+    lines.push(`IFC Type: ${data.ifcType}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatDoorCreation(data: any): string {
+  if (!data) return 'No door data';
+
+  const lines: string[] = [];
+  lines.push(`Created Door: ${data.objectLabel || data.objectName} (${data.objectName})`);
+
+  if (data.dimensions) {
+    const { width, height } = data.dimensions;
+    lines.push(`Dimensions: ${(width || 0).toFixed(2)} x ${(height || 0).toFixed(2)} mm`);
+  }
+
+  if (data.ifcType) {
+    lines.push(`IFC Type: ${data.ifcType}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatRoofCreation(data: any): string {
+  if (!data) return 'No roof data';
+
+  const lines: string[] = [];
+  lines.push(`Created Roof: ${data.objectLabel || data.objectName} (${data.objectName})`);
+
+  if (data.angles) {
+    lines.push(`Angles: ${data.angles.join(', ')}°`);
+  }
+
+  if (data.ifcType) {
+    lines.push(`IFC Type: ${data.ifcType}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatStairsCreation(data: any): string {
+  if (!data) return 'No stairs data';
+
+  const lines: string[] = [];
+  lines.push(`Created Stairs: ${data.objectLabel || data.objectName} (${data.objectName})`);
+
+  if (data.dimensions) {
+    const { length, width, height } = data.dimensions;
+    lines.push(`Dimensions: ${(length || 0).toFixed(2)} x ${(width || 0).toFixed(2)} x ${(height || 0).toFixed(2)} mm`);
+  }
+
+  if (data.numberOfSteps !== undefined) {
+    lines.push(`Number of Steps: ${data.numberOfSteps}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatCurtainWallCreation(data: any): string {
+  if (!data) return 'No curtain wall data';
+
+  const lines: string[] = [];
+  lines.push(`Created Curtain Wall: ${data.objectLabel || data.objectName} (${data.objectName})`);
+
+  if (data.ifcType) {
+    lines.push(`IFC Type: ${data.ifcType}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatSpaceCreation(data: any): string {
+  if (!data) return 'No space data';
+
+  const lines: string[] = [];
+  lines.push(`Created Space: ${data.objectLabel || data.objectName} (${data.objectName})`);
+
+  if (data.ifcType) {
+    lines.push(`IFC Type: ${data.ifcType}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatColumnCreation(data: any): string {
+  if (!data) return 'No column data';
+
+  const lines: string[] = [];
+  lines.push(`Created Column: ${data.objectLabel || data.objectName} (${data.objectName})`);
+
+  if (data.dimensions) {
+    const { width, height } = data.dimensions;
+    lines.push(`Dimensions: ${(width || 0).toFixed(2)} x ${(height || 0).toFixed(2)} mm`);
+  }
+
+  if (data.ifcType) {
+    lines.push(`IFC Type: ${data.ifcType}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatBeamCreation(data: any): string {
+  if (!data) return 'No beam data';
+
+  const lines: string[] = [];
+  lines.push(`Created Beam: ${data.objectLabel || data.objectName} (${data.objectName})`);
+
+  if (data.dimensions) {
+    const { width, height, length } = data.dimensions;
+    lines.push(`Dimensions: ${(width || 0).toFixed(2)} x ${(height || 0).toFixed(2)} x ${(length || 0).toFixed(2)} mm`);
+  }
+
+  if (data.ifcType) {
+    lines.push(`IFC Type: ${data.ifcType}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatSlabCreation(data: any): string {
+  if (!data) return 'No slab data';
+
+  const lines: string[] = [];
+  lines.push(`Created Slab: ${data.objectLabel || data.objectName} (${data.objectName})`);
+
+  if (data.thickness !== undefined) {
+    lines.push(`Thickness: ${data.thickness.toFixed(2)} mm`);
+  }
+
+  if (data.ifcType) {
+    lines.push(`IFC Type: ${data.ifcType}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatFrameCreation(data: any): string {
+  if (!data) return 'No frame data';
+
+  const lines: string[] = [];
+  lines.push(`Created Frame: ${data.objectLabel || data.objectName} (${data.objectName})`);
+
+  if (data.ifcType) {
+    lines.push(`IFC Type: ${data.ifcType}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatTrussCreation(data: any): string {
+  if (!data) return 'No truss data';
+
+  const lines: string[] = [];
+  lines.push(`Created Truss: ${data.objectLabel || data.objectName} (${data.objectName})`);
+
+  if (data.dimensions) {
+    const { length, height } = data.dimensions;
+    lines.push(`Dimensions: ${(length || 0).toFixed(2)} x ${(height || 0).toFixed(2)} mm`);
+  }
+
+  if (data.ifcType) {
+    lines.push(`IFC Type: ${data.ifcType}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatFenceCreation(data: any): string {
+  if (!data) return 'No fence data';
+
+  const lines: string[] = [];
+  lines.push(`Created Fence: ${data.objectLabel || data.objectName} (${data.objectName})`);
+
+  if (data.dimensions) {
+    const { length, height } = data.dimensions;
+    lines.push(`Dimensions: ${(length || 0).toFixed(2)} x ${(height || 0).toFixed(2)} mm`);
+  }
+
+  if (data.ifcType) {
+    lines.push(`IFC Type: ${data.ifcType}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatEquipmentCreation(data: any): string {
+  if (!data) return 'No equipment data';
+
+  const lines: string[] = [];
+  lines.push(`Created Equipment: ${data.objectLabel || data.objectName} (${data.objectName})`);
+
+  if (data.ifcType) {
+    lines.push(`IFC Type: ${data.ifcType}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatPipeCreation(data: any): string {
+  if (!data) return 'No pipe data';
+
+  const lines: string[] = [];
+  lines.push(`Created Pipe: ${data.objectLabel || data.objectName} (${data.objectName})`);
+
+  if (data.radius !== undefined) {
+    lines.push(`Radius: ${data.radius.toFixed(2)} mm`);
+  }
+
+  if (data.diameter !== undefined) {
+    lines.push(`Diameter: ${data.diameter.toFixed(2)} mm`);
+  }
+
+  if (data.length !== undefined) {
+    lines.push(`Length: ${data.length.toFixed(2)} mm`);
+  }
+
+  if (data.ifcType) {
+    lines.push(`IFC Type: ${data.ifcType}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatPipeConnectorCreation(data: any): string {
+  if (!data) return 'No pipe connector data';
+
+  const lines: string[] = [];
+  lines.push(`Created Pipe Connector: ${data.objectLabel || data.objectName} (${data.objectName})`);
+
+  if (data.connectedObjects && Array.isArray(data.connectedObjects)) {
+    lines.push(`Connected Objects: ${data.connectedObjects.length}`);
+  }
+
+  if (data.ifcType) {
+    lines.push(`IFC Type: ${data.ifcType}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatPanelCreation(data: any): string {
+  if (!data) return 'No panel data';
+
+  const lines: string[] = [];
+  lines.push(`Created Panel: ${data.objectLabel || data.objectName} (${data.objectName})`);
+
+  if (data.ifcType) {
+    lines.push(`IFC Type: ${data.ifcType}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatAxisCreation(data: any): string {
+  if (!data) return 'No axis data';
+
+  const lines: string[] = [];
+  lines.push(`Created Axis: ${data.objectLabel || data.objectName} (${data.objectName})`);
+
+  if (data.numberOfAxes !== undefined) {
+    lines.push(`Number of Axes: ${data.numberOfAxes}`);
+  }
+
+  if (data.spacing !== undefined) {
+    lines.push(`Spacing: ${data.spacing.toFixed(2)} mm`);
+  }
+
+  if (data.ifcType) {
+    lines.push(`IFC Type: ${data.ifcType}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatGridCreation(data: any): string {
+  if (!data) return 'No grid data';
+
+  const lines: string[] = [];
+  lines.push(`Created Grid: ${data.objectLabel || data.objectName} (${data.objectName})`);
+
+  if (data.ifcType) {
+    lines.push(`IFC Type: ${data.ifcType}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatSectionPlaneCreation(data: any): string {
+  if (!data) return 'No section plane data';
+
+  const lines: string[] = [];
+  lines.push(`Created Section Plane: ${data.objectLabel || data.objectName} (${data.objectName})`);
+
+  if (data.objectsCount !== undefined) {
+    lines.push(`Objects in Section: ${data.objectsCount}`);
+  }
+
+  if (data.ifcType) {
+    lines.push(`IFC Type: ${data.ifcType}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatScheduleCreation(data: any): string {
+  if (!data) return 'No schedule data';
+
+  const lines: string[] = [];
+  lines.push(`Created Schedule: ${data.objectLabel || data.objectName} (${data.objectName})`);
+
+  if (data.ifcType) {
+    lines.push(`IFC Type: ${data.ifcType}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatIfcProperties(data: any): string {
+  if (!data) return 'No IFC properties data';
+
+  const lines: string[] = [];
+
+  if (data.objectName && data.objectLabel) {
+    lines.push(`Object: ${data.objectLabel} (${data.objectName})`);
+  }
+
+  if (data.ifcType) {
+    lines.push(`IFC Type: ${data.ifcType}`);
+  }
+
+  if (data.oldIfcType && data.newIfcType) {
+    lines.push(`IFC Type changed: ${data.oldIfcType} → ${data.newIfcType}`);
+  }
+
+  if (data.properties && typeof data.properties === 'object') {
+    lines.push('');
+    lines.push('Properties:');
+    for (const [key, value] of Object.entries(data.properties)) {
+      lines.push(`  ${key}: ${value}`);
+    }
+  }
+
+  if (data.propertyName && data.propertyValue !== undefined) {
+    lines.push('');
+    lines.push(`Property: ${data.propertyName} = ${data.propertyValue}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatMaterialAssignment(data: any): string {
+  if (!data) return 'No material data';
+
+  const lines: string[] = [];
+
+  if (data.objectName && data.objectLabel) {
+    lines.push(`Object: ${data.objectLabel} (${data.objectName})`);
+  }
+
+  if (data.material) {
+    lines.push(`Material: ${data.material.name || 'Unknown'}`);
+    if (data.material.type) {
+      lines.push(`Type: ${data.material.type}`);
+    }
+    if (data.material.color) {
+      lines.push(`Color: ${Array.isArray(data.material.color) ? data.material.color.join(', ') : data.material.color}`);
+    }
+  } else {
+    lines.push('Material: None');
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatQuickWall(data: any): string {
+  if (!data) return 'No quick wall data';
+
+  const lines: string[] = [];
+  lines.push(`Created Quick Wall: ${data.objectLabel || data.objectName} (${data.objectName})`);
+
+  if (data.dimensions) {
+    const { length, width, height } = data.dimensions;
+    lines.push(`Dimensions: ${(length || 0).toFixed(2)} x ${(width || 0).toFixed(2)} x ${(height || 0).toFixed(2)} mm`);
+  }
+
+  if (data.ifcType) {
+    lines.push(`IFC Type: ${data.ifcType}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatQuickWindow(data: any): string {
+  if (!data) return 'No quick window data';
+
+  const lines: string[] = [];
+  lines.push(`Created Quick Window: ${data.objectLabel || data.objectName} (${data.objectName})`);
+
+  if (data.hostWall) {
+    lines.push(`Host Wall: ${data.hostWall}`);
+  }
+
+  if (data.dimensions) {
+    const { width, height } = data.dimensions;
+    lines.push(`Dimensions: ${(width || 0).toFixed(2)} x ${(height || 0).toFixed(2)} mm`);
+  }
+
+  if (data.ifcType) {
+    lines.push(`IFC Type: ${data.ifcType}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatQuickDoor(data: any): string {
+  if (!data) return 'No quick door data';
+
+  const lines: string[] = [];
+  lines.push(`Created Quick Door: ${data.objectLabel || data.objectName} (${data.objectName})`);
+
+  if (data.hostWall) {
+    lines.push(`Host Wall: ${data.hostWall}`);
+  }
+
+  if (data.dimensions) {
+    const { width, height } = data.dimensions;
+    lines.push(`Dimensions: ${(width || 0).toFixed(2)} x ${(height || 0).toFixed(2)} mm`);
+  }
+
+  if (data.ifcType) {
+    lines.push(`IFC Type: ${data.ifcType}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatQuickFloor(data: any): string {
+  if (!data) return 'No quick floor data';
+
+  const lines: string[] = [];
+  lines.push(`Created Floor: ${data.objectLabel || data.objectName} (${data.objectName})`);
+
+  if (data.parentBuilding) {
+    lines.push(`Parent Building: ${data.parentBuilding}`);
+  }
+
+  if (data.objectsCount !== undefined) {
+    lines.push(`Objects: ${data.objectsCount}`);
+  }
+
+  if (data.ifcType) {
+    lines.push(`IFC Type: ${data.ifcType}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}

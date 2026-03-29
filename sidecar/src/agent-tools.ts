@@ -121,6 +121,37 @@ import {
   formatColumnWidth,
   formatRowHeight,
   formatCellBackground,
+  formatSiteCreation,
+  formatBuildingCreation,
+  formatBuildingPartCreation,
+  formatBuildingHierarchy,
+  formatWallCreation,
+  formatWindowCreation,
+  formatDoorCreation,
+  formatRoofCreation,
+  formatStairsCreation,
+  formatCurtainWallCreation,
+  formatSpaceCreation,
+  formatColumnCreation,
+  formatBeamCreation,
+  formatSlabCreation,
+  formatFrameCreation,
+  formatTrussCreation,
+  formatFenceCreation,
+  formatEquipmentCreation,
+  formatPipeCreation,
+  formatPipeConnectorCreation,
+  formatPanelCreation,
+  formatAxisCreation,
+  formatGridCreation,
+  formatSectionPlaneCreation,
+  formatScheduleCreation,
+  formatIfcProperties,
+  formatMaterialAssignment,
+  formatQuickWall,
+  formatQuickWindow,
+  formatQuickDoor,
+  formatQuickFloor,
 } from './result-formatters';
 import {
   validateFilePath,
@@ -521,6 +552,49 @@ export function createAgentTools(freeCADBridge: FreeCADBridge) {
     setColumnWidthTool(freeCADBridge),
     setRowHeightTool(freeCADBridge),
     setCellBackgroundTool(freeCADBridge),
+    // BIM workbench tools
+    // Building structure tools
+    createSiteTool(freeCADBridge),
+    createBuildingTool(freeCADBridge),
+    createBuildingPartTool(freeCADBridge),
+    createBuildingLevelTool(freeCADBridge),
+    getBuildingHierarchyTool(freeCADBridge),
+    // Architectural element tools
+    createWallTool(freeCADBridge),
+    createWindowTool(freeCADBridge),
+    createDoorTool(freeCADBridge),
+    createRoofTool(freeCADBridge),
+    createStairsTool(freeCADBridge),
+    createCurtainWallTool(freeCADBridge),
+    createSpaceTool(freeCADBridge),
+    // Structural element tools
+    createColumnTool(freeCADBridge),
+    createBeamTool(freeCADBridge),
+    createSlabTool(freeCADBridge),
+    createFrameTool(freeCADBridge),
+    createTrussTool(freeCADBridge),
+    createFenceTool(freeCADBridge),
+    // Equipment and infrastructure tools
+    createEquipmentTool(freeCADBridge),
+    createPipeTool(freeCADBridge),
+    createPipeConnectorTool(freeCADBridge),
+    createPanelTool(freeCADBridge),
+    // Annotation and grid tools
+    createAxisTool(freeCADBridge),
+    createGridTool(freeCADBridge),
+    createSectionPlaneTool(freeCADBridge),
+    createScheduleTool(freeCADBridge),
+    // IFC data tools
+    setIfcTypeTool(freeCADBridge),
+    getIfcPropertiesTool(freeCADBridge),
+    setIfcPropertyTool(freeCADBridge),
+    getBimMaterialTool(freeCADBridge),
+    assignMaterialTool(freeCADBridge),
+    // Quick construction tools
+    quickWallTool(freeCADBridge),
+    quickWindowTool(freeCADBridge),
+    quickDoorTool(freeCADBridge),
+    quickFloorTool(freeCADBridge),
   ];
 }
 
@@ -19965,6 +20039,807 @@ print(json.dumps(result))
             },
           ],
         };
+      }
+    },
+  );
+}
+
+// ============================================================================
+// BIM/Arch Workbench Tools
+// ============================================================================
+
+function createSiteTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_site',
+    'Create a new BIM site for containing building projects.',
+    {
+      name: z.string().optional().describe('Name for the site'),
+    },
+    async (input) => {
+      const { name } = input;
+      const code = 'from llm_bridge.bim_handlers import handle_create_site; import json; params = json.loads(JSON.stringify({ name: name || null })); result = handle_create_site(name=params['name']); print(json.dumps(result))';
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        return { content: [{ type: 'text', text: parsed.success ? formatSiteCreation(parsed.data) : 'Error: ' + parsed.error }] };
+      } catch (error) {
+        return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+      }
+    },
+  );
+}
+
+function createBuildingTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_building',
+    'Create a building containing objects.',
+    {
+      object_names: z.array(z.string()).optional().describe('List of object names to include in the building'),
+      name: z.string().optional().describe('Name for the building'),
+    },
+    async (input) => {
+      const { object_names, name } = input;
+      const code = 'from llm_bridge.bim_handlers import handle_create_building; import json; params = json.loads(JSON.stringify({ object_names: object_names || null, name: name || null })); result = handle_create_building(**params); print(json.dumps(result))';
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        return { content: [{ type: 'text', text: parsed.success ? formatBuildingCreation(parsed.data) : 'Error: ' + parsed.error }] };
+      } catch (error) {
+        return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+      }
+    },
+  );
+}
+
+function createBuildingPartTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_building_part',
+    'Create a floor/level (BuildingPart).',
+    {
+      object_names: z.array(z.string()).optional().describe('List of object names to include'),
+      name: z.string().optional().describe('Name for the building part'),
+    },
+    async (input) => {
+      const { object_names, name } = input;
+      const code = 'from llm_bridge.bim_handlers import handle_create_building_part; import json; params = json.loads(JSON.stringify({ object_names: object_names || null, name: name || null })); result = handle_create_building_part(**params); print(json.dumps(result))';
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        return { content: [{ type: 'text', text: parsed.success ? formatBuildingPartCreation(parsed.data) : 'Error: ' + parsed.error }] };
+      } catch (error) {
+        return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+      }
+    },
+  );
+}
+
+function createBuildingLevelTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_building_level',
+    'Create a single building level with elevation.',
+    {
+      name: z.string().optional().describe('Name for the level'),
+      elevation: z.number().optional().describe('Elevation value (Z coordinate)'),
+    },
+    async (input) => {
+      const { name, elevation } = input;
+      const code = 'from llm_bridge.bim_handlers import handle_create_building_level; import json; params = json.loads(JSON.stringify({ name: name || null, elevation: elevation || null })); result = handle_create_building_level(**params); print(json.dumps(result))';
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        return { content: [{ type: 'text', text: parsed.success ? formatBuildingLevel(parsed.data) : 'Error: ' + parsed.error }] };
+      } catch (error) {
+        return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+      }
+    },
+  );
+}
+
+function getBuildingHierarchyTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'get_building_hierarchy',
+    'Get building/floor/space hierarchy.',
+    {},
+    async () => {
+      const code = 'from llm_bridge.bim_handlers import handle_get_building_hierarchy; import json; result = handle_get_building_hierarchy(); print(json.dumps(result))';
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        return { content: [{ type: 'text', text: parsed.success ? formatBuildingHierarchy(parsed.data) : 'Error: ' + parsed.error }] };
+      } catch (error) {
+        return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+      }
+    },
+  );
+}
+
+function createWallTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_wall',
+    'Create a parametric wall.',
+    {
+      placement: z.union([z.object({ x: z.number(), y: z.number(), z: z.number() }), z.array(z.number()), z.string()]).optional().describe('Placement as dict/list/Placement'),
+      length: z.number().optional().describe('Wall length'),
+      width: z.number().optional().describe('Wall width (thickness)'),
+      height: z.number().optional().describe('Wall height'),
+      name: z.string().optional().describe('Name for the wall'),
+    },
+    async (input) => {
+      const { placement, length, width, height, name } = input;
+      const code = 'from llm_bridge.bim_handlers import handle_create_wall; import json; params = json.loads(JSON.stringify({ placement: placement || null, length: length || null, width: width || null, height: height || null, name: name || null })); result = handle_create_wall(**params); print(json.dumps(result))';
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        return { content: [{ type: 'text', text: parsed.success ? formatWallCreation(parsed.data) : 'Error: ' + parsed.error }] };
+      } catch (error) {
+        return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+      }
+    },
+  );
+}
+
+function createWindowTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_window',
+    'Create a window in a wall.',
+    {
+      width: z.number().optional().describe('Window width'),
+      height: z.number().optional().describe('Window height'),
+      placement: z.union([z.object({ x: z.number(), y: z.number(), z: z.number() }), z.array(z.number()), z.string()]).optional().describe('Placement as dict/list/Placement'),
+      name: z.string().optional().describe('Name for the window'),
+    },
+    async (input) => {
+      const { width, height, placement, name } = input;
+      const code = 'from llm_bridge.bim_handlers import handle_create_window; import json; params = json.loads(JSON.stringify({ width: width || null, height: height || null, placement: placement || null, name: name || null })); result = handle_create_window(**params); print(json.dumps(result))';
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        return { content: [{ type: 'text', text: parsed.success ? formatWindowCreation(parsed.data) : 'Error: ' + parsed.error }] };
+      } catch (error) {
+        return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+      }
+    },
+  );
+}
+
+function createDoorTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_door',
+    'Create a door in a wall.',
+    {
+      width: z.number().optional().describe('Door width'),
+      height: z.number().optional().describe('Door height'),
+      placement: z.union([z.object({ x: z.number(), y: z.number(), z: z.number() }), z.array(z.number()), z.string()]).optional().describe('Placement as dict/list/Placement'),
+      name: z.string().optional().describe('Name for the door'),
+    },
+    async (input) => {
+      const { width, height, placement, name } = input;
+      const code = 'from llm_bridge.bim_handlers import handle_create_door; import json; params = json.loads(JSON.stringify({ width: width || null, height: height || null, placement: placement || null, name: name || null })); result = handle_create_door(**params); print(json.dumps(result))';
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        return { content: [{ type: 'text', text: parsed.success ? formatDoorCreation(parsed.data) : 'Error: ' + parsed.error }] };
+      } catch (error) {
+        return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+      }
+    },
+  );
+}
+
+function createRoofTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_roof',
+    'Create a roof from a profile.',
+    {
+      base_object: z.string().optional().describe('Name of base object for roof profile'),
+      angle: z.number().optional().describe('Roof angle in degrees'),
+      name: z.string().optional().describe('Name for the roof'),
+    },
+    async (input) => {
+      const { base_object, angle, name } = input;
+      const code = 'from llm_bridge.bim_handlers import handle_create_roof; import json; params = json.loads(JSON.stringify({ base_object: base_object || null, angle: angle || null, name: name || null })); result = handle_create_roof(**params); print(json.dumps(result))';
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        return { content: [{ type: 'text', text: parsed.success ? formatRoofCreation(parsed.data) : 'Error: ' + parsed.error }] };
+      } catch (error) {
+        return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+      }
+    },
+  );
+}
+
+function createStairsTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_stairs',
+    'Create a staircase.',
+    {
+      length: z.number().optional().describe('Stairs length'),
+      width: z.number().optional().describe('Stairs width'),
+      num_steps: z.number().optional().describe('Number of steps'),
+      name: z.string().optional().describe('Name for the stairs'),
+    },
+    async (input) => {
+      const { length, width, num_steps, name } = input;
+      const code = 'from llm_bridge.bim_handlers import handle_create_stairs; import json; params = json.loads(JSON.stringify({ length: length || null, width: width || null, num_steps: num_steps || null, name: name || null })); result = handle_create_stairs(**params); print(json.dumps(result))';
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        return { content: [{ type: 'text', text: parsed.success ? formatStairsCreation(parsed.data) : 'Error: ' + parsed.error }] };
+      } catch (error) {
+        return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+      }
+    },
+  );
+}
+
+function createCurtainWallTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_curtain_wall',
+    'Create a curtain wall system.',
+    {
+      base_object: z.string().optional().describe('Name of base object for curtain wall'),
+      name: z.string().optional().describe('Name for the curtain wall'),
+    },
+    async (input) => {
+      const { base_object, name } = input;
+      const code = 'from llm_bridge.bim_handlers import handle_create_curtain_wall; import json; params = json.loads(JSON.stringify({ base_object: base_object || null, name: name || null })); result = handle_create_curtain_wall(**params); print(json.dumps(result))';
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        return { content: [{ type: 'text', text: parsed.success ? formatCurtainWallCreation(parsed.data) : 'Error: ' + parsed.error }] };
+      } catch (error) {
+        return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+      }
+    },
+  );
+}
+
+function createSpaceTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_space',
+    'Create a space/room.',
+    {
+      placement: z.union([z.object({ x: z.number(), y: z.number(), z: z.number() }), z.array(z.number()), z.string()]).optional().describe('Placement as dict/list/Placement'),
+      name: z.string().optional().describe('Name for the space'),
+    },
+    async (input) => {
+      const { placement, name } = input;
+      const code = 'from llm_bridge.bim_handlers import handle_create_space; import json; params = json.loads(JSON.stringify({ placement: placement || null, name: name || null })); result = handle_create_space(**params); print(json.dumps(result))';
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        return { content: [{ type: 'text', text: parsed.success ? formatSpaceCreation(parsed.data) : 'Error: ' + parsed.error }] };
+      } catch (error) {
+        return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+      }
+    },
+  );
+}
+
+function createColumnTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_column',
+    'Create a vertical column.',
+    {
+      placement: z.union([z.object({ x: z.number(), y: z.number(), z: z.number() }), z.array(z.number()), z.string()]).optional().describe('Placement as dict/list/Placement'),
+      width: z.number().optional().describe('Column width'),
+      height: z.number().optional().describe('Column height'),
+      name: z.string().optional().describe('Name for the column'),
+    },
+    async (input) => {
+      const { placement, width, height, name } = input;
+      const code = 'from llm_bridge.bim_handlers import handle_create_column; import json; params = json.loads(JSON.stringify({ placement: placement || null, width: width || null, height: height || null, name: name || null })); result = handle_create_column(**params); print(json.dumps(result))';
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        return { content: [{ type: 'text', text: parsed.success ? formatColumnCreation(parsed.data) : 'Error: ' + parsed.error }] };
+      } catch (error) {
+        return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+      }
+    },
+  );
+}
+
+function createBeamTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_beam',
+    'Create a horizontal beam.',
+    {
+      start: z.union([z.object({ x: z.number(), y: z.number(), z: z.number() }), z.array(z.number())]).optional().describe('Start point as dict/list/Vector'),
+      end: z.union([z.object({ x: z.number(), y: z.number(), z: z.number() }), z.array(z.number())]).optional().describe('End point as dict/list/Vector'),
+      width: z.number().optional().describe('Beam width'),
+      height: z.number().optional().describe('Beam height'),
+      name: z.string().optional().describe('Name for the beam'),
+    },
+    async (input) => {
+      const { start, end, width, height, name } = input;
+      const code = 'from llm_bridge.bim_handlers import handle_create_beam; import json; params = json.loads(JSON.stringify({ start: start || null, end: end || null, width: width || null, height: height || null, name: name || null })); result = handle_create_beam(**params); print(json.dumps(result))';
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        return { content: [{ type: 'text', text: parsed.success ? formatBeamCreation(parsed.data) : 'Error: ' + parsed.error }] };
+      } catch (error) {
+        return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+      }
+    },
+  );
+}
+
+function createSlabTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_slab',
+    'Create a floor/roof slab.',
+    {
+      base_object: z.string().optional().describe('Name of base object for slab'),
+      thickness: z.number().optional().describe('Slab thickness'),
+      name: z.string().optional().describe('Name for the slab'),
+    },
+    async (input) => {
+      const { base_object, thickness, name } = input;
+      const code = 'from llm_bridge.bim_handlers import handle_create_slab; import json; params = json.loads(JSON.stringify({ base_object: base_object || null, thickness: thickness || null, name: name || null })); result = handle_create_slab(**params); print(json.dumps(result))';
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        return { content: [{ type: 'text', text: parsed.success ? formatSlabCreation(parsed.data) : 'Error: ' + parsed.error }] };
+      } catch (error) {
+        return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+      }
+    },
+  );
+}
+
+function createFrameTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_frame',
+    'Create a frame structure.',
+    {
+      base_object: z.string().optional().describe('Name of base sketch/object for frame'),
+      profile: z.string().optional().describe('Name of profile object'),
+      name: z.string().optional().describe('Name for the frame'),
+    },
+    async (input) => {
+      const { base_object, profile, name } = input;
+      const code = 'from llm_bridge.bim_handlers import handle_create_frame; import json; params = json.loads(JSON.stringify({ base_object: base_object || null, profile: profile || null, name: name || null })); result = handle_create_frame(**params); print(json.dumps(result))';
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        return { content: [{ type: 'text', text: parsed.success ? formatFrameCreation(parsed.data) : 'Error: ' + parsed.error }] };
+      } catch (error) {
+        return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+      }
+    },
+  );
+}
+
+function createTrussTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_truss',
+    'Create a truss.',
+    {
+      placement: z.union([z.object({ x: z.number(), y: z.number(), z: z.number() }), z.array(z.number()), z.string()]).optional().describe('Placement as dict/list/Placement'),
+      length: z.number().optional().describe('Truss length'),
+      height: z.number().optional().describe('Truss height'),
+      name: z.string().optional().describe('Name for the truss'),
+    },
+    async (input) => {
+      const { placement, length, height, name } = input;
+      const code = 'from llm_bridge.bim_handlers import handle_create_truss; import json; params = json.loads(JSON.stringify({ placement: placement || null, length: length || null, height: height || null, name: name || null })); result = handle_create_truss(**params); print(json.dumps(result))';
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        return { content: [{ type: 'text', text: parsed.success ? formatTrussCreation(parsed.data) : 'Error: ' + parsed.error }] };
+      } catch (error) {
+        return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+      }
+    },
+  );
+}
+
+function createFenceTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_fence',
+    'Create a fence.',
+    {
+      placement: z.union([z.object({ x: z.number(), y: z.number(), z: z.number() }), z.array(z.number()), z.string()]).optional().describe('Placement as dict/list/Placement'),
+      length: z.number().optional().describe('Fence length'),
+      height: z.number().optional().describe('Fence height'),
+      name: z.string().optional().describe('Name for the fence'),
+    },
+    async (input) => {
+      const { placement, length, height, name } = input;
+      const code = 'from llm_bridge.bim_handlers import handle_create_fence; import json; params = json.loads(JSON.stringify({ placement: placement || null, length: length || null, height: height || null, name: name || null })); result = handle_create_fence(**params); print(json.dumps(result))';
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        return { content: [{ type: 'text', text: parsed.success ? formatFenceCreation(parsed.data) : 'Error: ' + parsed.error }] };
+      } catch (error) {
+        return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+      }
+    },
+  );
+}
+
+function createEquipmentTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_equipment',
+    'Create equipment/furniture.',
+    {
+      base_object: z.string().optional().describe('Name of base object for equipment'),
+      placement: z.union([z.object({ x: z.number(), y: z.number(), z: z.number() }), z.array(z.number()), z.string()]).optional().describe('Placement as dict/list/Placement'),
+      name: z.string().optional().describe('Name for the equipment'),
+    },
+    async (input) => {
+      const { base_object, placement, name } = input;
+      const code = 'from llm_bridge.bim_handlers import handle_create_equipment; import json; params = json.loads(JSON.stringify({ base_object: base_object || null, placement: placement || null, name: name || null })); result = handle_create_equipment(**params); print(json.dumps(result))';
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        return { content: [{ type: 'text', text: parsed.success ? formatEquipmentCreation(parsed.data) : 'Error: ' + parsed.error }] };
+      } catch (error) {
+        return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+      }
+    },
+  );
+}
+
+function createPipeTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_pipe',
+    'Create a pipe.',
+    {
+      start: z.union([z.object({ x: z.number(), y: z.number(), z: z.number() }), z.array(z.number())]).optional().describe('Start point as dict/list/Vector'),
+      end: z.union([z.object({ x: z.number(), y: z.number(), z: z.number() }), z.array(z.number())]).optional().describe('End point as dict/list/Vector'),
+      radius: z.number().optional().describe('Pipe radius'),
+      name: z.string().optional().describe('Name for the pipe'),
+    },
+    async (input) => {
+      const { start, end, radius, name } = input;
+      const code = 'from llm_bridge.bim_handlers import handle_create_pipe; import json; params = json.loads(JSON.stringify({ start: start || null, end: end || null, radius: radius || null, name: name || null })); result = handle_create_pipe(**params); print(json.dumps(result))';
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        return { content: [{ type: 'text', text: parsed.success ? formatPipeCreation(parsed.data) : 'Error: ' + parsed.error }] };
+      } catch (error) {
+        return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+      }
+    },
+  );
+}
+
+function createPipeConnectorTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_pipe_connector',
+    'Create a pipe connector fitting.',
+    {
+      objects: z.array(z.string()).optional().describe('List of pipe object names to connect'),
+      name: z.string().optional().describe('Name for the connector'),
+    },
+    async (input) => {
+      const { objects, name } = input;
+      const code = 'from llm_bridge.bim_handlers import handle_create_pipe_connector; import json; params = json.loads(JSON.stringify({ objects: objects || null, name: name || null })); result = handle_create_pipe_connector(**params); print(json.dumps(result))';
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        return { content: [{ type: 'text', text: parsed.success ? formatPipeConnectorCreation(parsed.data) : 'Error: ' + parsed.error }] };
+      } catch (error) {
+        return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+      }
+    },
+  );
+}
+
+function createPanelTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_panel',
+    'Create a panel/board.',
+    {
+      base_object: z.string().optional().describe('Name of base object for panel'),
+      name: z.string().optional().describe('Name for the panel'),
+    },
+    async (input) => {
+      const { base_object, name } = input;
+      const code = 'from llm_bridge.bim_handlers import handle_create_panel; import json; params = json.loads(JSON.stringify({ base_object: base_object || null, name: name || null })); result = handle_create_panel(**params); print(json.dumps(result))';
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        return { content: [{ type: 'text', text: parsed.success ? formatPanelCreation(parsed.data) : 'Error: ' + parsed.error }] };
+      } catch (error) {
+        return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+      }
+    },
+  );
+}
+
+function createAxisTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_axis',
+    'Create an axis system.',
+    {
+      num: z.number().optional().describe('Number of axes'),
+      spacing: z.number().optional().describe('Spacing between axes'),
+      name: z.string().optional().describe('Name for the axis system'),
+    },
+    async (input) => {
+      const { num, spacing, name } = input;
+      const code = 'from llm_bridge.bim_handlers import handle_create_axis; import json; params = json.loads(JSON.stringify({ num: num || null, spacing: spacing || null, name: name || null })); result = handle_create_axis(**params); print(json.dumps(result))';
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        return { content: [{ type: 'text', text: parsed.success ? formatAxisCreation(parsed.data) : 'Error: ' + parsed.error }] };
+      } catch (error) {
+        return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+      }
+    },
+  );
+}
+
+function createGridTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_grid',
+    'Create a reference grid.',
+    {
+      placement: z.union([z.object({ x: z.number(), y: z.number(), z: z.number() }), z.array(z.number()), z.string()]).optional().describe('Placement as dict/list/Placement'),
+      name: z.string().optional().describe('Name for the grid'),
+    },
+    async (input) => {
+      const { placement, name } = input;
+      const code = 'from llm_bridge.bim_handlers import handle_create_grid; import json; params = json.loads(JSON.stringify({ placement: placement || null, name: name || null })); result = handle_create_grid(**params); print(json.dumps(result))';
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        return { content: [{ type: 'text', text: parsed.success ? formatGridCreation(parsed.data) : 'Error: ' + parsed.error }] };
+      } catch (error) {
+        return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+      }
+    },
+  );
+}
+
+function createSectionPlaneTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_section_plane',
+    'Create a section plane for views.',
+    {
+      object_names: z.array(z.string()).optional().describe('List of object names to include in section'),
+      name: z.string().optional().describe('Name for the section plane'),
+    },
+    async (input) => {
+      const { object_names, name } = input;
+      const code = 'from llm_bridge.bim_handlers import handle_create_section_plane; import json; params = json.loads(JSON.stringify({ object_names: object_names || null, name: name || null })); result = handle_create_section_plane(**params); print(json.dumps(result))';
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        return { content: [{ type: 'text', text: parsed.success ? formatSectionPlaneCreation(parsed.data) : 'Error: ' + parsed.error }] };
+      } catch (error) {
+        return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+      }
+    },
+  );
+}
+
+function createScheduleTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_schedule',
+    'Create a quantity takeoff schedule.',
+    {
+      object_names: z.array(z.string()).optional().describe('List of object names to include in schedule'),
+      name: z.string().optional().describe('Name for the schedule'),
+    },
+    async (input) => {
+      const { object_names, name } = input;
+      const code = 'from llm_bridge.bim_handlers import handle_create_schedule; import json; params = json.loads(JSON.stringify({ object_names: object_names || null, name: name || null })); result = handle_create_schedule(**params); print(json.dumps(result))';
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        return { content: [{ type: 'text', text: parsed.success ? formatScheduleCreation(parsed.data) : 'Error: ' + parsed.error }] };
+      } catch (error) {
+        return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+      }
+    },
+  );
+}
+
+function setIfcTypeTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'set_ifc_type',
+    'Set IFC entity type on an object.',
+    {
+      object_name: z.string().describe('Name of the object'),
+      ifc_type: z.string().describe('IFC type string (e.g., Wall, Column, Beam)'),
+    },
+    async (input) => {
+      const { object_name, ifc_type } = input;
+      const code = 'from llm_bridge.bim_handlers import handle_set_ifc_type; import json; params = json.loads(JSON.stringify({ object_name: object_name, ifc_type: ifc_type })); result = handle_set_ifc_type(**params); print(json.dumps(result))';
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        return { content: [{ type: 'text', text: parsed.success ? formatIfcProperties(parsed.data) : 'Error: ' + parsed.error }] };
+      } catch (error) {
+        return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+      }
+    },
+  );
+}
+
+function getIfcPropertiesTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'get_ifc_properties',
+    'Get IFC properties from an object.',
+    {
+      object_name: z.string().describe('Name of the object'),
+    },
+    async (input) => {
+      const { object_name } = input;
+      const code = 'from llm_bridge.bim_handlers import handle_get_ifc_properties; import json; params = json.loads(JSON.stringify({ object_name: object_name })); result = handle_get_ifc_properties(**params); print(json.dumps(result))';
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        return { content: [{ type: 'text', text: parsed.success ? formatIfcProperties(parsed.data) : 'Error: ' + parsed.error }] };
+      } catch (error) {
+        return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+      }
+    },
+  );
+}
+
+function setIfcPropertyTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'set_ifc_property',
+    'Set an IFC property on an object.',
+    {
+      object_name: z.string().describe('Name of the object'),
+      prop_name: z.string().describe('Property name to set'),
+      value: z.string().describe('Property value to set'),
+    },
+    async (input) => {
+      const { object_name, prop_name, value } = input;
+      const code = 'from llm_bridge.bim_handlers import handle_set_ifc_property; import json; params = json.loads(JSON.stringify({ object_name: object_name, prop_name: prop_name, value: value })); result = handle_set_ifc_property(**params); print(json.dumps(result))';
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        return { content: [{ type: 'text', text: parsed.success ? formatIfcProperties(parsed.data) : 'Error: ' + parsed.error }] };
+      } catch (error) {
+        return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+      }
+    },
+  );
+}
+
+function getBimMaterialTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'get_bim_material',
+    'Get material from a BIM object.',
+    {
+      object_name: z.string().describe('Name of the object'),
+    },
+    async (input) => {
+      const { object_name } = input;
+      const code = 'from llm_bridge.bim_handlers import handle_get_bim_material; import json; params = json.loads(JSON.stringify({ object_name: object_name })); result = handle_get_bim_material(**params); print(json.dumps(result))';
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        return { content: [{ type: 'text', text: parsed.success ? formatMaterialAssignment(parsed.data) : 'Error: ' + parsed.error }] };
+      } catch (error) {
+        return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+      }
+    },
+  );
+}
+
+function assignMaterialTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'assign_material',
+    'Assign material to a BIM object.',
+    {
+      object_name: z.string().describe('Name of the object'),
+      material_name: z.string().describe('Name of the material to assign'),
+    },
+    async (input) => {
+      const { object_name, material_name } = input;
+      const code = 'from llm_bridge.bim_handlers import handle_assign_material; import json; params = json.loads(JSON.stringify({ object_name: object_name, material_name: material_name })); result = handle_assign_material(**params); print(json.dumps(result))';
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        return { content: [{ type: 'text', text: parsed.success ? formatMaterialAssignment(parsed.data) : 'Error: ' + parsed.error }] };
+      } catch (error) {
+        return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+      }
+    },
+  );
+}
+
+function quickWallTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'quick_wall',
+    'Quick wall creation from a line.',
+    {
+      start: z.union([z.object({ x: z.number(), y: z.number(), z: z.number() }), z.array(z.number())]).optional().describe('Start point as dict/list/Vector'),
+      end: z.union([z.object({ x: z.number(), y: z.number(), z: z.number() }), z.array(z.number())]).optional().describe('End point as dict/list/Vector'),
+      height: z.number().optional().describe('Wall height'),
+      thickness: z.number().optional().describe('Wall thickness (width)'),
+      name: z.string().optional().describe('Name for the wall'),
+    },
+    async (input) => {
+      const { start, end, height, thickness, name } = input;
+      const code = 'from llm_bridge.bim_handlers import handle_quick_wall; import json; params = json.loads(JSON.stringify({ start: start || null, end: end || null, height: height || null, thickness: thickness || null, name: name || null })); result = handle_quick_wall(**params); print(json.dumps(result))';
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        return { content: [{ type: 'text', text: parsed.success ? formatQuickWall(parsed.data) : 'Error: ' + parsed.error }] };
+      } catch (error) {
+        return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+      }
+    },
+  );
+}
+
+function quickWindowTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'quick_window',
+    'Insert a window into a wall at a specific position.',
+    {
+      wall_name: z.string().describe('Name of the wall to insert window into'),
+      width: z.number().optional().describe('Window width'),
+      height: z.number().optional().describe('Window height'),
+      position: z.union([z.number(), z.object({ x: z.number(), y: z.number(), z: z.number() })]).optional().describe('Position along wall (0-1 normalized or dict with x,y,z)'),
+    },
+    async (input) => {
+      const { wall_name, width, height, position } = input;
+      const code = 'from llm_bridge.bim_handlers import handle_quick_window; import json; params = json.loads(JSON.stringify({ wall_name: wall_name, width: width || null, height: height || null, position: position || null })); result = handle_quick_window(**params); print(json.dumps(result))';
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        return { content: [{ type: 'text', text: parsed.success ? formatQuickWindow(parsed.data) : 'Error: ' + parsed.error }] };
+      } catch (error) {
+        return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+      }
+    },
+  );
+}
+
+function quickDoorTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'quick_door',
+    'Insert a door into a wall at a specific position.',
+    {
+      wall_name: z.string().describe('Name of the wall to insert door into'),
+      width: z.number().optional().describe('Door width'),
+      height: z.number().optional().describe('Door height'),
+      position: z.union([z.number(), z.object({ x: z.number(), y: z.number(), z: z.number() })]).optional().describe('Position along wall (0-1 normalized or dict with x,y,z)'),
+    },
+    async (input) => {
+      const { wall_name, width, height, position } = input;
+      const code = 'from llm_bridge.bim_handlers import handle_quick_door; import json; params = json.loads(JSON.stringify({ wall_name: wall_name, width: width || null, height: height || null, position: position || null })); result = handle_quick_door(**params); print(json.dumps(result))';
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        return { content: [{ type: 'text', text: parsed.success ? formatQuickDoor(parsed.data) : 'Error: ' + parsed.error }] };
+      } catch (error) {
+        return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+      }
+    },
+  );
+}
+
+function quickFloorTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'quick_floor',
+    'Add a floor/level to a building.',
+    {
+      building_name: z.string().describe('Name of the building'),
+      level: z.string().optional().describe('Level name or number'),
+      objects: z.array(z.string()).optional().describe('List of object names to add to the floor'),
+    },
+    async (input) => {
+      const { building_name, level, objects } = input;
+      const code = 'from llm_bridge.bim_handlers import handle_quick_floor; import json; params = json.loads(JSON.stringify({ building_name: building_name, level: level || null, objects: objects || null })); result = handle_quick_floor(**params); print(json.dumps(result))';
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        return { content: [{ type: 'text', text: parsed.success ? formatQuickFloor(parsed.data) : 'Error: ' + parsed.error }] };
+      } catch (error) {
+        return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
       }
     },
   );

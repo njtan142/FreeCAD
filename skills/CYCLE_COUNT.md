@@ -1,9 +1,11 @@
 # Cycle Count
 
-**Current Cycle**: 24 (IN PROGRESS - Spreadsheet Workbench Tools)
+**Current Cycle**: 26 (NEXT - Advanced Features)
 
 ## History
-- Cycle 24: Spreadsheet Workbench Tools - IN PROGRESS
+- Cycle 25: BIM Workbench Tools - COMPLETED
+- Cycle 24: Spreadsheet Workbench Tools (BOM & Parametric Tables) - COMPLETED
+- Cycle 24: Spreadsheet Workbench Tools (BOM & Parametric Tables) - COMPLETED
 - Cycle 23: Essential Workflow Tools (Undo/Redo, Visibility, Selection, Measurement) - COMPLETED
 - Cycle 22: Advanced Surface Modeling Tools - COMPLETED
 - Cycle 21: CAM/Path Workbench Tools for CNC Operations - COMPLETED
