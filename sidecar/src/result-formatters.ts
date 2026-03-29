@@ -1519,6 +1519,169 @@ export function formatModificationResult(data: any, operation: string): string {
 }
 
 // ============================================================================
+// Pattern and Array Tools Result Formatters
+// ============================================================================
+
+/**
+ * Format pattern creation result from create_linear_pattern, create_polar_pattern, etc.
+ */
+export function formatPatternCreation(data: any): string {
+  if (!data) return 'No pattern data';
+
+  const lines: string[] = [];
+  lines.push(`Pattern: ${data.patternLabel || data.patternName} (${data.patternName})`);
+  lines.push(`Type: ${data.patternType || 'Pattern'}`);
+
+  if (data.sourceObject) {
+    lines.push(`Source: ${data.sourceObject}`);
+  }
+
+  if (data.count !== undefined) {
+    lines.push(`Count: ${data.count}`);
+  }
+
+  if (data.totalCount !== undefined) {
+    lines.push(`Total Copies: ${data.totalCount}`);
+  }
+
+  if (data.spacing !== undefined) {
+    lines.push(`Spacing: ${data.spacing.toFixed(2)} mm`);
+  }
+
+  if (data.angle !== undefined) {
+    lines.push(`Angle: ${data.angle.toFixed(1)}°`);
+  }
+
+  if (data.axis) {
+    lines.push(`Axis: (${data.axis.x?.toFixed(2)}, ${data.axis.y?.toFixed(2)}, ${data.axis.z?.toFixed(2)})`);
+  }
+
+  if (data.direction) {
+    lines.push(`Direction: ${data.direction}`);
+  }
+
+  if (data.createLinks !== undefined) {
+    lines.push(`Linked: ${data.createLinks ? 'Yes' : 'No'}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Format pattern update result from update_linear_pattern, update_polar_pattern
+ */
+export function formatPatternUpdate(data: any): string {
+  if (!data) return 'No update data';
+
+  const lines: string[] = [];
+  lines.push(`Pattern: ${data.patternLabel || data.patternName} (${data.patternName})`);
+  lines.push(`Type: ${data.patternType || 'Pattern'}`);
+  lines.push('');
+
+  if (data.oldCount !== undefined && data.newCount !== undefined) {
+    lines.push(`Count: ${data.oldCount} → ${data.newCount}`);
+  }
+
+  if (data.oldSpacing !== undefined && data.newSpacing !== undefined) {
+    lines.push(`Spacing: ${data.oldSpacing.toFixed(2)} mm → ${data.newSpacing.toFixed(2)} mm`);
+  }
+
+  if (data.oldAngle !== undefined && data.newAngle !== undefined) {
+    lines.push(`Angle: ${data.oldAngle.toFixed(1)}° → ${data.newAngle.toFixed(1)}°`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Format pattern info result from get_pattern_info
+ */
+export function formatPatternInfo(data: any): string {
+  if (!data) return 'No pattern info';
+
+  const lines: string[] = [];
+  lines.push(`Pattern: ${data.patternLabel || data.patternName} (${data.patternName})`);
+  lines.push(`Type: ${data.patternType || 'Unknown'}`);
+  lines.push('');
+
+  if (data.sourceObject) {
+    lines.push(`Source Object: ${data.sourceObject}`);
+  }
+
+  if (data.bodyName) {
+    lines.push(`Body: ${data.bodyName}`);
+  }
+
+  if (data.count !== undefined) {
+    lines.push(`Instance Count: ${data.count}`);
+  }
+
+  if (data.alignmentMode) {
+    lines.push(`Alignment: ${data.alignmentMode}`);
+  }
+
+  if (data.patternType === 'LinearPattern' || data.patternType === 'Linear') {
+    if (data.direction) {
+      lines.push(`Direction: ${data.direction}`);
+    }
+    if (data.spacing !== undefined) {
+      lines.push(`Spacing: ${data.spacing.toFixed(2)} mm`);
+    }
+  } else if (data.patternType === 'PolarPattern' || data.patternType === 'Polar') {
+    if (data.angle !== undefined) {
+      lines.push(`Angle: ${data.angle.toFixed(1)}°`);
+    }
+    if (data.axis) {
+      lines.push(`Axis: (${data.axis.x?.toFixed(2)}, ${data.axis.y?.toFixed(2)}, ${data.axis.z?.toFixed(2)})`);
+    }
+  } else if (data.patternType === 'RectangularPattern' || data.patternType === 'Rectangular') {
+    if (data.countX !== undefined && data.countY !== undefined) {
+      lines.push(`Grid: ${data.countX} × ${data.countY}`);
+    }
+    if (data.spacingX !== undefined) {
+      lines.push(`Spacing X: ${data.spacingX.toFixed(2)} mm`);
+    }
+    if (data.spacingY !== undefined) {
+      lines.push(`Spacing Y: ${data.spacingY.toFixed(2)} mm`);
+    }
+  }
+
+  if (data.positions && data.positions.length > 0) {
+    lines.push('');
+    lines.push(`Instances (${data.positions.length}):`);
+    lines.push('─'.repeat(60));
+    lines.push(formatTableRow(['Index', 'Position (X, Y, Z)']));
+    lines.push('─'.repeat(60));
+    for (const pos of data.positions.slice(0, 10)) {
+      const x = pos.x?.toFixed(2) || '0.00';
+      const y = pos.y?.toFixed(2) || '0.00';
+      const z = pos.z?.toFixed(2) || '0.00';
+      lines.push(formatTableRow([String(pos.index), `(${x}, ${y}, ${z})`]));
+    }
+    if (data.positions.length > 10) {
+      lines.push(`... and ${data.positions.length - 10} more`);
+    }
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+// ============================================================================
 // TechDraw Workbench Result Formatters
 // ============================================================================
 
