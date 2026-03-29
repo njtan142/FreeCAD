@@ -790,3 +790,45 @@ The following commits were also created as part of this cycle's work:
 |-------------|---------|---------------|
 | `d4600e5cc4` | fix(llmbridge): improve FEA solver handling and mesh operations | __init__.py, fea_handlers.py, kinematic_handlers.py, mesh_handlers.py, animation_export_handlers.py |
 | `987c2fd20a` | docs: update cycle tracking and project documentation | CURRENT_PLAN.md, CURRENT_REVIEW.md, CYCLE_COUNT.md, PROJECT.md |
+
+---
+
+## Cycle 21 - Incremental Commits
+
+The original large commit for CAM/Path Workbench Tools have been refactored into 3 incremental commits.
+
+| Commit Hash | Message | Files Changed |
+|-------------|---------|---------------|
+| `7e7dcc1ae6` | feat(llm): add CAM/Path workbench Python handlers | path_handlers.py |
+| `182fe55e57` | feat(sidecar): add CAM/Path workbench agent tools | agent-tools.ts |
+| `3177474c06` | feat(sidecar): add CAM/Path workbench result formatters | result-formatters.ts |
+
+### Commit Progression
+
+1. **Python CAM/Path handlers**: Added path_handlers.py with 21 handlers for Path workbench operations:
+   - Job management: handle_create_path_job, handle_configure_path_job, handle_delete_path_job, handle_list_path_jobs
+   - Tool management: handle_create_path_tool, handle_create_path_toolbit, handle_create_tool_controller, handle_list_path_tools
+   - Path operations: handle_create_path_profile, handle_create_path_pocket, handle_create_path_drill, handle_create_path_face
+   - Dressup operations: handle_create_path_dressup_radius, handle_create_path_dressup_tag, handle_create_path_dressup_leadoff
+   - G-code operations: handle_export_gcode, handle_simulate_path
+
+2. **Agent tools implementation**: Added 17 CAM/Path tools to agent-tools.ts:
+   - Job management: create_path_job, configure_path_job, delete_path_job, list_path_jobs
+   - Tool management: create_path_tool, create_path_toolbit, create_tool_controller, list_path_tools
+   - Path operations: create_path_profile, create_path_pocket, create_path_drill, create_path_face
+   - Dressup: create_path_dressup_radius, create_path_dressup_tag, create_path_dressup_leadoff
+   - G-code/simulation: export_gcode, simulate_path
+
+3. **Result formatters**: Added 8 CAM/Path-specific result formatters to result-formatters.ts:
+   - formatPathJobCreation, formatPathJobList
+   - formatPathToolCreation, formatPathToolList
+   - formatPathOperation, formatPathDressup
+   - formatGCodeExport, formatPathSimulation
+
+### Summary
+
+- **Total commits**: 3
+- **Files created**: 1 (path_handlers.py)
+- **Files modified**: 2 (agent-tools.ts, result-formatters.ts)
+- **Total insertions**: ~1,803 lines
+- **Total deletions**: ~0 lines
