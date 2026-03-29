@@ -47,11 +47,15 @@ LLMChatWidget::LLMChatWidget(QWidget* parent)
     setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
     setFrameShape(QFrame::NoFrame);
     
-    // Set background color
+    // Set background color on both scroll area and container
     setAutoFillBackground(true);
     QPalette pal = palette();
     pal.setColor(QPalette::Window, Qt::white);
+    pal.setColor(QPalette::Base, Qt::white);
     setPalette(pal);
+
+    m_containerWidget->setAutoFillBackground(true);
+    m_containerWidget->setPalette(pal);
 }
 
 LLMChatWidget::~LLMChatWidget() = default;
@@ -134,7 +138,7 @@ QWidget* LLMChatWidget::createMessageLabel(const QString& message, MessageRole r
     
     // Set alignment
     Qt::Alignment alignment = getTextAlignment(role);
-    label->setAlignment(alignment & Qt::AlignHorizontal);
+    label->setAlignment(alignment);
     
     // Add some padding
     label->setContentsMargins(8, 6, 8, 6);

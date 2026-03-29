@@ -32,11 +32,13 @@
 #include <QMessageBox>
 #include <QMenu>
 #include <QInputDialog>
+#include <QTimer>
 
 #include <App/Application.h>
 #include <Base/Interpreter.h>
 
 #include <memory>
+#include <iostream>
 
 using namespace Gui;
 
@@ -103,15 +105,25 @@ LLMDockWidget::LLMDockWidget(QWidget* parent)
     , m_sessionLabel(nullptr)
     , m_sessionButton(nullptr)
 {
+    std::cerr << "LLMDockWidget: constructor start" << std::endl;
     setWindowTitle(tr("LLM Assistant"));
     setObjectName(QStringLiteral("LLMDockWidget"));
+    setAttribute(Qt::WA_StyledBackground, true);
+    setAutoFillBackground(true);
 
+    std::cerr << "LLMDockWidget: calling setupUI" << std::endl;
     setupUI();
+    std::cerr << "LLMDockWidget: calling setupSessionUI" << std::endl;
     setupSessionUI();
-    setupPythonBridge();
 
     // Add welcome message
     addSystemMessage(tr("LLM Assistant initialized. Type your request below."));
+
+    std::cerr << "LLMDockWidget: deferring Python bridge init" << std::endl;
+    // Defer Python bridge initialization until after event loop starts
+    // to ensure Python is fully ready
+    QTimer::singleShot(100, this, &LLMDockWidget::setupPythonBridge);
+    std::cerr << "LLMDockWidget: constructor done" << std::endl;
 }
 
 LLMDockWidget::~LLMDockWidget() = default;
@@ -218,9 +230,10 @@ void LLMDockWidget::handleInputTextChanged()
 void LLMDockWidget::setupUI()
 {
     m_mainWidget = new QWidget(this);
+    m_mainWidget->setAutoFillBackground(true);
     auto* mainLayout = new QVBoxLayout(m_mainWidget);
-    mainLayout->setContentsMargins(0, 0, 0, 0);
-    mainLayout->setSpacing(0);
+    mainLayout->setContentsMargins(4, 4, 4, 4);
+    mainLayout->setSpacing(4);
     
     // Chat display area
     m_chatWidget = new LLMChatWidget(this);
@@ -249,67 +262,113 @@ void LLMDockWidget::setupUI()
 
 void LLMDockWidget::setupPythonBridge()
 {
+    std::cerr << "LLMDockWidget: setupPythonBridge start" << std::endl;
     // Attempt to initialize the Python bridge
-    // This is a stub - actual connection happens when sidecar exists
     try {
+        std::cerr << "LLMDockWidget: acquiring GIL" << std::endl;
         Base::PyGILStateLocker lock;
+        std::cerr << "LLMDockWidget: GIL acquired" << std::endl;
 
-        // Check if the module exists
+        // Import the module
+        std::cerr << "LLMDockWidget: importing llm_bridge.llm_panel_bridge" << std::endl;
         PyObject* module = PyImport_ImportModule("llm_bridge.llm_panel_bridge");
-        if (module) {
-            m_pythonBridgeInitialized = true;
-
-            // Store widget instance pointer for callbacks
-            if (s_llmDockWidgetInstance) {
-                Py_DECREF(s_llmDockWidgetInstance);
-            }
-            s_llmDockWidgetInstance = PyDict_New();
-            PyObject* ptrObj = PyLong_FromVoidPtr(reinterpret_cast<void*>(this));
-            PyDict_SetItemString(s_llmDockWidgetInstance, "_ptr", ptrObj);
-            Py_DECREF(ptrObj);
-
-            // Register callback for receiving LLM responses
-            PyObject* registerFunc = PyObject_GetAttrString(module, "register_callback");
-            if (registerFunc && PyCallable_Check(registerFunc)) {
-                // Create a simple Python callable using PyCFunction
-                PyObject* responseCallback = PyCFunction_NewEx(
-                    &s_callbackMethods[0], nullptr, nullptr);
-                if (responseCallback) {
-                    PyObject* args = Py_BuildValue("(O)", responseCallback);
-                    PyObject_CallObject(registerFunc, args);
-                    Py_XDECREF(args);
-                    Py_DECREF(responseCallback);
-                }
-                Py_DECREF(registerFunc);
-            }
-
-            // Register callback for connection status changes
-            PyObject* registerConnFunc = PyObject_GetAttrString(module, "register_connection_callback");
-            if (registerConnFunc && PyCallable_Check(registerConnFunc)) {
-                PyObject* connCallback = PyCFunction_NewEx(
-                    &s_callbackMethods[1], nullptr, nullptr);
-                if (connCallback) {
-                    PyObject* args = Py_BuildValue("(O)", connCallback);
-                    PyObject_CallObject(registerConnFunc, args);
-                    Py_XDECREF(args);
-                    Py_DECREF(connCallback);
-                }
-                Py_DECREF(registerConnFunc);
-            }
-
-            Py_DECREF(module);
-
-            addSystemMessage(tr("Python bridge module found."));
-        }
-        else {
+        if (!module) {
+            std::cerr << "LLMDockWidget: module import failed" << std::endl;
+            PyErr_Print();
             PyErr_Clear();
             m_pythonBridgeInitialized = false;
             addSystemMessage(tr("Python bridge module not found. Make sure LLMBridge is loaded."));
+            return;
         }
+        std::cerr << "LLMDockWidget: module imported successfully" << std::endl;
+
+        // Call initialize() to explicitly initialize the bridge
+        PyObject* initFunc = PyObject_GetAttrString(module, "initialize");
+        if (!initFunc || !PyCallable_Check(initFunc)) {
+            Py_XDECREF(initFunc);
+            Py_DECREF(module);
+            m_pythonBridgeInitialized = false;
+            addSystemMessage(tr("Python bridge initialize function not found."));
+            return;
+        }
+
+        std::cerr << "LLMDockWidget: calling initialize()" << std::endl;
+        PyObject* initResult = PyObject_CallObject(initFunc, nullptr);
+        if (!initResult) {
+            std::cerr << "LLMDockWidget: initialize() failed" << std::endl;
+            PyErr_Print();
+            PyErr_Clear();
+            Py_DECREF(initFunc);
+            Py_DECREF(module);
+            m_pythonBridgeInitialized = false;
+            addSystemMessage(tr("Failed to initialize Python bridge."));
+            return;
+        }
+        std::cerr << "LLMDockWidget: initialize() succeeded" << std::endl;
+        Py_DECREF(initResult);
+        Py_DECREF(initFunc);
+
+        m_pythonBridgeInitialized = true;
+        Py_DECREF(module);
+
+        addSystemMessage(tr("Python bridge initialized successfully."));
+        std::cerr << "LLMDockWidget: setupPythonBridge complete" << std::endl;
+
+        // Start polling for connection status and auto-reconnect
+        auto* pollTimer = new QTimer(this);
+        connect(pollTimer, &QTimer::timeout, this, [this]() {
+            try {
+                Base::PyGILStateLocker lock;
+                PyObject* mod = PyImport_ImportModule("llm_bridge.llm_panel_bridge");
+                if (!mod) return;
+
+                // Check current connection status
+                PyObject* func = PyObject_GetAttrString(mod, "is_connected");
+                if (func && PyCallable_Check(func)) {
+                    PyObject* result = PyObject_CallObject(func, nullptr);
+                    if (result) {
+                        bool connected = PyObject_IsTrue(result);
+                        Py_DECREF(result);
+
+                        if (connected != m_sidecarConnected) {
+                            m_sidecarConnected = connected;
+                            addSystemMessage(connected
+                                ? tr("Connected to sidecar.")
+                                : tr("Disconnected from sidecar."));
+                        }
+
+                        // If not connected, try to reconnect
+                        if (!connected) {
+                            PyObject* reconnFunc = PyObject_GetAttrString(mod, "_try_connect_background");
+                            if (reconnFunc && PyCallable_Check(reconnFunc)) {
+                                PyObject* r = PyObject_CallObject(reconnFunc, nullptr);
+                                Py_XDECREF(r);
+                            }
+                            Py_XDECREF(reconnFunc);
+                        }
+                    }
+                    Py_DECREF(func);
+                }
+                Py_DECREF(mod);
+            }
+            catch (...) {
+                // Ignore polling errors
+            }
+        });
+        pollTimer->start(5000);  // Poll every 5 seconds
     }
-    catch (const Base::Exception&) {
+    catch (const Base::Exception& e) {
+        std::cerr << "LLMDockWidget: Base::Exception: " << e.what() << std::endl;
         m_pythonBridgeInitialized = false;
-        addSystemMessage(tr("Failed to initialize Python bridge."));
+        addSystemMessage(tr("Failed to initialize Python bridge: %1").arg(QString::fromUtf8(e.what())));
+    }
+    catch (const std::exception& e) {
+        std::cerr << "LLMDockWidget: std::exception: " << e.what() << std::endl;
+        m_pythonBridgeInitialized = false;
+    }
+    catch (...) {
+        std::cerr << "LLMDockWidget: unknown exception" << std::endl;
+        m_pythonBridgeInitialized = false;
     }
 }
 
