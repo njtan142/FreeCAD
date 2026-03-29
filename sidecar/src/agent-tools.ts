@@ -47,6 +47,9 @@ import {
   formatAnnotationCreation,
   formatExportResult,
   formatTableRow,
+  formatPatternCreation,
+  formatPatternUpdate,
+  formatPatternInfo,
 } from './result-formatters';
 import {
   validateFilePath,
@@ -192,6 +195,16 @@ export function createAgentTools(freeCADBridge: FreeCADBridge) {
     createSaveChatSessionTool(),
     createLoadChatSessionTool(),
     createListChatSessionsTool(),
+    // Pattern and Array tools
+    createLinearPatternTool(freeCADBridge),
+    createPolarPatternTool(freeCADBridge),
+    createRectangularPatternTool(freeCADBridge),
+    createPathPatternTool(freeCADBridge),
+    updateLinearPatternTool(freeCADBridge),
+    updatePolarPatternTool(freeCADBridge),
+    getPatternInfoTool(freeCADBridge),
+    deletePatternTool(freeCADBridge),
+    listPatternsTool(freeCADBridge),
     // TechDraw workbench tools
     // Page management
     createDrawingPageTool(freeCADBridge),
@@ -1225,6 +1238,728 @@ print(json.dumps(result))
               {
                 type: 'text',
                 text: `Failed to create document: ${parsed.error}`,
+              },
+            ],
+          };
+        }
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+// ============================================================================
+// Pattern and Array Tools
+// ============================================================================
+
+/**
+ * Tool: create_linear_pattern
+ *
+ * Create a linear pattern (1D array) of a feature.
+ */
+function createLinearPatternTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_linear_pattern',
+    `Create a linear pattern (1D array) of a feature in a specified direction.
+
+Parameters:
+- sourceObject (required): Name of the source feature to pattern (e.g., "Pad", "Pocket", "Circle")
+- direction (required): Direction vector as {x, y, z} or "X", "Y", "Z" for standard axes
+- count (required): Number of instances (including original)
+- spacing (required): Distance between instances in mm
+- name (optional): Name for the pattern. If omitted, auto-generated.
+
+Returns:
+- success: Whether the pattern was created
+- patternName: Internal name of the pattern
+- patternLabel: User-friendly label
+- sourceObject: Name of the source feature
+- count: Number of instances
+- spacing: Distance between instances
+- message: Status message
+
+Use this tool to create arrays of features in a linear arrangement. Patterns are associative - updating the source updates all instances.
+
+Example:
+- Linear pattern of 5 holes: { sourceObject: "Pocket", direction: "X", count: 5, spacing: 10 }
+- 3x10mm spacing in Y: { sourceObject: "Cylinder", direction: "Y", count: 3, spacing: 10 }`,
+    {
+      sourceObject: z.string().describe('Name of the source feature to pattern'),
+      direction: z.union([
+        z.object({ x: z.number(), y: z.number(), z: z.number() }),
+        z.enum(['X', 'Y', 'Z'])
+      ]).describe('Direction vector {x, y, z} or axis name "X", "Y", "Z"'),
+      count: z.number().describe('Number of instances including original'),
+      spacing: z.number().describe('Distance between instances in mm'),
+      name: z.string().optional().describe('Name for the pattern'),
+    },
+    async (input) => {
+      const { sourceObject, direction, count, spacing, name } = input;
+
+      const code = `
+from llm_bridge.pattern_handlers import handle_create_linear_pattern
+import json
+params = json.loads('${JSON.stringify({ sourceObject, direction, count, spacing, name: name || null })}')
+result = handle_create_linear_pattern(
+    source_object=params['sourceObject'],
+    direction=params['direction'],
+    count=params['count'],
+    spacing=params['spacing'],
+    name=params['name']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatPatternCreation(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: create_polar_pattern
+ *
+ * Create a polar (circular) pattern around an axis.
+ */
+function createPolarPatternTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_polar_pattern',
+    `Create a polar pattern (circular array) of a feature around an axis.
+
+Parameters:
+- sourceObject (required): Name of the source feature to pattern
+- centerPoint (optional): Center point as {x, y, z}. If omitted, uses origin.
+- axis (optional): Axis of rotation as {x, y, z} (default: {x: 0, y: 0, z: 1} for Z-axis)
+- count (required): Number of instances including original
+- angle (optional): Total angle in degrees (default: 360 for full circle)
+- name (optional): Name for the pattern. If omitted, auto-generated.
+
+Returns:
+- success: Whether the pattern was created
+- patternName: Internal name of the pattern
+- patternLabel: User-friendly label
+- sourceObject: Name of the source feature
+- count: Number of instances
+- angle: Total angle in degrees
+- message: Status message
+
+Use this tool to create circular arrays of features. Common for bolt patterns, holes, spokes, etc.
+
+Example:
+- 6 bolts around Z-axis: { sourceObject: "Cylinder", count: 6, angle: 360 }
+- 8 instances in 270 degrees: { sourceObject: "Pad", count: 8, angle: 270 }`,
+    {
+      sourceObject: z.string().describe('Name of the source feature to pattern'),
+      centerPoint: z.object({ x: z.number(), y: z.number(), z: z.number() }).optional().describe('Center point {x, y, z}'),
+      axis: z.object({ x: z.number(), y: z.number(), z: z.number() }).optional().describe('Axis of rotation (default: Z-axis)'),
+      count: z.number().describe('Number of instances including original'),
+      angle: z.number().optional().describe('Total angle in degrees (default: 360)'),
+      name: z.string().optional().describe('Name for the pattern'),
+    },
+    async (input) => {
+      const { sourceObject, centerPoint, axis, count, angle, name } = input;
+
+      const code = `
+from llm_bridge.pattern_handlers import handle_create_polar_pattern
+import json
+params = json.loads('${JSON.stringify({ sourceObject, centerPoint, axis, count, angle: angle || 360, name: name || null })}')
+result = handle_create_polar_pattern(
+    source_object=params['sourceObject'],
+    center_point=params.get('centerPoint'),
+    axis=params.get('axis'),
+    count=params['count'],
+    angle=params.get('angle', 360),
+    name=params['name']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatPatternCreation(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: create_rectangular_pattern
+ *
+ * Create a rectangular (2D grid) pattern of a feature.
+ */
+function createRectangularPatternTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_rectangular_pattern',
+    `Create a rectangular pattern (2D grid) of a feature.
+
+Parameters:
+- sourceObject (required): Name of the source feature to pattern
+- directionX (required): X direction as {x, y, z} or "X", "Y", "Z"
+- countX (required): Number of instances in X direction
+- spacingX (required): Spacing between instances in X direction (mm)
+- directionY (required): Y direction as {x, y, z} or "X", "Y", "Z"
+- countY (required): Number of instances in Y direction
+- spacingY (required): Spacing between instances in Y direction (mm)
+- name (optional): Name for the pattern. If omitted, auto-generated.
+
+Returns:
+- success: Whether the pattern was created
+- patternName: Internal name of the pattern
+- patternLabel: User-friendly label
+- sourceObject: Name of the source feature
+- countX, countY: Instances in each direction
+- totalCount: Total number of instances
+- message: Status message
+
+Use this tool to create 2D grid arrays of features. Common for PCB holes, mounting holes, etc.
+
+Example:
+- 3x4 grid of holes: { sourceObject: "Pocket", directionX: "X", countX: 3, spacingX: 10, directionY: "Y", countY: 4, spacingY: 10 }`,
+    {
+      sourceObject: z.string().describe('Name of the source feature to pattern'),
+      directionX: z.union([
+        z.object({ x: z.number(), y: z.number(), z: z.number() }),
+        z.enum(['X', 'Y', 'Z'])
+      ]).describe('X direction vector or axis'),
+      countX: z.number().describe('Number of instances in X direction'),
+      spacingX: z.number().describe('Spacing in X direction (mm)'),
+      directionY: z.union([
+        z.object({ x: z.number(), y: z.number(), z: z.number() }),
+        z.enum(['X', 'Y', 'Z'])
+      ]).describe('Y direction vector or axis'),
+      countY: z.number().describe('Number of instances in Y direction'),
+      spacingY: z.number().describe('Spacing in Y direction (mm)'),
+      name: z.string().optional().describe('Name for the pattern'),
+    },
+    async (input) => {
+      const { sourceObject, directionX, countX, spacingX, directionY, countY, spacingY, name } = input;
+
+      const code = `
+from llm_bridge.pattern_handlers import handle_create_rectangular_pattern
+import json
+params = json.loads('${JSON.stringify({ sourceObject, directionX, countX, spacingX, directionY, countY, spacingY, name: name || null })}')
+result = handle_create_rectangular_pattern(
+    source_object=params['sourceObject'],
+    direction_x=params['directionX'],
+    count_x=params['countX'],
+    spacing_x=params['spacingX'],
+    direction_y=params['directionY'],
+    count_y=params['countY'],
+    spacing_y=params['spacingY'],
+    name=params['name']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatPatternCreation(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: create_path_pattern
+ *
+ * Create a pattern along a path (wire or edge).
+ */
+function createPathPatternTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_path_pattern',
+    `Create a pattern of a feature along a path (wire or edge).
+
+Parameters:
+- sourceObject (required): Name of the source feature to pattern
+- pathObject (required): Name of the path object (wire, edge, or sketch)
+- count (required): Number of instances along the path
+- spacing (optional): Distance between instances (mm). If omitted, evenly distributed.
+- alignToPath (optional): Whether to align instances to path tangent (default: true)
+- name (optional): Name for the pattern. If omitted, auto-generated.
+
+Returns:
+- success: Whether the pattern was created
+- patternName: Internal name of the pattern
+- patternLabel: User-friendly label
+- sourceObject: Name of the source feature
+- pathObject: Name of the path object
+- count: Number of instances
+- message: Status message
+
+Use this tool to distribute features along a curved path. Common for rivets along a curve, stamps on a bent edge, etc.
+
+Example:
+- Pattern along curve: { sourceObject: "Cylinder", pathObject: "Wire", count: 5 }
+- Evenly spaced along path: { sourceObject: "Pad", pathObject: "Sketch", count: 10, alignToPath: true }`,
+    {
+      sourceObject: z.string().describe('Name of the source feature to pattern'),
+      pathObject: z.string().describe('Name of the path object (wire, edge, or sketch)'),
+      count: z.number().describe('Number of instances along the path'),
+      spacing: z.number().optional().describe('Distance between instances (mm)'),
+      alignToPath: z.boolean().optional().default(true).describe('Align instances to path tangent'),
+      name: z.string().optional().describe('Name for the pattern'),
+    },
+    async (input) => {
+      const { sourceObject, pathObject, count, spacing, alignToPath, name } = input;
+
+      const code = `
+from llm_bridge.pattern_handlers import handle_create_path_pattern
+import json
+params = json.loads('${JSON.stringify({ sourceObject, pathObject, count, spacing: spacing || null, alignToPath, name: name || null })}')
+result = handle_create_path_pattern(
+    source_object=params['sourceObject'],
+    path_object=params['pathObject'],
+    count=params['count'],
+    spacing=params.get('spacing'),
+    align_to_path=params.get('alignToPath', True),
+    name=params['name']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatPatternCreation(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: update_linear_pattern
+ *
+ * Update parameters of an existing linear pattern.
+ */
+function updateLinearPatternTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'update_linear_pattern',
+    `Update parameters of an existing linear pattern.
+
+Parameters:
+- patternName (required): Name of the linear pattern to update
+- count (optional): New number of instances
+- spacing (optional): New spacing distance in mm
+
+Returns:
+- success: Whether the pattern was updated
+- patternName: Name of the updated pattern
+- oldCount, newCount: Count before and after update
+- oldSpacing, newSpacing: Spacing before and after update
+- message: Status message
+
+Use this tool to modify existing linear patterns without recreating them. Changes are parametric.
+
+Example:
+- Increase to 8 copies: { patternName: "LinearPattern", count: 8 }
+- Double spacing: { patternName: "LinearPattern", spacing: 20 }`,
+    {
+      patternName: z.string().describe('Name of the linear pattern to update'),
+      count: z.number().optional().describe('New number of instances'),
+      spacing: z.number().optional().describe('New spacing distance in mm'),
+    },
+    async (input) => {
+      const { patternName, count, spacing } = input;
+
+      const code = `
+from llm_bridge.pattern_handlers import handle_update_linear_pattern
+import json
+params = json.loads('${JSON.stringify({ patternName, count, spacing })}')
+result = handle_update_linear_pattern(
+    pattern_name=params['patternName'],
+    count=params.get('count'),
+    spacing=params.get('spacing')
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatPatternUpdate(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: update_polar_pattern
+ *
+ * Update parameters of an existing polar pattern.
+ */
+function updatePolarPatternTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'update_polar_pattern',
+    `Update parameters of an existing polar pattern.
+
+Parameters:
+- patternName (required): Name of the polar pattern to update
+- count (optional): New number of instances
+- angle (optional): New total angle in degrees
+
+Returns:
+- success: Whether the pattern was updated
+- patternName: Name of the updated pattern
+- oldCount, newCount: Count before and after update
+- oldAngle, newAngle: Angle before and after update
+- message: Status message
+
+Use this tool to modify existing polar patterns without recreating them. Changes are parametric.
+
+Example:
+- Increase to 12 instances: { patternName: "PolarPattern", count: 12 }
+- Change to 180 degrees: { patternName: "PolarPattern", angle: 180 }`,
+    {
+      patternName: z.string().describe('Name of the polar pattern to update'),
+      count: z.number().optional().describe('New number of instances'),
+      angle: z.number().optional().describe('New total angle in degrees'),
+    },
+    async (input) => {
+      const { patternName, count, angle } = input;
+
+      const code = `
+from llm_bridge.pattern_handlers import handle_update_polar_pattern
+import json
+params = json.loads('${JSON.stringify({ patternName, count, angle })}')
+result = handle_update_polar_pattern(
+    pattern_name=params['patternName'],
+    count=params.get('count'),
+    angle=params.get('angle')
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatPatternUpdate(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: get_pattern_info
+ *
+ * Get detailed information about a pattern.
+ */
+function getPatternInfoTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'get_pattern_info',
+    `Get detailed information about a pattern including its parameters and instance positions.
+
+Parameters:
+- patternName (required): Name of the pattern to query
+
+Returns:
+- success: Whether the query was successful
+- patternName: Name of the pattern
+- patternType: Type of pattern (Linear, Polar, Rectangular, Path)
+- sourceObject: Name of the source feature
+- count: Number of instances
+- positions: Array of instance positions
+- message: Status message
+
+Use this tool to inspect pattern parameters and instance locations.
+
+Example:
+- Get pattern details: { patternName: "LinearPattern001" }`,
+    {
+      patternName: z.string().describe('Name of the pattern to query'),
+    },
+    async (input) => {
+      const { patternName } = input;
+
+      const code = `
+from llm_bridge.pattern_handlers import handle_get_pattern_info
+import json
+params = json.loads('${JSON.stringify({ patternName })}')
+result = handle_get_pattern_info(pattern_name=params['patternName'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatPatternInfo(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: delete_pattern
+ *
+ * Delete a pattern from the document.
+ */
+function deletePatternTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'delete_pattern',
+    `Delete a pattern from the document. The source feature is preserved.
+
+Parameters:
+- patternName (required): Name of the pattern to delete
+
+Returns:
+- success: Whether the pattern was deleted
+- patternName: Name of the deleted pattern
+- message: Status message
+
+Use this tool to remove unwanted patterns while keeping the original source feature intact.
+
+Example:
+- Delete pattern: { patternName: "LinearPattern001" }`,
+    {
+      patternName: z.string().describe('Name of the pattern to delete'),
+    },
+    async (input) => {
+      const { patternName } = input;
+
+      const code = `
+from llm_bridge.pattern_handlers import handle_delete_pattern
+import json
+params = json.loads('${JSON.stringify({ patternName })}')
+result = handle_delete_pattern(pattern_name=params['patternName'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+
+        if (parsed.success) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Deleted pattern: ${patternName}\n${parsed.message || ''}`,
+              },
+            ],
+          };
+        } else {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error: ${parsed.error}`,
+              },
+            ],
+          };
+        }
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: list_patterns
+ *
+ * List all patterns in the active document.
+ */
+function listPatternsTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'list_patterns',
+    `List all patterns (linear, polar, rectangular, path) in the active document.
+
+Parameters: None
+
+Returns:
+- success: Whether the query was successful
+- patternCount: Number of patterns found
+- patterns: Array of pattern objects with name, type, source, and count
+- message: Status message
+
+Use this tool to see all available patterns in the document before modifying or deleting them.
+
+Example:
+- List all patterns: {}`,
+    {
+      // No parameters needed
+    },
+    async () => {
+      const code = `
+from llm_bridge.pattern_handlers import handle_list_patterns
+import json
+result = handle_list_patterns()
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+
+        if (parsed.success) {
+          let output = `Patterns: ${parsed.patternCount || 0}\n\n`;
+          if (parsed.patterns && parsed.patterns.length > 0) {
+            output += formatTableRow(['Name', 'Type', 'Source', 'Count']);
+            output += '\n' + '─'.repeat(70) + '\n';
+            for (const pattern of parsed.patterns) {
+              output += formatTableRow([
+                pattern.name || '-',
+                pattern.type || '-',
+                pattern.sourceObject || '-',
+                String(pattern.count || 0)
+              ]);
+              output += '\n';
+            }
+          } else {
+            output += '(No patterns found)';
+          }
+          return {
+            content: [
+              {
+                type: 'text',
+                text: output,
+              },
+            ],
+          };
+        } else {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error: ${parsed.error}`,
               },
             ],
           };
@@ -6874,9 +7609,9 @@ Example:
     },
     async () => {
       const code = `
-from llm_bridge.techdraw_handlers import handle_get_page_list
+from llm_bridge.techdraw_handlers import get_page_list
 import json
-result = handle_get_page_list()
+result = get_page_list()
 print(json.dumps(result))
 `.trim();
 
@@ -6962,10 +7697,10 @@ Example:
       const { pageName } = input;
 
       const code = `
-from llm_bridge.techdraw_handlers import handle_delete_page
+from llm_bridge.techdraw_handlers import delete_page
 import json
 params = json.loads('${JSON.stringify({ pageName })}')
-result = handle_delete_page(page_name=params['pageName'])
+result = delete_page(page_name=params['pageName'])
 print(json.dumps(result))
 `.trim();
 
@@ -7040,10 +7775,10 @@ Example:
       const { pageName } = input;
 
       const code = `
-from llm_bridge.techdraw_handlers import handle_get_page_properties
+from llm_bridge.techdraw_handlers import get_page_properties
 import json
 params = json.loads('${JSON.stringify({ pageName })}')
-result = handle_get_page_properties(page_name=params['pageName'])
+result = get_page_properties(page_name=params['pageName'])
 print(json.dumps(result))
 `.trim();
 
@@ -7651,10 +8386,9 @@ from llm_bridge.techdraw_handlers import handle_create_detail_view
 import json
 params = json.loads('${JSON.stringify({ sourceView, center, scale: scale || 2.0, pageName: pageName || null, viewName: viewName || null })}')
 result = handle_create_detail_view(
-    source_view=params['sourceView'],
-    center=params['center'],
-    scale=params.get('scale', 2.0),
     page_name=params.get('pageName'),
+    source_object=params['sourceView'],
+    detail_point=params['center'],
     view_name=params.get('viewName')
 )
 print(json.dumps(result))
