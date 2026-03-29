@@ -4867,6 +4867,312 @@ print(json.dumps(result))
 }
 
 /**
+ * Tool: list_assemblies
+ *
+ * List all assemblies in the current FreeCAD document.
+ */
+function listAssembliesTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'list_assemblies',
+    `List all assemblies in the current FreeCAD document.
+
+Returns:
+- Array of assemblies with name, label, type, and component count
+- Total assembly count
+
+Use this tool when you need to see what assemblies exist in the current document.`,
+    {
+      // No parameters needed
+    },
+    async () => {
+      const code = `
+from llm_bridge.assembly_handlers import handle_list_assemblies
+import json
+result = handle_list_assemblies()
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+
+        if (!parsed.success) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error: ${parsed.error}`,
+              },
+            ],
+          };
+        }
+
+        const { data } = parsed;
+        const lines: string[] = [];
+        lines.push(`Assemblies: ${data.count}`);
+        lines.push('');
+
+        if (data.assemblies && data.assemblies.length > 0) {
+          lines.push(formatTableRow(['Name', 'Label', 'Type', 'Components']));
+          lines.push('─'.repeat(60));
+
+          for (const assembly of data.assemblies) {
+            lines.push(formatTableRow([
+              assembly.name || '-',
+              assembly.label || '-',
+              assembly.type || '-',
+              String(assembly.componentCount || 0)
+            ]));
+          }
+        } else {
+          lines.push('(No assemblies found)');
+        }
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: lines.join('\n'),
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: add_component_to_assembly
+ *
+ * Add a component/part to an assembly.
+ */
+function addComponentToAssemblyTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'add_component_to_assembly',
+    `Add a component/part to an assembly.
+
+Parameters:
+- objectName (required): Name of the object to add to the assembly
+- assemblyName (required): Name of the assembly to add the object to
+
+Returns:
+- success: Whether the operation succeeded
+- componentName: Internal name of the added component
+- componentLabel: User-friendly label of the component
+- assemblyName: Internal name of the assembly
+- assemblyLabel: User-friendly label of the assembly
+- message: Status message
+
+Use this tool to add an existing part or component to an assembly container.
+
+Example:
+- Add a box to an assembly: { objectName: "Box", assemblyName: "Assembly" }
+- Add a cylinder to assembly: { objectName: "Cylinder", assemblyName: "EngineAssembly" }`,
+    {
+      objectName: z.string().describe('Name of the object to add to the assembly'),
+      assemblyName: z.string().describe('Name of the assembly to add the object to'),
+    },
+    async (input) => {
+      const { objectName, assemblyName } = input;
+
+      const code = `
+from llm_bridge.assembly_handlers import handle_add_component_to_assembly
+import json
+params = json.loads('${JSON.stringify({ objectName, assemblyName })}')
+result = handle_add_component_to_assembly(object_name=params['objectName'], assembly_name=params['assemblyName'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+
+        if (parsed.success) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Added '${parsed.data.componentLabel}' to assembly '${parsed.data.assemblyLabel}'`,
+              },
+            ],
+          };
+        } else {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error: ${parsed.error}`,
+              },
+            ],
+          };
+        }
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: remove_component_from_assembly
+ *
+ * Remove a component/part from an assembly.
+ */
+function removeComponentFromAssemblyTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'remove_component_from_assembly',
+    `Remove a component/part from an assembly.
+
+Parameters:
+- objectName (required): Name of the object to remove from the assembly
+- assemblyName (required): Name of the assembly to remove the object from
+
+Returns:
+- success: Whether the operation succeeded
+- removedComponent: Name of the removed component
+- assemblyName: Internal name of the assembly
+- message: Status message
+
+Use this tool to remove an existing part or component from an assembly container.
+
+Example:
+- Remove a box from an assembly: { objectName: "Box", assemblyName: "Assembly" }
+- Remove a cylinder from assembly: { objectName: "Cylinder", assemblyName: "EngineAssembly" }`,
+    {
+      objectName: z.string().describe('Name of the object to remove from the assembly'),
+      assemblyName: z.string().describe('Name of the assembly to remove the object from'),
+    },
+    async (input) => {
+      const { objectName, assemblyName } = input;
+
+      const code = `
+from llm_bridge.assembly_handlers import handle_remove_component_from_assembly
+import json
+params = json.loads('${JSON.stringify({ objectName, assemblyName })}')
+result = handle_remove_component_from_assembly(object_name=params['objectName'], assembly_name=params['assemblyName'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+
+        if (parsed.success) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Removed '${parsed.data.removedComponent}' from assembly '${parsed.data.assemblyName}'`,
+              },
+            ],
+          };
+        } else {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error: ${parsed.error}`,
+              },
+            ],
+          };
+        }
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: list_assembly_components
+ *
+ * List all components in an assembly.
+ */
+function listAssemblyComponentsTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'list_assembly_components',
+    `List all components in an assembly.
+
+Parameters:
+- assemblyName (required): Name of the assembly to list components from
+
+Returns:
+- success: Whether the operation succeeded
+- assemblyName: Internal name of the assembly
+- assemblyLabel: User-friendly label of the assembly
+- components: Array of component objects with name, label, and type
+- count: Number of components
+- message: Status message
+
+Use this tool to see what parts/components are in an assembly.
+
+Example:
+- List components: { assemblyName: "Assembly" }
+- List specific assembly: { assemblyName: "EngineAssembly" }`,
+    {
+      assemblyName: z.string().describe('Name of the assembly to list components from'),
+    },
+    async (input) => {
+      const { assemblyName } = input;
+
+      const code = `
+from llm_bridge.assembly_handlers import handle_list_assembly_components
+import json
+params = json.loads('${JSON.stringify({ assemblyName })}')
+result = handle_list_assembly_components(assembly_name=params['assemblyName'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = JSON.parse(result.output || '{}');
+        const formatted = formatComponentList(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
  * Tool: add_coincident_constraint
  *
  * Add a coincident constraint between two subobjects.
@@ -8532,7 +8838,7 @@ print(json.dumps(result))
  */
 function createTechDrawLinearDimensionTool(freeCADBridge: FreeCADBridge) {
   return tool(
-    'create_linear_dimension',
+    'create_techdraw_linear_dimension',
     `Add a linear dimension to a TechDraw view.
 
 Parameters:
@@ -8611,7 +8917,7 @@ print(json.dumps(result))
  */
 function createTechDrawRadialDimensionTool(freeCADBridge: FreeCADBridge) {
   return tool(
-    'create_radial_dimension',
+    'create_techdraw_radial_dimension',
     `Add a radial (radius) dimension to a circle or arc in a TechDraw view.
 
 Parameters:
@@ -8755,7 +9061,7 @@ print(json.dumps(result))
  */
 function createTechDrawAngularDimensionTool(freeCADBridge: FreeCADBridge) {
   return tool(
-    'create_angular_dimension',
+    'create_techdraw_angular_dimension',
     `Add an angular dimension between two lines in a TechDraw view.
 
 Parameters:
@@ -9260,7 +9566,7 @@ Example:
     async (input) => {
       const { profiles, solid, closed, name } = input;
 
-      const code = \`
+      const code = `
 from llm_bridge.surface_handlers import handle_create_loft
 import json
 params = json.loads('\${JSON.stringify({ profiles, solid, closed, name: name || null }).replace(/'/g, "\\'")}')
@@ -9271,7 +9577,7 @@ result = handle_create_loft(
     name=params['name']
 )
 print(json.dumps(result))
-\`.trim();
+`.trim();
 
       try {
         const result = await freeCADBridge.executePython(code);
@@ -9281,7 +9587,7 @@ print(json.dumps(result))
           content: [
             {
               type: 'text',
-              text: parsed.success ? formatted : \`Error: \${parsed.error}\`,
+              text: parsed.success ? formatted : `Error: \${parsed.error}`,
             },
           ],
         };
@@ -9290,7 +9596,7 @@ print(json.dumps(result))
           content: [
             {
               type: 'text',
-              text: \`Tool execution error: \${error instanceof Error ? error.message : String(error)}\`,
+              text: `Tool execution error: \${error instanceof Error ? error.message : String(error)}`,
             },
           ],
         };
@@ -9307,7 +9613,7 @@ print(json.dumps(result))
 function createSectionLoftTool(freeCADBridge: FreeCADBridge) {
   return tool(
     'create_section_loft',
-    \`Create a section loft - sweep multiple profiles along a path.
+    `Create a section loft - sweep multiple profiles along a path.
 
 Parameters:
 - profiles (required): Array of object names (sketches or wires) for sections
@@ -9326,7 +9632,7 @@ Returns:
 Use this tool to create surfaces that follow a path while transitioning between multiple profile shapes. The profiles are automatically positioned along the path.
 
 Example:
-- Section loft along path: { profiles: ["Circle1", "Square", "Circle2"], path: "PathWire", solid: true }\`,
+- Section loft along path: { profiles: ["Circle1", "Square", "Circle2"], path: "PathWire", solid: true }`,
     {
       profiles: z.array(z.string()).describe('Array of section profile objects'),
       path: z.string().describe('Path object to sweep along'),
@@ -9336,7 +9642,7 @@ Example:
     async (input) => {
       const { profiles, path, solid, name } = input;
 
-      const code = \`
+      const code = `
 from llm_bridge.surface_handlers import handle_create_section_loft
 import json
 params = json.loads('\${JSON.stringify({ profiles, path, solid, name: name || null }).replace(/'/g, "\\'")}')
@@ -9347,7 +9653,7 @@ result = handle_create_section_loft(
     name=params['name']
 )
 print(json.dumps(result))
-\`.trim();
+`.trim();
 
       try {
         const result = await freeCADBridge.executePython(code);
@@ -9357,7 +9663,7 @@ print(json.dumps(result))
           content: [
             {
               type: 'text',
-              text: parsed.success ? formatted : \`Error: \${parsed.error}\`,
+              text: parsed.success ? formatted : `Error: \${parsed.error}`,
             },
           ],
         };
@@ -9366,7 +9672,7 @@ print(json.dumps(result))
           content: [
             {
               type: 'text',
-              text: \`Tool execution error: \${error instanceof Error ? error.message : String(error)}\`,
+              text: `Tool execution error: \${error instanceof Error ? error.message : String(error)}`,
             },
           ],
         };
@@ -9383,7 +9689,7 @@ print(json.dumps(result))
 function createSweepTool(freeCADBridge: FreeCADBridge) {
   return tool(
     'create_sweep',
-    \`Sweep a profile (sketch or wire) along a path to create a surface or solid.
+    `Sweep a profile (sketch or wire) along a path to create a surface or solid.
 
 Parameters:
 - profile (required): Name of the profile object to sweep (sketch or closed wire)
@@ -9406,7 +9712,7 @@ Use this tool to create tubes, pipes, and extruded shapes that follow curved pat
 
 Example:
 - Sweep circle along path: { profile: "CircleSketch", path: "PathWire", solid: true }
-- Surface sweep: { profile: "LineSketch", path: "Curve", solid: false }\`,
+- Surface sweep: { profile: "LineSketch", path: "Curve", solid: false }`,
     {
       profile: z.string().describe('Profile object to sweep'),
       path: z.string().describe('Path object to sweep along'),
@@ -9417,7 +9723,7 @@ Example:
     async (input) => {
       const { profile, path, solid, frenet, name } = input;
 
-      const code = \`
+      const code = `
 from llm_bridge.surface_handlers import handle_create_sweep
 import json
 params = json.loads('\${JSON.stringify({ profile, path, solid, frenet, name: name || null }).replace(/'/g, "\\'")}')
@@ -9429,7 +9735,7 @@ result = handle_create_sweep(
     name=params['name']
 )
 print(json.dumps(result))
-\`.trim();
+`.trim();
 
       try {
         const result = await freeCADBridge.executePython(code);
@@ -9439,7 +9745,7 @@ print(json.dumps(result))
           content: [
             {
               type: 'text',
-              text: parsed.success ? formatted : \`Error: \${parsed.error}\`,
+              text: parsed.success ? formatted : `Error: \${parsed.error}`,
             },
           ],
         };
@@ -9448,7 +9754,7 @@ print(json.dumps(result))
           content: [
             {
               type: 'text',
-              text: \`Tool execution error: \${error instanceof Error ? error.message : String(error)}\`,
+              text: `Tool execution error: \${error instanceof Error ? error.message : String(error)}`,
             },
           ],
         };
@@ -9465,7 +9771,7 @@ print(json.dumps(result))
 function createPipeTool(freeCADBridge: FreeCADBridge) {
   return tool(
     'create_pipe',
-    \`Create a pipe surface - similar to sweep but with different fillet handling.
+    `Create a pipe surface - similar to sweep but with different fillet handling.
 
 Parameters:
 - profile (required): Name of the profile object to sweep
@@ -9484,7 +9790,7 @@ Use this tool to create pipes with smooth transitions. The pipe feature handles 
 
 Example:
 - Create pipe: { profile: "CircleSketch", path: "PathWire" }
-- Solid pipe: { profile: "Circle", path: "SpiralPath", solid: true }\`,
+- Solid pipe: { profile: "Circle", path: "SpiralPath", solid: true }`,
     {
       profile: z.string().describe('Profile object to sweep'),
       path: z.string().describe('Path object to sweep along'),
@@ -9494,7 +9800,7 @@ Example:
     async (input) => {
       const { profile, path, solid, name } = input;
 
-      const code = \`
+      const code = `
 from llm_bridge.surface_handlers import handle_create_pipe
 import json
 params = json.loads('\${JSON.stringify({ profile, path, solid, name: name || null }).replace(/'/g, "\\'")}')
@@ -9505,7 +9811,7 @@ result = handle_create_pipe(
     name=params['name']
 )
 print(json.dumps(result))
-\`.trim();
+`.trim();
 
       try {
         const result = await freeCADBridge.executePython(code);
@@ -9515,7 +9821,7 @@ print(json.dumps(result))
           content: [
             {
               type: 'text',
-              text: parsed.success ? formatted : \`Error: \${parsed.error}\`,
+              text: parsed.success ? formatted : `Error: \${parsed.error}`,
             },
           ],
         };
@@ -9524,7 +9830,7 @@ print(json.dumps(result))
           content: [
             {
               type: 'text',
-              text: \`Tool execution error: \${error instanceof Error ? error.message : String(error)}\`,
+              text: `Tool execution error: \${error instanceof Error ? error.message : String(error)}`,
             },
           ],
         };
@@ -9541,7 +9847,7 @@ print(json.dumps(result))
 function createMultiSweepTool(freeCADBridge: FreeCADBridge) {
   return tool(
     'create_multisweep',
-    \`Create a multi-section sweep - sweep multiple profile sections along a path.
+    `Create a multi-section sweep - sweep multiple profile sections along a path.
 
 Parameters:
 - profiles (required): Array of profile objects at different positions along the path
@@ -9560,7 +9866,7 @@ Returns:
 Use this tool to create complex surfaces that transition between multiple different profile shapes along a path. The profiles should be ordered from start to end of the path.
 
 Example:
-- Multi-section sweep: { profiles: ["Circle", "Square", "Hexagon"], path: "PathWire" }\`,
+- Multi-section sweep: { profiles: ["Circle", "Square", "Hexagon"], path: "PathWire" }`,
     {
       profiles: z.array(z.string()).describe('Array of profile objects along the path'),
       path: z.string().describe('Path object to sweep along'),
@@ -9570,7 +9876,7 @@ Example:
     async (input) => {
       const { profiles, path, solid, name } = input;
 
-      const code = \`
+      const code = `
 from llm_bridge.surface_handlers import handle_create_multisweep
 import json
 params = json.loads('\${JSON.stringify({ profiles, path, solid, name: name || null }).replace(/'/g, "\\'")}')
@@ -9581,7 +9887,7 @@ result = handle_create_multisweep(
     name=params['name']
 )
 print(json.dumps(result))
-\`.trim();
+`.trim();
 
       try {
         const result = await freeCADBridge.executePython(code);
@@ -9591,7 +9897,7 @@ print(json.dumps(result))
           content: [
             {
               type: 'text',
-              text: parsed.success ? formatted : \`Error: \${parsed.error}\`,
+              text: parsed.success ? formatted : `Error: \${parsed.error}`,
             },
           ],
         };
@@ -9600,7 +9906,7 @@ print(json.dumps(result))
           content: [
             {
               type: 'text',
-              text: \`Tool execution error: \${error instanceof Error ? error.message : String(error)}\`,
+              text: `Tool execution error: \${error instanceof Error ? error.message : String(error)}`,
             },
           ],
         };
@@ -9617,7 +9923,7 @@ print(json.dumps(result))
 function createRuledSurfaceTool(freeCADBridge: FreeCADBridge) {
   return tool(
     'create_ruled_surface',
-    \`Create a ruled surface between two curves, edges, or wires.
+    `Create a ruled surface between two curves, edges, or wires.
 
 Parameters:
 - curve1 (required): First curve, edge, or wire
@@ -9635,7 +9941,7 @@ Use this tool to create a surface by interpolating straight lines between two bo
 
 Example:
 - Ruled surface between two edges: { curve1: "Edge1", curve2: "Edge2" }
-- Between two sketches: { curve1: "Sketch001", curve2: "Sketch002" }\`,
+- Between two sketches: { curve1: "Sketch001", curve2: "Sketch002" }`,
     {
       curve1: z.string().describe('First curve, edge, or wire'),
       curve2: z.string().describe('Second curve, edge, or wire'),
@@ -9644,7 +9950,7 @@ Example:
     async (input) => {
       const { curve1, curve2, name } = input;
 
-      const code = \`
+      const code = `
 from llm_bridge.surface_handlers import handle_create_ruled_surface
 import json
 params = json.loads('\${JSON.stringify({ curve1, curve2, name: name || null }).replace(/'/g, "\\'")}')
@@ -9654,7 +9960,7 @@ result = handle_create_ruled_surface(
     name=params['name']
 )
 print(json.dumps(result))
-\`.trim();
+`.trim();
 
       try {
         const result = await freeCADBridge.executePython(code);
@@ -9664,7 +9970,7 @@ print(json.dumps(result))
           content: [
             {
               type: 'text',
-              text: parsed.success ? formatted : \`Error: \${parsed.error}\`,
+              text: parsed.success ? formatted : `Error: \${parsed.error}`,
             },
           ],
         };
@@ -9673,7 +9979,7 @@ print(json.dumps(result))
           content: [
             {
               type: 'text',
-              text: \`Tool execution error: \${error instanceof Error ? error.message : String(error)}\`,
+              text: `Tool execution error: \${error instanceof Error ? error.message : String(error)}`,
             },
           ],
         };
@@ -9690,7 +9996,7 @@ print(json.dumps(result))
 function createSurfaceFromEdgesTool(freeCADBridge: FreeCADBridge) {
   return tool(
     'create_surface_from_edges',
-    \`Create a surface by filling a set of connected edges or wires.
+    `Create a surface by filling a set of connected edges or wires.
 
 Parameters:
 - edges (required): Array of edge or wire object names that form a closed boundary
@@ -9706,7 +10012,7 @@ Use this tool to create a surface that fills a boundary defined by edges. Common
 
 Example:
 - Fill with edges: { edges: ["Edge1", "Edge2", "Edge3", "Edge4"] }
-- Fill with wire: { edges: ["Wire1"] }\`,
+- Fill with wire: { edges: ["Wire1"] }`,
     {
       edges: z.array(z.string()).describe('Array of edge or wire objects forming closed boundary'),
       name: z.string().optional().describe('Name for the surface'),
@@ -9714,7 +10020,7 @@ Example:
     async (input) => {
       const { edges, name } = input;
 
-      const code = \`
+      const code = `
 from llm_bridge.surface_handlers import handle_create_surface_from_edges
 import json
 params = json.loads('\${JSON.stringify({ edges, name: name || null }).replace(/'/g, "\\'")}')
@@ -9723,7 +10029,7 @@ result = handle_create_surface_from_edges(
     name=params['name']
 )
 print(json.dumps(result))
-\`.trim();
+`.trim();
 
       try {
         const result = await freeCADBridge.executePython(code);
@@ -9733,7 +10039,7 @@ print(json.dumps(result))
           content: [
             {
               type: 'text',
-              text: parsed.success ? formatted : \`Error: \${parsed.error}\`,
+              text: parsed.success ? formatted : `Error: \${parsed.error}`,
             },
           ],
         };
@@ -9742,7 +10048,7 @@ print(json.dumps(result))
           content: [
             {
               type: 'text',
-              text: \`Tool execution error: \${error instanceof Error ? error.message : String(error)}\`,
+              text: `Tool execution error: \${error instanceof Error ? error.message : String(error)}`,
             },
           ],
         };
@@ -9759,7 +10065,7 @@ print(json.dumps(result))
 function extendSurfaceTool(freeCADBridge: FreeCADBridge) {
   return tool(
     'extend_surface',
-    \`Extend an existing surface by adding material along its boundary edges.
+    `Extend an existing surface by adding material along its boundary edges.
 
 Parameters:
 - surfaceName (required): Name of the surface to extend
@@ -9778,7 +10084,7 @@ Use this tool to extend surfaces for creating blanks, flanges, or to prepare sur
 
 Example:
 - Extend by 10mm: { surfaceName: "Surface001", distance: "10mm" }
-- Extend along edge: { surfaceName: "Surface001", distance: "5mm", direction: "edge" }\`,
+- Extend along edge: { surfaceName: "Surface001", distance: "5mm", direction: "edge" }`,
     {
       surfaceName: z.string().describe('Name of the surface to extend'),
       distance: z.union([z.string(), z.number()]).describe('Distance to extend (number or string with units)'),
@@ -9788,7 +10094,7 @@ Example:
     async (input) => {
       const { surfaceName, distance, direction, name } = input;
 
-      const code = \`
+      const code = `
 from llm_bridge.surface_handlers import handle_extend_surface
 import json
 params = json.loads('\${JSON.stringify({ surfaceName, distance, direction, name: name || null }).replace(/'/g, "\\'")}')
@@ -9799,7 +10105,7 @@ result = handle_extend_surface(
     name=params['name']
 )
 print(json.dumps(result))
-\`.trim();
+`.trim();
 
       try {
         const result = await freeCADBridge.executePython(code);
@@ -9809,7 +10115,7 @@ print(json.dumps(result))
           content: [
             {
               type: 'text',
-              text: parsed.success ? formatted : \`Error: \${parsed.error}\`,
+              text: parsed.success ? formatted : `Error: \${parsed.error}`,
             },
           ],
         };
@@ -9818,7 +10124,7 @@ print(json.dumps(result))
           content: [
             {
               type: 'text',
-              text: \`Tool execution error: \${error instanceof Error ? error.message : String(error)}\`,
+              text: `Tool execution error: \${error instanceof Error ? error.message : String(error)}`,
             },
           ],
         };
@@ -9835,7 +10141,7 @@ print(json.dumps(result))
 function trimSurfaceTool(freeCADBridge: FreeCADBridge) {
   return tool(
     'trim_surface',
-    \`Trim a surface using a tool surface or a set of trimming curves.
+    `Trim a surface using a tool surface or a set of trimming curves.
 
 Parameters:
 - surfaceName (required): Name of the surface to trim
@@ -9852,7 +10158,7 @@ Use this tool to cut away portions of a surface using other surfaces or curves a
 
 Example:
 - Trim with surface: { surfaceName: "Surface001", tool: "TrimSurface" }
-- Trim with curves: { surfaceName: "Surface001", tool: ["Curve1", "Curve2"] }\`,
+- Trim with curves: { surfaceName: "Surface001", tool: ["Curve1", "Curve2"] }`,
     {
       surfaceName: z.string().describe('Name of the surface to trim'),
       tool: z.union([z.string(), z.array(z.string())]).describe('Tool surface or array of trimming curves'),
@@ -9861,7 +10167,7 @@ Example:
     async (input) => {
       const { surfaceName, tool, name } = input;
 
-      const code = \`
+      const code = `
 from llm_bridge.surface_handlers import handle_trim_surface
 import json
 params = json.loads('\${JSON.stringify({ surfaceName, tool, name: name || null }).replace(/'/g, "\\'")}')
@@ -9871,7 +10177,7 @@ result = handle_trim_surface(
     name=params['name']
 )
 print(json.dumps(result))
-\`.trim();
+`.trim();
 
       try {
         const result = await freeCADBridge.executePython(code);
@@ -9881,7 +10187,7 @@ print(json.dumps(result))
           content: [
             {
               type: 'text',
-              text: parsed.success ? formatted : \`Error: \${parsed.error}\`,
+              text: parsed.success ? formatted : `Error: \${parsed.error}`,
             },
           ],
         };
@@ -9890,7 +10196,7 @@ print(json.dumps(result))
           content: [
             {
               type: 'text',
-              text: \`Tool execution error: \${error instanceof Error ? error.message : String(error)}\`,
+              text: `Tool execution error: \${error instanceof Error ? error.message : String(error)}`,
             },
           ],
         };
@@ -9907,7 +10213,7 @@ print(json.dumps(result))
 function getSurfaceInfoTool(freeCADBridge: FreeCADBridge) {
   return tool(
     'get_surface_info',
-    \`Get detailed information about a surface including its properties and geometry.
+    `Get detailed information about a surface including its properties and geometry.
 
 Parameters:
 - surfaceName (required): Name of the surface to query
@@ -9925,20 +10231,20 @@ Returns:
 Use this tool to inspect surface properties before performing further operations.
 
 Example:
-- Get surface info: { surfaceName: "Loft001" }\`,
+- Get surface info: { surfaceName: "Loft001" }`,
     {
       surfaceName: z.string().describe('Name of the surface to query'),
     },
     async (input) => {
       const { surfaceName } = input;
 
-      const code = \`
+      const code = `
 from llm_bridge.surface_handlers import handle_get_surface_info
 import json
 params = json.loads('\${JSON.stringify({ surfaceName }).replace(/'/g, "\\'")}')
 result = handle_get_surface_info(surface_name=params['surfaceName'])
 print(json.dumps(result))
-\`.trim();
+`.trim();
 
       try {
         const result = await freeCADBridge.executePython(code);
@@ -9948,7 +10254,7 @@ print(json.dumps(result))
           content: [
             {
               type: 'text',
-              text: parsed.success ? formatted : \`Error: \${parsed.error}\`,
+              text: parsed.success ? formatted : `Error: \${parsed.error}`,
             },
           ],
         };
@@ -9957,7 +10263,7 @@ print(json.dumps(result))
           content: [
             {
               type: 'text',
-              text: \`Tool execution error: \${error instanceof Error ? error.message : String(error)}\`,
+              text: `Tool execution error: \${error instanceof Error ? error.message : String(error)}`,
             },
           ],
         };
@@ -9974,7 +10280,7 @@ print(json.dumps(result))
 function listSurfacesTool(freeCADBridge: FreeCADBridge) {
   return tool(
     'list_surfaces',
-    \`List all surface objects in the active FreeCAD document.
+    `List all surface objects in the active FreeCAD document.
 
 Returns:
 - success: Whether the query was successful
@@ -9985,17 +10291,17 @@ Returns:
 Use this tool to see all available surfaces before querying or modifying them.
 
 Example:
-- List all surfaces: {}\`,
+- List all surfaces: {}`,
     {
       // No parameters needed
     },
     async () => {
-      const code = \`
+      const code = `
 from llm_bridge.surface_handlers import handle_list_surfaces
 import json
 result = handle_list_surfaces()
 print(json.dumps(result))
-\`.trim();
+`.trim();
 
       try {
         const result = await freeCADBridge.executePython(code);
@@ -10057,7 +10363,7 @@ print(json.dumps(result))
 function validateSurfaceTool(freeCADBridge: FreeCADBridge) {
   return tool(
     'validate_surface',
-    \`Validate surface geometry for defects, gaps, or irregularities.
+    `Validate surface geometry for defects, gaps, or irregularities.
 
 Parameters:
 - surfaceName (required): Name of the surface to validate
@@ -10073,20 +10379,20 @@ Returns:
 Use this tool to check surface quality before exporting or manufacturing. Common issues include gaps, overlaps, and geometric irregularities.
 
 Example:
-- Validate surface: { surfaceName: "Loft001" }\`,
+- Validate surface: { surfaceName: "Loft001" }`,
     {
       surfaceName: z.string().describe('Name of the surface to validate'),
     },
     async (input) => {
       const { surfaceName } = input;
 
-      const code = \`
+      const code = `
 from llm_bridge.surface_handlers import handle_validate_surface
 import json
 params = json.loads('\${JSON.stringify({ surfaceName }).replace(/'/g, "\\'")}')
 result = handle_validate_surface(surface_name=params['surfaceName'])
 print(json.dumps(result))
-\`.trim();
+`.trim();
 
       try {
         const result = await freeCADBridge.executePython(code);
@@ -10096,7 +10402,7 @@ print(json.dumps(result))
           content: [
             {
               type: 'text',
-              text: parsed.success ? formatted : \`Error: \${parsed.error}\`,
+              text: parsed.success ? formatted : `Error: \${parsed.error}`,
             },
           ],
         };
@@ -10105,7 +10411,7 @@ print(json.dumps(result))
           content: [
             {
               type: 'text',
-              text: \`Tool execution error: \${error instanceof Error ? error.message : String(error)}\`,
+              text: `Tool execution error: \${error instanceof Error ? error.message : String(error)}`,
             },
           ],
         };

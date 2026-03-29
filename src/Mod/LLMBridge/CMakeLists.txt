@@ -7,9 +7,23 @@ SET(LLMBridge_SRCS
 
 SET(LLMBridge_Package_SRCS
     llm_bridge/__init__.py
-    llm_bridge/server.py
     llm_bridge/executor.py
     llm_bridge/main_thread.py
+    llm_bridge/server.py
+    llm_bridge/sidecar_client.py
+    llm_bridge/llm_panel_bridge.py
+    llm_bridge/query_handlers.py
+    llm_bridge/file_handlers.py
+    llm_bridge/property_handlers.py
+    llm_bridge/sketcher_handlers.py
+    llm_bridge/feature_handlers.py
+    llm_bridge/boolean_handlers.py
+    llm_bridge/assembly_handlers.py
+    llm_bridge/draft_handlers.py
+    llm_bridge/pattern_handlers.py
+    llm_bridge/techdraw_handlers.py
+    llm_bridge/surface_handlers.py
+    llm_bridge/kinematic_handlers.py
 )
 
 SET(LLMBridge_All_SRCS

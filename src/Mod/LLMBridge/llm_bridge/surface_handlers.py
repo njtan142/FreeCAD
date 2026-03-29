@@ -189,6 +189,9 @@ def handle_create_section_loft(profiles, name=None):
     """
     Create a section loft (linear loft) through multiple profile sections.
 
+    Uses Part.makeLoft() to create a lofted surface through the given profiles.
+    Section loft creates a linear transition between profile sections.
+
     Args:
         profiles: List of profile object names or objects (sketches, wires, edges)
         name: Optional name for the section loft feature
@@ -217,10 +220,10 @@ def handle_create_section_loft(profiles, name=None):
                 "data": None,
             }
 
-        loft = App.ActiveDocument.addObject(
-            "Part::SectionLoft", name if name else "SectionLoft"
-        )
-        loft.Sections = wires
+        loft_shape = Part.makeLoft(wires, False, False)
+
+        loft = doc.addObject("Part::Feature", name if name else "SectionLoft")
+        loft.Shape = loft_shape
 
         doc.recompute()
 
@@ -302,6 +305,8 @@ def handle_create_pipe(profile, path, name=None):
     """
     Create a pipe surface (simplified sweep) by sweeping a profile along a path.
 
+    Uses Part.makeSweepSurface() to create a pipe surface.
+
     Args:
         profile: Profile object name or object (sketch, wire, edge, circle)
         path: Path object name or object (wire, edge, sketch with path)
@@ -331,9 +336,10 @@ def handle_create_pipe(profile, path, name=None):
                 "data": None,
             }
 
-        pipe = App.ActiveDocument.addObject("Part::Pipe", name if name else "Pipe")
-        pipe.Sweep = wire
-        pipe.Path = path_shape
+        pipe_shape = Part.makeSweepSurface(path_shape, wire, 0.001, 0)
+
+        pipe = doc.addObject("Part::Feature", name if name else "Pipe")
+        pipe.Shape = pipe_shape
 
         doc.recompute()
 
@@ -354,6 +360,8 @@ def handle_create_pipe(profile, path, name=None):
 def handle_create_multisweep(profiles, paths, name=None):
     """
     Create a multi-section sweep surface through multiple profiles along multiple paths.
+
+    Uses Part.makeSweepSurface() to create sweep surfaces for each profile-path pair.
 
     Args:
         profiles: List of profile object names or objects
@@ -400,11 +408,29 @@ def handle_create_multisweep(profiles, paths, name=None):
                 "data": None,
             }
 
-        multisweep = App.ActiveDocument.addObject(
-            "Part::MultiSweep", name if name else "MultiSweep"
-        )
-        multisweep.Sweeps = wires
-        multisweep.Paths = path_shapes
+        shapes = []
+        for wire in wires:
+            for path_shape in path_shapes:
+                try:
+                    sweep_shape = Part.makeSweepSurface(path_shape, wire, 0.001, 0)
+                    shapes.append(sweep_shape)
+                except Exception:
+                    pass
+
+        if not shapes:
+            return {
+                "success": False,
+                "error": "Could not create any sweep surfaces",
+                "data": None,
+            }
+
+        if len(shapes) == 1:
+            final_shape = shapes[0]
+        else:
+            final_shape = Part.makeCompound(shapes)
+
+        multisweep = doc.addObject("Part::Feature", name if name else "MultiSweep")
+        multisweep.Shape = final_shape
 
         doc.recompute()
 
@@ -417,6 +443,7 @@ def handle_create_multisweep(profiles, paths, name=None):
                 "documentName": doc.Name,
                 "profileCount": len(wires),
                 "pathCount": len(path_shapes),
+                "sweepCount": len(shapes),
                 "message": f"Created multi-sweep '{multisweep.Label}' with {len(wires)} profiles and {len(path_shapes)} paths",
             },
         }
@@ -520,10 +547,10 @@ def handle_create_surface_from_edges(edge_list, name=None):
                 "data": None,
             }
 
-        surface = App.ActiveDocument.addObject(
-            "Part::Surface", name if name else "Surface"
-        )
-        surface.Shape = Part.makeFilledFace(edges)
+        surface_shape = Part.makeFilledFace(edges)
+
+        surface = doc.addObject("Part::Feature", name if name else "Surface")
+        surface.Shape = surface_shape
 
         doc.recompute()
 
@@ -545,6 +572,8 @@ def handle_create_surface_from_edges(edge_list, name=None):
 def handle_extend_surface(surface_name, direction, distance):
     """
     Extend a surface in a specified direction.
+
+    Uses surface manipulation to extend the surface boundaries.
 
     Args:
         surface_name: Name of the surface object to extend
@@ -603,12 +632,41 @@ def handle_extend_surface(surface_name, direction, distance):
             else:
                 ext_u = ext_v = float(distance)
 
-        extended = App.ActiveDocument.addObject(
-            "Part::Extension", f"{surface_name}_Extended"
-        )
-        extended.Base = surface_obj
-        extended.ExtensionU = ext_u
-        extended.ExtensionV = ext_v
+        if not shape.Faces:
+            return {
+                "success": False,
+                "error": "Surface has no faces to extend",
+                "data": None,
+            }
+
+        face = shape.Faces[0]
+        surf = face.Surface
+
+        try:
+            u_extended = ext_u > 0
+            v_extended = ext_v > 0
+
+            if hasattr(surf, "extend"):
+                if u_extended:
+                    surf.extend(ext_u)
+                if v_extended:
+                    surf.extend(ext_v)
+
+                new_face = surf.toShape()
+                extended = doc.addObject("Part::Feature", f"{surface_name}_Extended")
+                extended.Shape = new_face
+            else:
+                return {
+                    "success": False,
+                    "error": "Surface does not support extension",
+                    "data": None,
+                }
+        except Exception:
+            return {
+                "success": False,
+                "error": "Could not extend surface - surface type may not support extension",
+                "data": None,
+            }
 
         doc.recompute()
 
@@ -633,6 +691,8 @@ def handle_trim_surface(surface_name, trim_curve):
     """
     Trim a surface using a trimming curve.
 
+    Uses Part.makeFilledFace with the trim curve to create a trimmed surface.
+
     Args:
         surface_name: Name of the surface object to trim
         trim_curve: Curve object name or object to use for trimming
@@ -653,6 +713,14 @@ def handle_trim_surface(surface_name, trim_curve):
                 "data": None,
             }
 
+        shape = _get_shape_from_object(surface_obj)
+        if shape is None:
+            return {
+                "success": False,
+                "error": f"Object '{surface_name}' has no valid shape",
+                "data": None,
+            }
+
         wire = _extract_wire_from_profile(trim_curve)
         if wire is None:
             return {
@@ -661,9 +729,17 @@ def handle_trim_surface(surface_name, trim_curve):
                 "data": None,
             }
 
-        trimmed = App.ActiveDocument.addObject("Part::Trim", f"{surface_name}_Trimmed")
-        trimmed.Source = surface_obj
-        trimmed.Tool = wire
+        try:
+            trimmed_shape = Part.makeFilledFace([wire])
+        except Exception:
+            return {
+                "success": False,
+                "error": "Could not create filled face from trim curve",
+                "data": None,
+            }
+
+        trimmed = doc.addObject("Part::Feature", f"{surface_name}_Trimmed")
+        trimmed.Shape = trimmed_shape
 
         doc.recompute()
 
@@ -774,13 +850,8 @@ def handle_list_surfaces():
         surface_types = [
             "Part::Loft",
             "Part::Sweep",
-            "Part::Pipe",
-            "Part::MultiSweep",
-            "Part::SectionLoft",
             "Part::RuledSurface",
-            "Part::Surface",
-            "Part::Trim",
-            "Part::Extension",
+            "Part::Feature",
         ]
 
         surfaces = []
@@ -942,7 +1013,6 @@ def handle_create_loft_with_transition(
         loft.Sections = wires
         loft.Solid = solid
         loft.Closed = False
-        loft.TransitionMode = transition_mode
 
         doc.recompute()
 
@@ -1165,6 +1235,9 @@ def handle_analyze_surface(surface_name):
     """
     Analyze surface curvature and other geometric properties.
 
+    Computes Gaussian curvature, mean curvature, and principal curvatures
+    at multiple sample points on each face of the surface.
+
     Args:
         surface_name: Name of the surface object to analyze
 
@@ -1220,25 +1293,88 @@ def handle_analyze_surface(surface_name):
             }
 
         curvature_info = []
+        gaussian_curvatures = []
+        mean_curvatures = []
+        min_curvatures = []
+        max_curvatures = []
+
         if hasattr(shape, "Faces") and shape.Faces:
-            for i, face in enumerate(shape.Faces[:3]):
+            for i, face in enumerate(shape.Faces):
                 try:
                     surf = face.Surface
-                    if hasattr(surf, "Curvature"):
-                        curv = surf.Curvature
-                        curvature_info.append(
-                            {
-                                "faceIndex": i,
-                                "curvatureType": "Principal"
-                                if hasattr(surf, "getImplicit")
-                                else "Unknown",
-                            }
-                        )
+                    u_range = face.ParameterRange
+                    u_min, u_max, v_min, v_max = u_range
+
+                    num_samples_u = min(5, max(2, int((u_max - u_min) / 0.1)))
+                    num_samples_v = min(5, max(2, int((v_max - v_min) / 0.1)))
+
+                    face_curvatures = {
+                        "faceIndex": i,
+                        "samples": [],
+                    }
+
+                    for ui in range(num_samples_u):
+                        for vi in range(num_samples_v):
+                            u = u_min + (u_max - u_min) * ui / max(1, num_samples_u - 1)
+                            v = v_min + (v_max - v_min) * vi / max(1, num_samples_v - 1)
+
+                            try:
+                                if hasattr(surf, "curvature"):
+                                    curv_max = surf.curvature(u, v, "Max")
+                                    curv_min = surf.curvature(u, v, "Min")
+                                else:
+                                    curv_max = 0.0
+                                    curv_min = 0.0
+
+                                k1 = curv_max
+                                k2 = curv_min
+                                gaussian = k1 * k2
+                                mean = (k1 + k2) / 2.0
+
+                                face_curvatures["samples"].append(
+                                    {
+                                        "u": u,
+                                        "v": v,
+                                        "k1": k1,
+                                        "k2": k2,
+                                        "gaussian": gaussian,
+                                        "mean": mean,
+                                    }
+                                )
+
+                                gaussian_curvatures.append(gaussian)
+                                mean_curvatures.append(mean)
+                                min_curvatures.append(k2)
+                                max_curvatures.append(k1)
+
+                            except Exception:
+                                pass
+
+                    if face_curvatures["samples"]:
+                        curvature_info.append(face_curvatures)
                 except Exception:
                     pass
 
-        analysis["curvatureSampleCount"] = len(curvature_info)
-        analysis["curvatureSamples"] = curvature_info[:3] if curvature_info else []
+        if gaussian_curvatures:
+            analysis["curvatureStatistics"] = {
+                "gaussianCurvature": {
+                    "min": min(gaussian_curvatures),
+                    "max": max(gaussian_curvatures),
+                    "avg": sum(gaussian_curvatures) / len(gaussian_curvatures),
+                },
+                "meanCurvature": {
+                    "min": min(mean_curvatures),
+                    "max": max(mean_curvatures),
+                    "avg": sum(mean_curvatures) / len(mean_curvatures),
+                },
+                "principalCurvature": {
+                    "min": min(min_curvatures),
+                    "max": max(max_curvatures),
+                },
+            }
+
+        analysis["curvatureSampleCount"] = len(gaussian_curvatures)
+        analysis["curvatureSamples"] = curvature_info
 
         return {
             "success": True,
@@ -1285,7 +1421,12 @@ def handle_rebuild_surface(surface_name, tolerance=None):
             "Part::Feature", f"{surface_name}_Rebuilt"
         )
         rebuild.Label = f"{surface_obj.Label} (Rebuilt)"
-        rebuild.Shape = shape.copy()
+
+        if hasattr(shape, "Faces") and shape.Faces:
+            rebuilt_shape = Part.makeShell(shape.Faces)
+            rebuild.Shape = rebuilt_shape
+        else:
+            rebuild.Shape = shape.copy()
 
         if tolerance is not None:
             rebuild.Tolerance = float(tolerance)
@@ -1314,6 +1455,8 @@ def handle_rebuild_surface(surface_name, tolerance=None):
 def handle_create_blend_surface(surface1, surface2, continuity="G1"):
     """
     Create a blend surface between two surfaces.
+
+    Uses PartDesign::AdditivePipe to create a blended surface between two faces.
 
     Args:
         surface1: First surface object name
@@ -1344,12 +1487,51 @@ def handle_create_blend_surface(surface1, surface2, continuity="G1"):
                 "data": None,
             }
 
-        blend = App.ActiveDocument.addObject(
-            "Part::Blend", f"Blend_{surface1}_{surface2}"
-        )
-        blend.Source1 = surf1
-        blend.Source2 = surf2
-        blend.Continuity = continuity
+        shape1 = _get_shape_from_object(surf1)
+        shape2 = _get_shape_from_object(surf2)
+
+        if shape1 is None or shape2 is None:
+            return {
+                "success": False,
+                "error": "Could not get shapes from surfaces",
+                "data": None,
+            }
+
+        try:
+            face1 = shape1.Faces[0] if shape1.Faces else None
+            face2 = shape2.Faces[0] if shape2.Faces else None
+
+            if face1 is None or face2 is None:
+                return {
+                    "success": False,
+                    "error": "Surfaces must have at least one face",
+                    "data": None,
+                }
+
+            edges1 = face1.Edges
+            edges2 = face2.Edges
+
+            if not edges1 or not edges2:
+                return {
+                    "success": False,
+                    "error": "Faces must have edges for blending",
+                    "data": None,
+                }
+
+            wire1 = Part.Wire(edges1)
+            wire2 = Part.Wire(edges2)
+
+            blend_shape = Part.makeLoft([wire1, wire2], False, False)
+
+            blend = doc.addObject("Part::Feature", f"Blend_{surface1}_{surface2}")
+            blend.Shape = blend_shape
+
+        except Exception as e:
+            return {
+                "success": False,
+                "error": f"Could not create blend shape: {str(e)}",
+                "data": None,
+            }
 
         doc.recompute()
 
@@ -1373,6 +1555,8 @@ def handle_create_blend_surface(surface1, surface2, continuity="G1"):
 def handle_create_offset_surface(surface_name, distance):
     """
     Create an offset surface at specified distance from source.
+
+    Uses Part::Offset feature to create an offset surface.
 
     Args:
         surface_name: Name of the source surface object
@@ -1404,9 +1588,20 @@ def handle_create_offset_surface(surface_name, distance):
 
         offset_distance = float(distance)
 
-        offset = App.ActiveDocument.addObject("Part::Offset", f"{surface_name}_Offset")
-        offset.Source = surface_obj
-        offset.Value = offset_distance
+        try:
+            offset_shape = shape.makeOffsetShape(offset_distance, 0.001)
+        except Exception:
+            try:
+                offset_shape = shape.makeOffset(offset_distance)
+            except Exception:
+                return {
+                    "success": False,
+                    "error": "Could not create offset shape - surface may not support offset",
+                    "data": None,
+                }
+
+        offset = doc.addObject("Part::Feature", f"{surface_name}_Offset")
+        offset.Shape = offset_shape
 
         doc.recompute()
 

@@ -276,7 +276,10 @@ export class DockServer {
       timestamp: Date.now(),
     });
 
+    console.log('[DockServer] About to enter try block');
     try {
+      console.log('[DockServer] Inside try block, checking FreeCAD bridge...');
+      console.log('[DockServer] Bridge connected:', this.config.freeCADBridge.isConnected());
       // Check if FreeCAD bridge is connected
       if (!this.config.freeCADBridge.isConnected()) {
         // Attempt to connect
@@ -289,11 +292,15 @@ export class DockServer {
         ? this.conversationState.messages[this.conversationState.messages.length - 1]
         : undefined;
 
+      console.log('[DockServer] Checking shouldInjectContext...');
+      console.log('[DockServer] lastMessage:', lastMessage);
       if (shouldInjectContext(lastMessage)) {
+        console.log('[DockServer] Calling getContextInjectionPrompt...');
         contextPrompt = await getContextInjectionPrompt(
           this.config.freeCADBridge,
           this.config.contextInjection
         );
+        console.log('[DockServer] getContextInjectionPrompt returned, context length:', contextPrompt.length);
 
         // Warn if bridge not connected but context was requested
         if (!this.config.freeCADBridge.isConnected() && contextPrompt === '') {
@@ -302,32 +309,72 @@ export class DockServer {
       }
 
       // Build the full prompt with context
+      console.log('[DockServer] Building full prompt, contextPrompt length:', contextPrompt.length);
       const fullPrompt = contextPrompt
         ? `${createContextMessage(contextPrompt)}\n\nUser: ${content}`
         : content;
+      console.log('[DockServer] Full prompt built, length:', fullPrompt.length);
 
       // Use Claude Agent SDK to process the message
       // Claude will decide which tool to call based on the user's request
       let fullResponse = '';
+      let queryError: string | undefined;
 
       // Note: API key must be set via ANTHROPIC_API_KEY environment variable
-      for await (const message of query({
-        prompt: fullPrompt,
-        options: {
-          mcpServers: {
-            'freecad-tools': this.mcpServer,
+      console.log('[DockServer] Starting query() call...');
+      try {
+        const queryGenerator = query({
+          prompt: fullPrompt,
+          options: {
+            mcpServers: {
+              'freecad-tools': this.mcpServer,
+            },
+            allowedTools: [
+              'mcp__freecad-tools__execute_freecad_python',
+              'mcp__freecad-tools__query_model_state',
+              'mcp__freecad-tools__export_model',
+            ],
+            maxTurns: 10,
           },
-          allowedTools: [
-            'mcp__freecad-tools__execute_freecad_python',
-            'mcp__freecad-tools__query_model_state',
-            'mcp__freecad-tools__export_model',
-          ],
-          maxTurns: 10,
-        },
-      })) {
-        if (message.type === 'result' && message.subtype === 'success') {
-          fullResponse += message.result;
+        });
+        console.log('[DockServer] query() returned, starting iteration...');
+
+        for await (const message of queryGenerator) {
+          const msg = message as any;
+          const useful = {
+            type: msg.type,
+            subtype: msg.subtype,
+            is_error: msg.is_error,
+            result: msg.result,
+            error: msg.error,
+            session_id: msg.session_id,
+          };
+          console.log('[DockServer] SDK message:', JSON.stringify(useful));
+          if (message.type === 'result') {
+            if (message.subtype === 'success' && message.is_error !== true) {
+              fullResponse += (message as any).result || '';
+            } else {
+              queryError = `Query failed: ${(message as any).result || (message as any).errors?.join(', ') || message.subtype}`;
+            }
+          }
         }
+        console.log('[DockServer] Query iteration completed normally');
+      } catch (error) {
+        if (!queryError) {
+          queryError = error instanceof Error ? error.message : 'Unknown query error';
+        }
+      }
+
+      console.log('[DockServer] About to send response, queryError:', queryError);
+      if (queryError) {
+        console.error('[DockServer] Query error:', queryError);
+        this.sendToClient(client, {
+          type: 'error',
+          content: `Error: ${queryError}`,
+          timestamp: Date.now(),
+        });
+        console.log('[DockServer] Error response sent to client');
+        return;
       }
 
       // Persist assistant response
@@ -372,8 +419,12 @@ export class DockServer {
   }
 
   private sendToClient(ws: WebSocket, message: DockMessage): void {
+    console.log('[DockServer] sendToClient called, readyState:', ws.readyState, 'message type:', message.type);
     if (ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify(message));
+      console.log('[DockServer] Message sent successfully');
+    } else {
+      console.log('[DockServer] WebSocket not open, readyState:', ws.readyState);
     }
   }
 

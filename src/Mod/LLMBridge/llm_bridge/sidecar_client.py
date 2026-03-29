@@ -14,6 +14,7 @@ import FreeCAD as App
 # Try to import websockets at module level
 try:
     import websockets
+
     WEBSOCKETS_AVAILABLE = True
 except ImportError:
     WEBSOCKETS_AVAILABLE = False
@@ -26,7 +27,7 @@ DEFAULT_SIDECAR_HOST = "127.0.0.1"
 class SidecarClient:
     """
     Async WebSocket client that connects to the Node.js sidecar.
-    
+
     This client handles:
     - Connecting to the sidecar WebSocket server
     - Sending user messages with conversation history
@@ -34,7 +35,9 @@ class SidecarClient:
     - Managing connection state
     """
 
-    def __init__(self, host: str = DEFAULT_SIDECAR_HOST, port: int = DEFAULT_SIDECAR_PORT):
+    def __init__(
+        self, host: str = DEFAULT_SIDECAR_HOST, port: int = DEFAULT_SIDECAR_PORT
+    ):
         self.host = host
         self.port = port
         self._websocket = None
@@ -104,7 +107,7 @@ class SidecarClient:
                 pass
             finally:
                 self._websocket = None
-        
+
         self._connected = False
         App.Console.PrintMessage("SidecarClient: Disconnected from sidecar\n")
         self._notify_connection(False, "Disconnected from sidecar")
@@ -112,10 +115,10 @@ class SidecarClient:
     async def send_message(self, message: str) -> bool:
         """
         Send a user message to the sidecar.
-        
+
         Args:
             message: The user's message text.
-            
+
         Returns:
             True if message sent successfully, False otherwise.
         """
@@ -131,7 +134,7 @@ class SidecarClient:
             "type": "chat",
             "message": message,
             "conversation_id": self._conversation_id,
-            "history": self._history.copy()
+            "history": self._history.copy(),
         }
 
         try:
@@ -155,21 +158,37 @@ class SidecarClient:
         """Process a response message from the sidecar."""
         try:
             response = json.loads(raw_message)
+            App.Console.PrintMessage(
+                f"SidecarClient: Received message type: {response.get('type')}, content: {response.get('content', '')[:100]}\n"
+            )
 
             msg_type = response.get("type", "response")
             content = response.get("content", "")
-            success = response.get("success", True)
+            is_error = response.get("is_error", False)
+            success = (
+                response.get("success", True) and not is_error and msg_type != "error"
+            )
 
             # Add assistant response to history
             if msg_type == "response":
                 self._history.append({"role": "assistant", "content": content})
 
             # Notify callback
+            App.Console.PrintMessage(
+                f"SidecarClient: Callback info - callback exists: {self._response_callback is not None}, loop: {self._loop}, loop running: {self._loop.is_running() if self._loop else 'no loop'}\n"
+            )
             if self._response_callback and self._loop and self._loop.is_running():
                 # Run callback in the event loop
+                callback_content = f"Error: {content}" if not success else content
                 self._loop.call_soon_threadsafe(
-                    self._response_callback,
-                    content if success else f"Error: {content}"
+                    self._response_callback, callback_content
+                )
+                App.Console.PrintMessage(
+                    f"SidecarClient: Callback called with: {callback_content[:100]}\n"
+                )
+            else:
+                App.Console.PrintWarning(
+                    f"SidecarClient: Callback not called - type: {msg_type}\n"
                 )
 
         except json.JSONDecodeError as e:
@@ -183,9 +202,7 @@ class SidecarClient:
             try:
                 if self._loop and self._loop.is_running():
                     self._loop.call_soon_threadsafe(
-                        self._connection_callback,
-                        connected,
-                        status_message
+                        self._connection_callback, connected, status_message
                     )
             except Exception:
                 pass
@@ -202,7 +219,9 @@ class SidecarClientSync:
     Synchronous wrapper around SidecarClient for easier integration.
     """
 
-    def __init__(self, host: str = DEFAULT_SIDECAR_HOST, port: int = DEFAULT_SIDECAR_PORT):
+    def __init__(
+        self, host: str = DEFAULT_SIDECAR_HOST, port: int = DEFAULT_SIDECAR_PORT
+    ):
         self._client = SidecarClient(host, port)
         self._loop: Optional[asyncio.AbstractEventLoop] = None
         self._thread: Optional[threading.Thread] = None
@@ -222,17 +241,19 @@ class SidecarClientSync:
                 asyncio.set_event_loop(self._loop)
                 self._loop.run_forever()
 
-            self._thread = threading.Thread(target=run_loop, daemon=True, name="LLMBridge-EventLoop")
+            self._thread = threading.Thread(
+                target=run_loop, daemon=True, name="LLMBridge-EventLoop"
+            )
             self._thread.start()
 
             # Give the loop a moment to start
             import time
+
             time.sleep(0.1)
 
             # Run connection in the loop
             future = asyncio.run_coroutine_threadsafe(
-                self._client.connect(),
-                self._loop
+                self._client.connect(), self._loop
             )
             return future.result(timeout=5.0)
         except Exception as e:
@@ -243,8 +264,7 @@ class SidecarClientSync:
         """Disconnect from the sidecar."""
         if self._loop and self._loop.is_running():
             future = asyncio.run_coroutine_threadsafe(
-                self._client.disconnect(),
-                self._loop
+                self._client.disconnect(), self._loop
             )
             try:
                 future.result(timeout=5.0)
@@ -258,10 +278,9 @@ class SidecarClientSync:
         """Send a message to the sidecar (blocking)."""
         if not self._loop or not self._loop.is_running():
             return False
-            
+
         future = asyncio.run_coroutine_threadsafe(
-            self._client.send_message(message),
-            self._loop
+            self._client.send_message(message), self._loop
         )
         try:
             return future.result(timeout=10.0)

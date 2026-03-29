@@ -100,24 +100,35 @@ export class FreeCADBridge {
       console.log('[FreeCADBridge] Received:', message);
 
       // Handle response for pending request by ID
+      console.log('[FreeCADBridge] Checking pending request, message.id:', message.id);
+      console.log('[FreeCADBridge] pendingRequests keys:', Array.from(this.pendingRequests.keys()));
       if (message.id && this.pendingRequests.has(message.id)) {
+        console.log('[FreeCADBridge] Found matching pending request!');
         const pending = this.pendingRequests.get(message.id)!;
         clearTimeout(pending.timeout);
         this.pendingRequests.delete(message.id);
 
-        if (message.type === 'result' || message.type === 'response') {
+        console.log('[FreeCADBridge] Message type field:', message.type);
+        console.log('[FreeCADBridge] Message has success:', message.success !== undefined);
+        
+        if (message.type === 'result' || message.type === 'response' || message.success !== undefined) {
+          const output = message.stdout || message.output || message.result || '';
+          console.log('[FreeCADBridge] Resolving with success, output length:', output.length);
           pending.resolve({
-            output: message.output || message.result || '',
+            output: output,
             success: message.success !== false,
             error: message.error,
           });
         } else if (message.type === 'error') {
+          console.log('[FreeCADBridge] Resolving with error');
           pending.resolve({
             output: '',
             success: false,
             error: message.error || 'Unknown error',
           });
         }
+      } else {
+        console.log('[FreeCADBridge] No matching pending request found!');
       }
     } catch (error) {
       console.error('[FreeCADBridge] Failed to parse message:', error);
@@ -127,11 +138,13 @@ export class FreeCADBridge {
   onMessage?: (message: any) => void;
 
   async executePython(code: string): Promise<ExecuteResult> {
+    console.log('[FreeCADBridge] executePython called, connected:', this.isConnected());
     if (!this.isConnected()) {
       await this.connect();
     }
 
     return new Promise((resolve, reject) => {
+      console.log('[FreeCADBridge] Promise created, waiting for response...');
       if (!this.ws) {
         reject(new Error('Not connected to FreeCAD bridge'));
         return;
@@ -153,6 +166,7 @@ export class FreeCADBridge {
         id: requestId,
       };
 
+      console.log('[FreeCADBridge] Sending request with id:', requestId);
       console.log('[FreeCADBridge] Executing Python code...');
       this.ws.send(JSON.stringify(request));
     });

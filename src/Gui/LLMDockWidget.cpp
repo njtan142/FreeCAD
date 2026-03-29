@@ -44,22 +44,28 @@ using namespace Gui;
 
 // Static callback wrappers for Python calls
 static PyObject* s_llmDockWidgetInstance = nullptr;
+static LLMDockWidget* s_llmDockWidgetPtr = nullptr;
 
 static PyObject* pyResponseCallback(PyObject* self, PyObject* args)
 {
     Q_UNUSED(self);
+    std::cerr << "LLMDockWidget: pyResponseCallback called" << std::endl;
     const char* response = nullptr;
     if (!PyArg_ParseTuple(args, "s", &response)) {
+        std::cerr << "LLMDockWidget: pyResponseCallback - PyArg_ParseTuple failed" << std::endl;
+        PyErr_Print();
+        PyErr_Clear();
         return nullptr;
     }
+    std::cerr << "LLMDockWidget: pyResponseCallback - response=" << response << std::endl;
 
-    if (s_llmDockWidgetInstance) {
-        LLMDockWidget* widget = reinterpret_cast<LLMDockWidget*>(PyLong_AsVoidPtr(
-            PyObject_GetAttrString(s_llmDockWidgetInstance, "_ptr")));
-        if (widget) {
-            QMetaObject::invokeMethod(widget, "handleResponse", Qt::QueuedConnection,
-                                      Q_ARG(QString, QString::fromUtf8(response)));
-        }
+    if (s_llmDockWidgetPtr) {
+        std::cerr << "LLMDockWidget: pyResponseCallback - s_llmDockWidgetPtr is set, invoking handleResponse" << std::endl;
+        QMetaObject::invokeMethod(s_llmDockWidgetPtr, "handleResponse", Qt::QueuedConnection,
+                                  Q_ARG(QString, QString::fromUtf8(response)));
+        std::cerr << "LLMDockWidget: pyResponseCallback - handleResponse invoked" << std::endl;
+    } else {
+        std::cerr << "LLMDockWidget: pyResponseCallback - s_llmDockWidgetPtr is NULL - callbacks will not reach UI!" << std::endl;
     }
 
     Py_RETURN_NONE;
@@ -68,20 +74,23 @@ static PyObject* pyResponseCallback(PyObject* self, PyObject* args)
 static PyObject* pyConnectionCallback(PyObject* self, PyObject* args)
 {
     Q_UNUSED(self);
+    std::cerr << "LLMDockWidget: pyConnectionCallback called" << std::endl;
     int connected = 0;
     const char* statusMessage = nullptr;
     if (!PyArg_ParseTuple(args, "is", &connected, &statusMessage)) {
+        std::cerr << "LLMDockWidget: pyConnectionCallback - PyArg_ParseTuple failed" << std::endl;
         return nullptr;
     }
+    std::cerr << "LLMDockWidget: pyConnectionCallback - connected=" << connected << " status=" << statusMessage << std::endl;
 
-    if (s_llmDockWidgetInstance) {
-        LLMDockWidget* widget = reinterpret_cast<LLMDockWidget*>(PyLong_AsVoidPtr(
-            PyObject_GetAttrString(s_llmDockWidgetInstance, "_ptr")));
-        if (widget) {
-            QMetaObject::invokeMethod(widget, "handleConnectionStatus", Qt::QueuedConnection,
-                                      Q_ARG(bool, connected != 0),
-                                      Q_ARG(QString, QString::fromUtf8(statusMessage)));
-        }
+    if (s_llmDockWidgetPtr) {
+        std::cerr << "LLMDockWidget: pyConnectionCallback - s_llmDockWidgetPtr is set, invoking handleConnectionStatus" << std::endl;
+        QMetaObject::invokeMethod(s_llmDockWidgetPtr, "handleConnectionStatus", Qt::QueuedConnection,
+                                  Q_ARG(bool, connected != 0),
+                                  Q_ARG(QString, QString::fromUtf8(statusMessage)));
+        std::cerr << "LLMDockWidget: pyConnectionCallback - handleConnectionStatus invoked" << std::endl;
+    } else {
+        std::cerr << "LLMDockWidget: pyConnectionCallback - s_llmDockWidgetPtr is NULL - callbacks will not reach UI!" << std::endl;
     }
 
     Py_RETURN_NONE;
@@ -92,6 +101,83 @@ static PyMethodDef s_callbackMethods[] = {
     {"connection_callback", pyConnectionCallback, METH_VARARGS, "Callback for connection status"},
     {nullptr, nullptr, 0, nullptr}
 };
+
+static PyModuleDef s_callbackModuleDef = {
+    PyModuleDef_HEAD_INIT,
+    "llm_panel_bridge_callbacks",
+    nullptr,
+    -1,
+    s_callbackMethods
+};
+
+PyMODINIT_FUNC PyInit_llm_panel_bridge_callbacks(void)
+{
+    return PyModule_Create(&s_callbackModuleDef);
+}
+
+void LLMDockWidget::registerCallbacksWithModule(PyObject* module)
+{
+    std::cerr << "LLMDockWidget: registerCallbacksWithModule - START" << std::endl;
+    
+    if (!module) {
+        std::cerr << "LLMDockWidget: registerCallbacksWithModule - module is NULL" << std::endl;
+        return;
+    }
+    
+    std::cerr << "LLMDockWidget: registerCallbacksWithModule - module name: " << PyModule_GetName(module) << std::endl;
+    
+    PyObject* callbacksModule = PyModule_Create(&s_callbackModuleDef);
+    if (!callbacksModule) {
+        std::cerr << "LLMDockWidget: registerCallbacksWithModule - PyModule_Create failed" << std::endl;
+        PyErr_Print();
+        PyErr_Clear();
+        return;
+    }
+    
+    std::cerr << "LLMDockWidget: registerCallbacksWithModule - callbacksModule created" << std::endl;
+    
+    // Check if response_callback exists in callbacksModule
+    PyObject* responseCallback = PyObject_GetAttrString(callbacksModule, "response_callback");
+    std::cerr << "LLMDockWidget: registerCallbacksWithModule - responseCallback: " << responseCallback << std::endl;
+    
+    if (responseCallback) {
+        Py_INCREF(responseCallback);
+        int result = PyModule_AddObject(module, "response_callback", responseCallback);
+        std::cerr << "LLMDockWidget: registerCallbacksWithModule - PyModule_AddObject result: " << result << std::endl;
+        if (result != 0) {
+            std::cerr << "LLMDockWidget: registerCallbacksWithModule - PyModule_AddObject failed for response_callback" << std::endl;
+            Py_DECREF(responseCallback);
+        } else {
+            std::cerr << "LLMDockWidget: registerCallbacksWithModule - response_callback added successfully" << std::endl;
+        }
+    } else {
+        std::cerr << "LLMDockWidget: registerCallbacksWithModule - response_callback not found in callbacksModule" << std::endl;
+        PyErr_Print();
+        PyErr_Clear();
+    }
+    
+    PyObject* connectionCallback = PyObject_GetAttrString(callbacksModule, "connection_callback");
+    std::cerr << "LLMDockWidget: registerCallbacksWithModule - connectionCallback: " << connectionCallback << std::endl;
+    
+    if (connectionCallback) {
+        Py_INCREF(connectionCallback);
+        int result = PyModule_AddObject(module, "connection_callback", connectionCallback);
+        std::cerr << "LLMDockWidget: registerCallbacksWithModule - PyModule_AddObject result: " << result << std::endl;
+        if (result != 0) {
+            std::cerr << "LLMDockWidget: registerCallbacksWithModule - PyModule_AddObject failed for connection_callback" << std::endl;
+            Py_DECREF(connectionCallback);
+        } else {
+            std::cerr << "LLMDockWidget: registerCallbacksWithModule - connection_callback added successfully" << std::endl;
+        }
+    } else {
+        std::cerr << "LLMDockWidget: registerCallbacksWithModule - connection_callback not found in callbacksModule" << std::endl;
+        PyErr_Print();
+        PyErr_Clear();
+    }
+    
+    Py_DECREF(callbacksModule);
+    std::cerr << "LLMDockWidget: registerCallbacksWithModule - COMPLETED" << std::endl;
+}
 
 LLMDockWidget::LLMDockWidget(QWidget* parent)
     : QDockWidget(parent)
@@ -110,6 +196,10 @@ LLMDockWidget::LLMDockWidget(QWidget* parent)
     setObjectName(QStringLiteral("LLMDockWidget"));
     setAttribute(Qt::WA_StyledBackground, true);
     setAutoFillBackground(true);
+
+    // Store widget pointer for callbacks (no Python wrapper needed)
+    s_llmDockWidgetPtr = this;
+    std::cerr << "LLMDockWidget: s_llmDockWidgetPtr set to " << s_llmDockWidgetPtr << std::endl;
 
     std::cerr << "LLMDockWidget: calling setupUI" << std::endl;
     setupUI();
@@ -307,6 +397,8 @@ void LLMDockWidget::setupPythonBridge()
         std::cerr << "LLMDockWidget: initialize() succeeded" << std::endl;
         Py_DECREF(initResult);
         Py_DECREF(initFunc);
+        
+        std::cerr << "LLMDockWidget: setupPythonBridge complete - s_llmDockWidgetPtr=" << s_llmDockWidgetPtr << std::endl;
 
         m_pythonBridgeInitialized = true;
         Py_DECREF(module);

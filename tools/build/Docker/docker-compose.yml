@@ -1,0 +1,11 @@
+services:
+  freecad-build:
+    build:
+      context: .
+      dockerfile: Dockerfile.UbuntuQt6
+    image: freecad-ubuntuqt6
+    container_name: freecad-dev
+    working_dir: /builds
+    volumes:
+      - .:/builds
+    tty: true

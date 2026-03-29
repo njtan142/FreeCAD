@@ -12,12 +12,12 @@ import FreeCAD as App
 from FreeCAD import Vector
 
 
-def handle_create_linear_pattern(object_name, direction, count, spacing, name=None):
+def handle_create_linear_pattern(source_object, direction, count, spacing, name=None):
     """
     Create a linear pattern feature.
 
     Args:
-        object_name: Name of the source feature to pattern
+        source_object: Name of the source feature to pattern
         direction: Direction vector as tuple (x, y, z) or string "X", "Y", "Z"
         count: Number of copies (including original)
         spacing: Spacing between copies in mm
@@ -31,11 +31,11 @@ def handle_create_linear_pattern(object_name, direction, count, spacing, name=No
         if doc is None:
             return {"success": False, "error": "No active document", "data": None}
 
-        source_obj = doc.getObject(object_name)
+        source_obj = doc.getObject(source_object)
         if source_obj is None:
             return {
                 "success": False,
-                "error": f"Source object '{object_name}' not found",
+                "error": f"Source object '{source_object}' not found",
                 "data": None,
             }
 
@@ -109,13 +109,16 @@ def handle_create_linear_pattern(object_name, direction, count, spacing, name=No
         return {"success": False, "error": str(e), "data": None}
 
 
-def handle_create_polar_pattern(object_name, center, count, angle=360, name=None):
+def handle_create_polar_pattern(
+    source_object, center_point=None, axis=None, count=2, angle=360, name=None
+):
     """
     Create a polar pattern feature.
 
     Args:
-        object_name: Name of the source feature to pattern
-        center: Center point as tuple (x, y, z)
+        source_object: Name of the source feature to pattern
+        center_point: Center point as tuple (x, y, z)
+        axis: Rotation axis direction as tuple (x, y, z)
         count: Number of copies (including original)
         angle: Full angle in degrees (default: 360)
         name: Optional name for the pattern feature
@@ -128,11 +131,11 @@ def handle_create_polar_pattern(object_name, center, count, angle=360, name=None
         if doc is None:
             return {"success": False, "error": "No active document", "data": None}
 
-        source_obj = doc.getObject(object_name)
+        source_obj = doc.getObject(source_object)
         if source_obj is None:
             return {
                 "success": False,
-                "error": f"Source object '{object_name}' not found",
+                "error": f"Source object '{source_object}' not found",
                 "data": None,
             }
 
@@ -164,7 +167,12 @@ def handle_create_polar_pattern(object_name, center, count, angle=360, name=None
             pattern = doc.addObject("PartDesign::PolarPattern", "PolarPattern")
 
         pattern.Originals = [source_obj]
-        pattern.Axis = center if isinstance(center, tuple) else tuple(center)
+        if axis is not None:
+            pattern.Axis = axis if isinstance(axis, tuple) else tuple(axis)
+        elif center_point is not None:
+            pattern.Axis = (
+                center_point if isinstance(center_point, tuple) else tuple(center_point)
+            )
         pattern.Count = count
         pattern.Angle = angle
 
@@ -190,17 +198,26 @@ def handle_create_polar_pattern(object_name, center, count, angle=360, name=None
 
 
 def handle_create_rectangular_pattern(
-    object_name, dir1_count, dir1_spacing, dir2_count, dir2_spacing, name=None
+    source_object,
+    direction_x,
+    count_x,
+    spacing_x,
+    direction_y,
+    count_y,
+    spacing_y,
+    name=None,
 ):
     """
     Create a rectangular pattern feature (2D grid).
 
     Args:
-        object_name: Name of the source feature to pattern
-        dir1_count: Number of copies in first direction (including original)
-        dir1_spacing: Spacing between copies in first direction in mm
-        dir2_count: Number of copies in second direction (including original)
-        dir2_spacing: Spacing between copies in second direction in mm
+        source_object: Name of the source feature to pattern
+        direction_x: First direction vector as tuple (x, y, z) or string "X", "Y", "Z"
+        count_x: Number of copies in first direction (including original)
+        spacing_x: Spacing between copies in first direction in mm
+        direction_y: Second direction vector as tuple (x, y, z) or string "X", "Y", "Z"
+        count_y: Number of copies in second direction (including original)
+        spacing_y: Spacing between copies in second direction in mm
         name: Optional name for the pattern feature
 
     Returns:
@@ -211,11 +228,11 @@ def handle_create_rectangular_pattern(
         if doc is None:
             return {"success": False, "error": "No active document", "data": None}
 
-        source_obj = doc.getObject(object_name)
+        source_obj = doc.getObject(source_object)
         if source_obj is None:
             return {
                 "success": False,
-                "error": f"Source object '{object_name}' not found",
+                "error": f"Source object '{source_object}' not found",
                 "data": None,
             }
 
@@ -247,17 +264,55 @@ def handle_create_rectangular_pattern(
             pattern = doc.addObject("PartDesign::RectangularPattern", "RectPattern")
 
         pattern.Originals = [source_obj]
-        pattern.Direction = (1, 0, 0)
-        pattern.Count = dir1_count
-        pattern.Step = dir1_spacing
-        pattern.SecondDirection = (0, 1, 0)
-        pattern.Count2 = dir2_count
-        pattern.Step2 = dir2_spacing
+
+        if isinstance(direction_x, str):
+            direction_x = direction_x.upper()
+            if direction_x == "X":
+                pattern.Direction = (1, 0, 0)
+            elif direction_x == "Y":
+                pattern.Direction = (0, 1, 0)
+            elif direction_x == "Z":
+                pattern.Direction = (0, 0, 1)
+            else:
+                return {
+                    "success": False,
+                    "error": f"Invalid direction_x '{direction_x}'. Use 'X', 'Y', 'Z' or a tuple.",
+                    "data": None,
+                }
+        else:
+            pattern.Direction = (
+                direction_x if isinstance(direction_x, tuple) else tuple(direction_x)
+            )
+
+        pattern.Count = count_x
+        pattern.Step = spacing_x
+
+        if isinstance(direction_y, str):
+            direction_y = direction_y.upper()
+            if direction_y == "X":
+                pattern.SecondDirection = (1, 0, 0)
+            elif direction_y == "Y":
+                pattern.SecondDirection = (0, 1, 0)
+            elif direction_y == "Z":
+                pattern.SecondDirection = (0, 0, 1)
+            else:
+                return {
+                    "success": False,
+                    "error": f"Invalid direction_y '{direction_y}'. Use 'X', 'Y', 'Z' or a tuple.",
+                    "data": None,
+                }
+        else:
+            pattern.SecondDirection = (
+                direction_y if isinstance(direction_y, tuple) else tuple(direction_y)
+            )
+
+        pattern.Count2 = count_y
+        pattern.Step2 = spacing_y
 
         body.addObject(pattern)
         doc.recompute()
 
-        total_count = dir1_count * dir2_count
+        total_count = count_x * count_y
 
         return {
             "success": True,
@@ -267,26 +322,32 @@ def handle_create_rectangular_pattern(
                 "patternType": pattern.TypeId,
                 "documentName": doc.Name,
                 "sourceObject": source_obj.Name,
-                "dir1Count": dir1_count,
-                "dir1Spacing": dir1_spacing,
-                "dir2Count": dir2_count,
-                "dir2Spacing": dir2_spacing,
+                "countX": count_x,
+                "spacingX": spacing_x,
+                "directionX": pattern.Direction,
+                "countY": count_y,
+                "spacingY": spacing_y,
+                "directionY": pattern.SecondDirection,
                 "totalCount": total_count,
-                "message": f"Created rectangular pattern '{pattern.Label}' with {dir1_count}x{dir2_count} grid ({total_count} total copies)",
+                "message": f"Created rectangular pattern '{pattern.Label}' with {count_x}x{count_y} grid ({total_count} total copies)",
             },
         }
     except Exception as e:
         return {"success": False, "error": str(e), "data": None}
 
 
-def handle_create_path_pattern(object_name, path_object, count, name=None):
+def handle_create_path_pattern(
+    source_object, path_object, count, spacing=None, align_to_path=True, name=None
+):
     """
     Create a path-based pattern along a wire or sketch edge.
 
     Args:
-        object_name: Name of the source feature to pattern
+        source_object: Name of the source feature to pattern
         path_object: Name of the path object (wire, sketch, or edge)
         count: Number of copies along the path (including original)
+        spacing: Distance between instances in mm (optional, evenly distributed if omitted)
+        align_to_path: Whether to align instances to path tangent (default: True)
         name: Optional name for the pattern feature
 
     Returns:
@@ -297,11 +358,11 @@ def handle_create_path_pattern(object_name, path_object, count, name=None):
         if doc is None:
             return {"success": False, "error": "No active document", "data": None}
 
-        source_obj = doc.getObject(object_name)
+        source_obj = doc.getObject(source_object)
         if source_obj is None:
             return {
                 "success": False,
-                "error": f"Source object '{object_name}' not found",
+                "error": f"Source object '{source_object}' not found",
                 "data": None,
             }
 
@@ -694,11 +755,113 @@ def handle_list_patterns():
         return {"success": False, "error": str(e), "data": None}
 
 
+def handle_create_transform_link(source_object, direction, count, spacing, name=None):
+    """
+    Create a transform link (3D array/pattern) using MultiTransform.
+
+    Args:
+        source_object: Name of the source feature to pattern
+        direction: Direction vector as tuple (x, y, z) or string "X", "Y", "Z"
+        count: Number of copies (including original)
+        spacing: Spacing between copies in mm
+        name: Optional name for the transform feature
+
+    Returns:
+        dict with success status, transform info, and message
+    """
+    try:
+        doc = App.ActiveDocument
+        if doc is None:
+            return {"success": False, "error": "No active document", "data": None}
+
+        source_obj = doc.getObject(source_object)
+        if source_obj is None:
+            return {
+                "success": False,
+                "error": f"Source object '{source_object}' not found",
+                "data": None,
+            }
+
+        body = None
+        for obj in doc.Objects:
+            if obj.TypeId == "PartDesign::Body":
+                if hasattr(obj, "Group") and source_obj in obj.Group:
+                    body = obj
+                    break
+                for child in obj.Group:
+                    if child == source_obj:
+                        body = obj
+                        break
+
+        if not body:
+            for obj in doc.Objects:
+                if obj.TypeId == "PartDesign::Body":
+                    body = obj
+                    break
+
+        if not body:
+            body = doc.addObject("PartDesign::Body", "Body")
+            body.addObject(source_obj)
+            doc.recompute()
+
+        if name:
+            transform = doc.addObject("PartDesign::MultiTransform", name)
+        else:
+            transform = doc.addObject("PartDesign::MultiTransform", "MultiTransform")
+
+        transform.Originals = [source_obj]
+
+        if isinstance(direction, str):
+            direction = direction.upper()
+            if direction == "X":
+                dir_vector = (1, 0, 0)
+            elif direction == "Y":
+                dir_vector = (0, 1, 0)
+            elif direction == "Z":
+                dir_vector = (0, 0, 1)
+            else:
+                return {
+                    "success": False,
+                    "error": f"Invalid direction '{direction}'. Use 'X', 'Y', 'Z' or a tuple.",
+                    "data": None,
+                }
+        else:
+            dir_vector = direction if isinstance(direction, tuple) else tuple(direction)
+
+        linear_pattern = doc.addObject("PartDesign::LinearPattern", "LinearPattern")
+        linear_pattern.Originals = [source_obj]
+        linear_pattern.Direction = dir_vector
+        linear_pattern.Count = count
+        linear_pattern.Step = spacing
+
+        transform.addObject(linear_pattern)
+        body.addObject(transform)
+        doc.recompute()
+
+        return {
+            "success": True,
+            "data": {
+                "transformName": transform.Name,
+                "transformLabel": transform.Label,
+                "transformType": transform.TypeId,
+                "documentName": doc.Name,
+                "sourceObject": source_obj.Name,
+                "count": count,
+                "spacing": spacing,
+                "direction": dir_vector,
+                "message": f"Created transform link '{transform.Label}' with {count} copies at {spacing:.2f}mm spacing",
+            },
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e), "data": None}
+
+
 __all__ = [
     "handle_create_linear_pattern",
     "handle_create_polar_pattern",
     "handle_create_rectangular_pattern",
     "handle_create_path_pattern",
+    "handle_create_transform_link",
     "handle_update_linear_pattern",
     "handle_update_polar_pattern",
     "handle_get_pattern_info",

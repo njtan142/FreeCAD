@@ -337,13 +337,14 @@ def handle_create_ellipse(center, radius1, radius2, name=None):
         return {"success": False, "error": str(e), "data": None}
 
 
-def handle_create_rectangle(width, height, name=None):
+def handle_create_rectangle(width, height, position=None, name=None):
     """
     Create a rectangle.
 
     Args:
         width: Width of the rectangle
         height: Height of the rectangle
+        position: Position as dict/list/Vector (optional)
         name: Optional name for the rectangle
 
     Returns:
@@ -364,7 +365,8 @@ def handle_create_rectangle(width, height, name=None):
                 "data": None,
             }
 
-        rectangle = Draft.makeRectangle(w, h)
+        pos = _parse_point(position) if position else App.Vector(0, 0, 0)
+        rectangle = Draft.makeRectangle(w, h, pos)
 
         if name:
             rectangle.Label = name
@@ -379,22 +381,24 @@ def handle_create_rectangle(width, height, name=None):
                 "objectType": "Rectangle",
                 "width": w,
                 "height": h,
+                "position": _format_point(pos),
                 "perimeter": 2 * (w + h),
                 "area": w * h,
-                "message": f"Created Rectangle '{rectangle.Label}' {w}mm x {h}mm",
+                "message": f"Created Rectangle '{rectangle.Label}' {w}mm x {h}mm at {_format_point(pos)}",
             },
         }
     except Exception as e:
         return {"success": False, "error": str(e), "data": None}
 
 
-def handle_create_polygon(sides, radius, name=None):
+def handle_create_polygon(sides, radius, center=None, name=None):
     """
     Create a regular polygon.
 
     Args:
         sides: Number of sides (3-12)
         radius: Radius of the circumscribed circle
+        center: Center point as dict/list/Vector (optional)
         name: Optional name for the polygon
 
     Returns:
@@ -418,7 +422,8 @@ def handle_create_polygon(sides, radius, name=None):
         if r <= 0:
             return {"success": False, "error": "Radius must be positive", "data": None}
 
-        polygon = Draft.makePolygon(n, r)
+        c = _parse_point(center) if center else App.Vector(0, 0, 0)
+        polygon = Draft.makePolygon(n, r, c)
 
         if name:
             polygon.Label = name
@@ -433,7 +438,8 @@ def handle_create_polygon(sides, radius, name=None):
                 "objectType": "Polygon",
                 "sides": n,
                 "radius": r,
-                "message": f"Created {n}-sided Polygon '{polygon.Label}' with {r}mm radius",
+                "center": _format_point(c),
+                "message": f"Created {n}-sided Polygon '{polygon.Label}' with {r}mm radius at {_format_point(c)}",
             },
         }
     except Exception as e:
@@ -582,13 +588,14 @@ def handle_create_wire(points, name=None):
         return {"success": False, "error": str(e), "data": None}
 
 
-def handle_create_linear_dimension(point1, point2, name=None):
+def handle_create_linear_dimension(point1, point2, offset=None, name=None):
     """
     Create a linear dimension between two points.
 
     Args:
         point1: First point as dict/list/Vector
         point2: Second point as dict/list/Vector
+        offset: Offset distance for multi-line dimensions (optional)
         name: Optional name for the dimension
 
     Returns:
@@ -603,6 +610,11 @@ def handle_create_linear_dimension(point1, point2, name=None):
         p2 = _parse_point(point2)
 
         dim = Draft.makeLinearDimension(p1, p2)
+
+        if offset is not None:
+            off = float(offset)
+            if hasattr(dim, "Offset"):
+                dim.Offset = off
 
         if name:
             dim.Label = name
@@ -619,6 +631,7 @@ def handle_create_linear_dimension(point1, point2, name=None):
                 "objectType": "LinearDimension",
                 "startPoint": _format_point(p1),
                 "endPoint": _format_point(p2),
+                "offset": offset,
                 "measurement": round(distance, 2),
                 "unit": "mm",
                 "message": f"Created LinearDimension '{dim.Label}': {round(distance, 2)}mm",
@@ -755,27 +768,32 @@ def handle_create_angular_dimension(line1, line2, name=None):
         if hasattr(dim, "Angle"):
             angle = dim.Angle
 
+        angle_deg = round(math.degrees(angle), 2)
+        angle_str = f"{angle_deg}°" if not str(angle_deg).endswith("°") else angle_deg
+
         return {
             "success": True,
             "data": {
                 "objectName": dim.Name,
                 "objectLabel": dim.Label,
                 "objectType": "AngularDimension",
-                "measurement": round(math.degrees(angle), 2),
+                "measurement": angle_deg,
                 "unit": "deg",
-                "message": f"Created AngularDimension '{dim.Label}': {round(math.degrees(angle), 2)}deg",
+                "message": f"Created AngularDimension '{dim.Label}': {angle_str}",
             },
         }
     except Exception as e:
         return {"success": False, "error": str(e), "data": None}
 
 
-def handle_create_ordinate_dimension(point, name=None):
+def handle_create_ordinate_dimension(point, direction=None, origin=None, name=None):
     """
     Create an ordinate dimension (X or Y ordinate from a baseline).
 
     Args:
         point: Point as dict/list/Vector for the dimension endpoint
+        direction: Direction as dict/list/Vector (optional, 0=X, 1=Y)
+        origin: Origin point as dict/list/Vector (optional)
         name: Optional name for the dimension
 
     Returns:
@@ -787,8 +805,10 @@ def handle_create_ordinate_dimension(point, name=None):
             return {"success": False, "error": "No active document", "data": None}
 
         p = _parse_point(point)
+        dir_val = int(direction) if direction is not None else 0
+        orig = _parse_point(origin) if origin else App.Vector(0, 0, 0)
 
-        dim = Draft.makeOrdinateDimension(0, p)
+        dim = Draft.makeOrdinateDimension(dir_val, p, orig)
 
         if name:
             dim.Label = name
@@ -801,6 +821,8 @@ def handle_create_ordinate_dimension(point, name=None):
                 "objectName": dim.Name,
                 "objectLabel": dim.Label,
                 "objectType": "OrdinateDimension",
+                "direction": dir_val,
+                "origin": _format_point(orig),
                 "point": _format_point(p),
                 "message": f"Created OrdinateDimension '{dim.Label}' at {_format_point(p)}",
             },

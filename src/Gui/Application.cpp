@@ -97,6 +97,7 @@
 #include "StartupProcess.h"
 #include "TaskView/TaskView.h"
 #include "TaskView/TaskDialogPython.h"
+#include "LLMDockWidget.h"
 #include "TransactionObject.h"
 #include "TextDocumentEditorView.h"
 #include "UiLoader.h"
@@ -587,6 +588,9 @@ Application::Application(bool GUIenabled)
         PyObject* pSelectionModule = PyModule_Create(&SelectionModuleDef);
         Py_INCREF(pSelectionModule);
         PyModule_AddObject(module, "Selection", pSelectionModule);
+
+        // Register LLM panel bridge callbacks with FreeCADGui
+        LLMDockWidget::registerCallbacksWithModule(module);
 
         SelectionFilterPy::init_type();
         Base::Interpreter().addType(SelectionFilterPy::type_object(), pSelectionModule, "Filter");

@@ -9,6 +9,24 @@ import { FreeCADBridge } from './freecad-bridge';
 import { ContextInjection, ContextInjectionConfig } from './types';
 
 /**
+ * Parse the last JSON line from output that may contain multiple printed lines.
+ * Python's executePython may produce extra print() output before our result.
+ */
+function parseLastJsonLine(output: string | undefined): any {
+  if (!output) return {};
+  const lines = output.trim().split('\n').filter(l => l.trim());
+  // Try lines from last to first, return the first one that parses
+  for (let i = lines.length - 1; i >= 0; i--) {
+    try {
+      return JSON.parse(lines[i]);
+    } catch {
+      continue;
+    }
+  }
+  return {};
+}
+
+/**
  * Default configuration for context injection
  */
 const DEFAULT_CONFIG: ContextInjectionConfig = {
@@ -25,12 +43,15 @@ export async function buildContextPrompt(
   freeCADBridge: FreeCADBridge,
   config: ContextInjectionConfig = DEFAULT_CONFIG
 ): Promise<string> {
+  console.log('[ContextInjector] buildContextPrompt called');
   const contextParts: string[] = [];
 
   try {
     // Get document info
     if (config.includeDocumentInfo) {
+      console.log('[ContextInjector] Getting document info...');
       const docInfo = await getDocumentInfo(freeCADBridge);
+      console.log('[ContextInjector] Document info received:', docInfo ? 'yes' : 'no');
       if (docInfo) {
         contextParts.push(`## Current Document Context\n\n${docInfo}`);
       }
@@ -38,7 +59,9 @@ export async function buildContextPrompt(
 
     // Get selected objects
     if (config.includeSelectedObjects) {
+      console.log('[ContextInjector] Getting selection...');
       const selection = await getSelection(freeCADBridge);
+      console.log('[ContextInjector] Selection received:', selection ? 'yes' : 'no');
       if (selection) {
         contextParts.push(`## Selected Objects\n\n${selection}`);
       }
@@ -68,6 +91,7 @@ export async function buildContextPrompt(
  * Get document information as formatted string
  */
 async function getDocumentInfo(freeCADBridge: FreeCADBridge): Promise<string | null> {
+  console.log('[ContextInjector] getDocumentInfo called');
   try {
     const code = `
 from llm_bridge.query_handlers import handle_get_document_info
@@ -76,8 +100,10 @@ result = handle_get_document_info()
 print(json.dumps(result))
 `.trim();
 
+    console.log('[ContextInjector] Calling freeCADBridge.executePython...');
     const result = await freeCADBridge.executePython(code);
-    const parsed = JSON.parse(result.output || '{}');
+    console.log('[ContextInjector] executePython returned');
+    const parsed = parseLastJsonLine(result.output);
 
     if (!parsed.success || !parsed.data) {
       return null;
@@ -114,7 +140,7 @@ print(json.dumps(result))
 `.trim();
 
     const result = await freeCADBridge.executePython(code);
-    const parsed = JSON.parse(result.output || '{}');
+    const parsed = parseLastJsonLine(result.output);
 
     if (!parsed.success) {
       return null;

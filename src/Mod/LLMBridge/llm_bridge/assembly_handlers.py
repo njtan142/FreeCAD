@@ -212,12 +212,8 @@ def handle_create_assembly(name=None):
         if not name:
             name = "Assembly"
 
-        if _is_assembly_module_available():
-            assembly = doc.addObject("App::Part", name)
-            assembly.Label = name
-        else:
-            assembly = doc.addObject("App::Part", name)
-            assembly.Label = name
+        assembly = doc.addObject("App::Part", name)
+        assembly.Label = name
 
         doc.recompute()
 
@@ -577,40 +573,104 @@ def _create_assembly3_constraint(
     try:
         import Assembly3
 
-        constraint_type_map = {
-            "coincident": "Coincident",
+        constraint_type_to_joint_type = {
+            "coincident": "Fixed",
             "parallel": "Parallel",
             "perpendicular": "Perpendicular",
             "angle": "Angle",
             "distance": "Distance",
-            "insert": "Insert",
-            "tangent": "Tangent",
-            "equal": "Equal",
-            "symmetric": "Symmetric",
+            "insert": "Revolute",
+            "tangent": "Slider",
+            "equal": "Fixed",
+            "symmetric": "Perpendicular",
         }
 
-        fc_constraint_type = constraint_type_map.get(
-            constraint_type.lower(), constraint_type
-        )
+        joint_type = constraint_type_to_joint_type.get(constraint_type.lower(), "Fixed")
 
         element1 = f"{obj1.Name}.{sub_type1}{sub_idx1}"
         element2 = f"{obj2.Name}.{sub_type2}{sub_idx2}"
 
-        constraint_name = name or f"{constraint_type.capitalize()}"
+        constraint_name = name or f"{constraint_type.capitalize()}Constraint"
 
+        try:
+            import UtilsAssembly
+
+            assembly = UtilsAssembly.activeAssembly()
+            if assembly is None:
+                for o in App.ActiveDocument.Objects:
+                    if o.isDerivedFrom("Assembly::AssemblyObject"):
+                        assembly = o
+                        break
+
+            if assembly is None:
+                return {
+                    "success": False,
+                    "error": "No active Assembly found. Please open an Assembly workbench.",
+                    "data": None,
+                }
+
+            from JointObject import Joint, ViewProviderJoint
+
+            joint_group = UtilsAssembly.getJointGroup(assembly)
+            joint_obj = joint_group.newObject("App::FeaturePython", constraint_name)
+            Joint(
+                joint_obj,
+                [
+                    "Fixed",
+                    "Revolute",
+                    "Cylindrical",
+                    "Slider",
+                    "Ball",
+                    "Distance",
+                    "Parallel",
+                    "Perpendicular",
+                    "Angle",
+                    "RackPinion",
+                    "Screw",
+                    "Gears",
+                    "Belt",
+                ].index(joint_type),
+            )
+
+            joint_obj.Reference1 = [obj1, [element1]]
+            joint_obj.Reference2 = [obj2, [element2]]
+
+            if value is not None:
+                if constraint_type.lower() == "angle":
+                    joint_obj.Angle = float(value)
+                elif constraint_type.lower() == "distance":
+                    joint_obj.Distance = float(value)
+
+            ViewProviderJoint(joint_obj.ViewObject)
+
+            App.ActiveDocument.recompute()
+
+            return {
+                "success": True,
+                "data": {
+                    "constraintName": joint_obj.Name,
+                    "constraintType": constraint_type,
+                    "object1": obj1.Name,
+                    "subobject1": f"{sub_type1}{sub_idx1}",
+                    "object2": obj2.Name,
+                    "subobject2": f"{sub_type2}{sub_idx2}",
+                    "value": value,
+                    "module": "Assembly3",
+                    "message": f"Created {constraint_type} constraint (Assembly3): {element1} - {element2}",
+                },
+            }
+        except ImportError:
+            return {
+                "success": False,
+                "error": "Assembly3 constraints require the built-in Assembly workbench. Use 'import UtilsAssembly' in FreeCAD console.",
+                "data": None,
+            }
+
+    except ImportError:
         return {
-            "success": True,
-            "data": {
-                "constraintName": constraint_name,
-                "constraintType": constraint_type,
-                "object1": obj1.Name,
-                "subobject1": f"{sub_type1}{sub_idx1}",
-                "object2": obj2.Name,
-                "subobject2": f"{sub_type2}{sub_idx2}",
-                "value": value,
-                "module": "Assembly3",
-                "message": f"Created {constraint_type} constraint (Assembly3): {element1} - {element2}",
-            },
+            "success": False,
+            "error": "Assembly3 workbench is not installed. Please install Assembly3 from the FreeCAD addon manager.",
+            "data": None,
         }
     except Exception as e:
         return {
@@ -627,40 +687,104 @@ def _create_a2plus_constraint(
     try:
         import A2plus
 
-        constraint_type_map = {
-            "coincident": "Coincident",
+        constraint_type_to_joint_type = {
+            "coincident": "Fixed",
             "parallel": "Parallel",
             "perpendicular": "Perpendicular",
             "angle": "Angle",
             "distance": "Distance",
-            "insert": "Axial",
-            "tangent": "Tangent",
-            "equal": "Equal",
-            "symmetric": "Symmetric",
+            "insert": "Revolute",
+            "tangent": "Slider",
+            "equal": "Fixed",
+            "symmetric": "Perpendicular",
         }
 
-        fc_constraint_type = constraint_type_map.get(
-            constraint_type.lower(), constraint_type
-        )
+        joint_type = constraint_type_to_joint_type.get(constraint_type.lower(), "Fixed")
 
         element1 = f"{obj1.Name}.{sub_type1}{sub_idx1}"
         element2 = f"{obj2.Name}.{sub_type2}{sub_idx2}"
 
-        constraint_name = name or f"{constraint_type.capitalize()}"
+        constraint_name = name or f"{constraint_type.capitalize()}Constraint"
 
+        try:
+            import UtilsAssembly
+
+            assembly = UtilsAssembly.activeAssembly()
+            if assembly is None:
+                for o in App.ActiveDocument.Objects:
+                    if o.isDerivedFrom("Assembly::AssemblyObject"):
+                        assembly = o
+                        break
+
+            if assembly is None:
+                return {
+                    "success": False,
+                    "error": "No active Assembly found. Please open an Assembly workbench.",
+                    "data": None,
+                }
+
+            from JointObject import Joint, ViewProviderJoint
+
+            joint_group = UtilsAssembly.getJointGroup(assembly)
+            joint_obj = joint_group.newObject("App::FeaturePython", constraint_name)
+            Joint(
+                joint_obj,
+                [
+                    "Fixed",
+                    "Revolute",
+                    "Cylindrical",
+                    "Slider",
+                    "Ball",
+                    "Distance",
+                    "Parallel",
+                    "Perpendicular",
+                    "Angle",
+                    "RackPinion",
+                    "Screw",
+                    "Gears",
+                    "Belt",
+                ].index(joint_type),
+            )
+
+            joint_obj.Reference1 = [obj1, [element1]]
+            joint_obj.Reference2 = [obj2, [element2]]
+
+            if value is not None:
+                if constraint_type.lower() == "angle":
+                    joint_obj.Angle = float(value)
+                elif constraint_type.lower() == "distance":
+                    joint_obj.Distance = float(value)
+
+            ViewProviderJoint(joint_obj.ViewObject)
+
+            App.ActiveDocument.recompute()
+
+            return {
+                "success": True,
+                "data": {
+                    "constraintName": joint_obj.Name,
+                    "constraintType": constraint_type,
+                    "object1": obj1.Name,
+                    "subobject1": f"{sub_type1}{sub_idx1}",
+                    "object2": obj2.Name,
+                    "subobject2": f"{sub_type2}{sub_idx2}",
+                    "value": value,
+                    "module": "A2plus",
+                    "message": f"Created {constraint_type} constraint (A2plus): {element1} - {element2}",
+                },
+            }
+        except ImportError:
+            return {
+                "success": False,
+                "error": "A2plus constraints require the built-in Assembly workbench. Use 'import UtilsAssembly' in FreeCAD console.",
+                "data": None,
+            }
+
+    except ImportError:
         return {
-            "success": True,
-            "data": {
-                "constraintName": constraint_name,
-                "constraintType": constraint_type,
-                "object1": obj1.Name,
-                "subobject1": f"{sub_type1}{sub_idx1}",
-                "object2": obj2.Name,
-                "subobject2": f"{sub_type2}{sub_idx2}",
-                "value": value,
-                "module": "A2plus",
-                "message": f"Created {constraint_type} constraint (A2plus): {element1} - {element2}",
-            },
+            "success": False,
+            "error": "A2plus workbench is not installed. Please install A2plus from the FreeCAD addon manager.",
+            "data": None,
         }
     except Exception as e:
         return {
@@ -873,19 +997,39 @@ def handle_update_constraint_value(constraint_name, new_value):
             }
 
         old_value = None
+        value_property = None
+
         if hasattr(constraint_obj, "Value"):
             old_value = constraint_obj.Value
             constraint_obj.Value = float(new_value)
+            value_property = "Value"
         elif hasattr(constraint_obj, "Angle"):
             old_value = constraint_obj.Angle
             constraint_obj.Angle = float(new_value)
+            value_property = "Angle"
         elif hasattr(constraint_obj, "Distance"):
             old_value = constraint_obj.Distance
             constraint_obj.Distance = float(new_value)
+            value_property = "Distance"
         else:
+            constraint_type = getattr(constraint_obj, "JointType", None)
+            if constraint_type is None:
+                constraint_type = getattr(constraint_obj, "TypeId", "unknown")
+
+            available_props = []
+            for prop in ["Value", "Angle", "Distance", "Distance2"]:
+                if hasattr(constraint_obj, prop):
+                    available_props.append(prop)
+
+            error_msg = (
+                f"Constraint '{constraint_name}' (type: {constraint_type}) does not have "
+                f"a value property that can be edited. "
+                f"Editable properties: {available_props if available_props else 'none'}. "
+                f"Only Angle and Distance constraints support value updates."
+            )
             return {
                 "success": False,
-                "error": f"Constraint '{constraint_name}' does not have an editable value",
+                "error": error_msg,
                 "data": None,
             }
 
@@ -897,6 +1041,7 @@ def handle_update_constraint_value(constraint_name, new_value):
                 "constraintName": constraint_name,
                 "oldValue": old_value,
                 "newValue": new_value,
+                "valueProperty": value_property,
                 "message": f"Updated constraint '{constraint_name}' from {old_value} to {new_value}",
             },
         }
@@ -959,7 +1104,23 @@ def handle_list_constraints(assembly_name=None):
         constraints = []
 
         for obj in doc.Objects:
-            if obj.TypeId in ["Assembly::Constraint", "Constraint", "App::Constraint"]:
+            if hasattr(obj, "JointType"):
+                constraint_info = {
+                    "name": obj.Name,
+                    "label": obj.Label,
+                    "type": f"JointType.{obj.JointType}",
+                    "value": getattr(obj, "Angle", None)
+                    or getattr(obj, "Distance", None),
+                    "status": "active"
+                    if not getattr(obj, "Suppressed", False)
+                    else "suppressed",
+                }
+                constraints.append(constraint_info)
+            elif obj.TypeId in [
+                "Assembly::Constraint",
+                "Constraint",
+                "App::Constraint",
+            ]:
                 constraint_info = {
                     "name": obj.Name,
                     "label": obj.Label,

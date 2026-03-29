@@ -382,7 +382,7 @@ def _add_view_to_page(page, view, view_name=None):
     return view
 
 
-def handle_create_view(page_name, source_object, view_name=None):
+def handle_create_view(page_name, source_object, view_name=None, projection_type=None):
     """
     Create a standard projection view on a TechDraw page.
 
@@ -390,6 +390,7 @@ def handle_create_view(page_name, source_object, view_name=None):
         page_name: Name of the TechDraw page
         source_object: Source 3D object or object name
         view_name: Optional name for the view
+        projection_type: Optional projection type ("Front", "Top", "Side", "Isometric")
 
     Returns:
         dict with success status, view info, and message
@@ -423,6 +424,17 @@ def handle_create_view(page_name, source_object, view_name=None):
             }
 
         view = TechDraw.makeDrawViewPart(source_obj, page)
+        if projection_type:
+            projection_type_lower = projection_type.lower()
+            if projection_type_lower in ("front", "isometric"):
+                view.Direction = App.Vector(0, 0, 1)
+                view.XDirection = App.Vector(1, 0, 0)
+            elif projection_type_lower == "top":
+                view.Direction = App.Vector(0, -1, 0)
+                view.XDirection = App.Vector(1, 0, 0)
+            elif projection_type_lower == "side":
+                view.Direction = App.Vector(1, 0, 0)
+                view.XDirection = App.Vector(0, 1, 0)
         _add_view_to_page(page, view, view_name)
 
         doc.recompute()
@@ -439,6 +451,7 @@ def handle_create_view(page_name, source_object, view_name=None):
                 if hasattr(view, "Position")
                 else None,
                 "scale": view.Scale if hasattr(view, "Scale") else 1.0,
+                "projectionType": projection_type if projection_type else "Default",
                 "message": f"Created view of '{source_obj.Label}' on page '{page.Label}'",
             },
         }
@@ -647,7 +660,7 @@ def handle_create_top_view(page_name, source_object, view_name=None):
         return {"success": False, "error": str(e), "data": None}
 
 
-def handle_create_side_view(page_name, source_object, view_name=None):
+def handle_create_side_view(page_name, source_object, view_name=None, side="Right"):
     """
     Create a side view on a TechDraw page.
 
@@ -655,6 +668,7 @@ def handle_create_side_view(page_name, source_object, view_name=None):
         page_name: Name of the TechDraw page
         source_object: Source 3D object or object name
         view_name: Optional name for the view
+        side: Side for the view ("Right" or "Left")
 
     Returns:
         dict with success status, view info, and message
@@ -688,8 +702,13 @@ def handle_create_side_view(page_name, source_object, view_name=None):
             }
 
         view = TechDraw.makeDrawViewPart(source_obj, page)
-        view.Direction = App.Vector(1, 0, 0)
-        view.XDirection = App.Vector(0, 1, 0)
+        side_lower = side.lower() if side else "right"
+        if side_lower == "left":
+            view.Direction = App.Vector(-1, 0, 0)
+            view.XDirection = App.Vector(0, -1, 0)
+        else:
+            view.Direction = App.Vector(1, 0, 0)
+            view.XDirection = App.Vector(0, 1, 0)
         _add_view_to_page(page, view, view_name)
 
         doc.recompute()
@@ -707,6 +726,7 @@ def handle_create_side_view(page_name, source_object, view_name=None):
                 if hasattr(view, "Direction")
                 else None,
                 "scale": view.Scale if hasattr(view, "Scale") else 1.0,
+                "side": side,
                 "message": f"Created side view of '{source_obj.Label}' on page '{page.Label}'",
             },
         }
@@ -804,7 +824,9 @@ def handle_create_section_view(page_name, source_object, section_line, view_name
         return {"success": False, "error": str(e), "data": None}
 
 
-def handle_create_projection_group(page_name, source_object, view_name=None):
+def handle_create_projection_group(
+    page_name, source_object, view_name=None, views=None
+):
     """
     Create a projection group (multiple views) on a TechDraw page.
 
@@ -812,6 +834,7 @@ def handle_create_projection_group(page_name, source_object, view_name=None):
         page_name: Name of the TechDraw page
         source_object: Source 3D object or object name
         view_name: Optional name for the projection group
+        views: Optional list of view types to create (e.g., ["Front", "Top", "Side"])
 
     Returns:
         dict with success status, group info, and message
@@ -845,6 +868,40 @@ def handle_create_projection_group(page_name, source_object, view_name=None):
             }
 
         group = TechDraw.makeDrawViewPart(source_obj, page)
+
+        direction_map = {
+            "front": (App.Vector(0, 0, 1), App.Vector(1, 0, 0)),
+            "top": (App.Vector(0, -1, 0), App.Vector(1, 0, 0)),
+            "bottom": (App.Vector(0, 1, 0), App.Vector(1, 0, 0)),
+            "left": (App.Vector(-1, 0, 0), App.Vector(0, -1, 0)),
+            "right": (App.Vector(1, 0, 0), App.Vector(0, 1, 0)),
+            "fronttop": (App.Vector(0, -1, 1), App.Vector(1, 0, 0)),
+            "isometric": (App.Vector(1, -1, 1), App.Vector(1, 0.5, 0.5)),
+        }
+
+        if views:
+            created_views = []
+            for view_type in views:
+                view_type_lower = (
+                    view_type.lower() if isinstance(view_type, str) else "front"
+                )
+                if view_type_lower in direction_map:
+                    direction, xdirection = direction_map[view_type_lower]
+                    view = TechDraw.makeDrawViewPart(source_obj, page)
+                    view.Direction = direction
+                    view.XDirection = xdirection
+                    page.addView(view)
+                    created_views.append(
+                        {
+                            "name": view.Name,
+                            "label": view.Label,
+                            "type": view_type,
+                            "direction": _format_point(direction),
+                        }
+                    )
+        else:
+            created_views = []
+
         _add_view_to_page(page, group, view_name)
 
         doc.recompute()
@@ -859,6 +916,7 @@ def handle_create_projection_group(page_name, source_object, view_name=None):
                 "sourceObject": source_obj.Label,
                 "parentPage": page.Label,
                 "scale": group.Scale if hasattr(group, "Scale") else 1.0,
+                "views": created_views,
                 "message": f"Created projection group for '{source_obj.Label}' on page '{page.Label}'",
             },
         }
@@ -1611,6 +1669,11 @@ def handle_export_to_pdf(page_name, file_path):
         return {"success": False, "error": str(e), "data": None}
 
 
+handle_get_page_list = handle_list_drawing_pages
+handle_delete_page = handle_delete_drawing_page
+handle_get_page_properties = handle_get_drawing_page_properties
+
+
 __all__ = [
     "handle_create_drawing_page",
     "handle_list_drawing_pages",
@@ -1633,4 +1696,7 @@ __all__ = [
     "handle_create_leader_line",
     "handle_export_to_svg",
     "handle_export_to_pdf",
+    "handle_get_page_list",
+    "handle_delete_page",
+    "handle_get_page_properties",
 ]

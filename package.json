@@ -1,0 +1,19 @@
+{
+  "name": "freecad",
+  "version": "1.0.0",
+  "description": "FreeCAD build scripts",
+  "scripts": {
+    "pixi:init": "pixi run initialize",
+    "pixi:configure": "pixi run configure-debug",
+    "pixi:build": "pixi run build-debug",
+    "pixi:build:release": "pixi run build-release",
+    "pixi:install": "pixi run install-debug",
+    "pixi:freecad": "pixi run freecad-debug",
+    "pixi:freecad:release": "pixi run freecad-release",
+    "pixi:debug": "pixi run build-debug && pixi run freecad-debug",
+    "pixi:full": "pixi run initialize && pixi run configure-debug && pixi run build-debug",
+    "sidecar:build": "cd sidecar && npm run build",
+    "sidecar:start": "cd sidecar && npm start",
+    "sidecar:dev": "cd sidecar && npm run dev"
+  }
+}

@@ -159,6 +159,21 @@ from .surface_handlers import (
     handle_create_offset_surface,
 )
 
+from .kinematic_handlers import (
+    handle_initialize_solver,
+    handle_solve_assembly,
+    handle_check_dof,
+    handle_set_joint_value,
+    handle_get_joint_value,
+    handle_add_drive,
+    handle_animate_assembly,
+    handle_stop_animation,
+    handle_get_animation_state,
+    handle_get_kinematic_positions,
+    handle_check_collision,
+    handle_get_joint_limits,
+)
+
 __all__ = [
     "handle_document_overview",
     "handle_object_details",

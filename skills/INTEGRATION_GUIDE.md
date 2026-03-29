@@ -81,12 +81,33 @@ This guide covers the setup, configuration, and troubleshooting for the FreeCAD 
    - `websockets` library for FreeCAD Python
    - Install: `pip install websockets`
 
-4. **Anthropic API Key**
+4. **Authentication** (choose one):
+
+   **Option A: Claude Code CLI (Recommended - no API key needed)**
+   - Install Claude Code CLI from https://claude.ai/code
+   - Log in with your Anthropic account
+   - No API key configuration required
+   
+   **Option B: Anthropic API Key**
    - Get your key from: https://console.anthropic.com/
+   - Set `ANTHROPIC_API_KEY` in environment
 
 ## Quick Start
 
 ### Windows
+
+**Option A: Claude Code CLI (Recommended)**
+
+1. **Install and log in to Claude Code**
+   - Download from https://claude.ai/code
+   - Complete the login flow
+
+2. **Run the Startup Script**
+   ```cmd
+   C:\path\to\FreeCAD\scripts\start-llm-integration.bat
+   ```
+
+**Option B: API Key**
 
 1. **Configure API Key**
    ```cmd
@@ -107,6 +128,19 @@ This guide covers the setup, configuration, and troubleshooting for the FreeCAD 
    - Type your request (e.g., "Create a cube with 10mm sides")
 
 ### Linux/Mac
+
+**Option A: Claude Code CLI (Recommended)**
+
+1. **Install and log in to Claude Code**
+   - Download from https://claude.ai/code
+   - Complete the login flow
+
+2. **Run the Startup Script**
+   ```bash
+   /path/to/FreeCAD/scripts/start-llm-integration.sh
+   ```
+
+**Option B: API Key**
 
 1. **Configure API Key**
    ```bash

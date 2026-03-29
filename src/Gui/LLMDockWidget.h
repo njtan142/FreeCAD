@@ -30,6 +30,9 @@
 #include <QPushButton>
 #include <FCGlobal.h>
 
+struct _object;
+typedef _object PyObject;
+
 namespace Gui
 {
 
@@ -78,6 +81,9 @@ public:
 
     /// Set current session name
     void setSessionName(const QString& name);
+
+    /// Register LLM callbacks with a Python module (typically FreeCADGui)
+    static void registerCallbacksWithModule(PyObject* module);
 
 public Q_SLOTS:
     /// Send the current input text as a message
