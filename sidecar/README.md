@@ -7716,6 +7716,424 @@ Export a complete animation from assembly in a single call.
 
 ---
 
+### Mesh Operation Tools
+
+Mesh operations are essential for 3D printing workflows. These tools allow you to convert between CAD and mesh formats, perform boolean operations on meshes, repair and validate meshes, and export/import various mesh formats.
+
+#### Mesh Conversion Tools
+
+##### `shape_to_mesh(shapeName: string, meshName?: string)`
+
+Converts a Part shape to a mesh object.
+
+**Parameters:**
+- `shapeName` (required): Name of the shape to convert
+- `meshName` (optional): Name for the resulting mesh object
+
+**Returns:**
+- `success`: Whether conversion succeeded
+- `meshName`: Name of the created mesh
+- `triangleCount`: Number of triangles in the mesh
+- `vertexCount`: Number of vertices
+
+**Example:**
+- Convert Box to mesh: `shape_to_mesh({ shapeName: "Box" })`
+
+##### `mesh_to_shape(meshName: string, shapeName?: string)`
+
+Converts a mesh object to a Part shape.
+
+**Parameters:**
+- `meshName` (required): Name of the mesh to convert
+- `shapeName` (optional): Name for the resulting shape
+
+**Returns:**
+- `success`: Whether conversion succeeded
+- `shapeName`: Name of the created shape
+- `volume`: Volume of the solid shape
+
+**Example:**
+- Convert mesh to shape: `mesh_to_shape({ meshName: "Mesh" })`
+
+#### Mesh Boolean Operations
+
+##### `mesh_boolean_union(meshNames: string[], resultName?: string)`
+
+Unions multiple meshes into a single mesh.
+
+**Parameters:**
+- `meshNames` (required): Array of mesh names to union
+- `resultName` (optional): Name for the resulting mesh
+
+**Returns:**
+- `success`: Whether operation succeeded
+- `resultMesh`: Name of the resulting mesh
+- `triangleCount`: Number of triangles in result
+
+**Example:**
+- Union meshes: `mesh_boolean_union({ meshNames: ["Mesh1", "Mesh2"] })`
+
+##### `mesh_boolean_difference(baseMesh: string, toolMeshes: string[], resultName?: string)`
+
+Subtracts meshes from a base mesh (cuts holes).
+
+**Parameters:**
+- `baseMesh` (required): Name of the base mesh
+- `toolMeshes` (required): Array of mesh names to subtract
+- `resultName` (optional): Name for the resulting mesh
+
+**Returns:**
+- `success`: Whether operation succeeded
+- `resultMesh`: Name of the resulting mesh
+- `triangleCount`: Number of triangles in result
+
+**Example:**
+- Cut holes: `mesh_boolean_difference({ baseMesh: "Cube", toolMeshes: ["Cylinder"] })`
+
+##### `mesh_boolean_intersection(meshNames: string[], resultName?: string)`
+
+Intersects multiple meshes to find common volume.
+
+**Parameters:**
+- `meshNames` (required): Array of mesh names to intersect
+- `resultName` (optional): Name for the resulting mesh
+
+**Returns:**
+- `success`: Whether operation succeeded
+- `resultMesh`: Name of the resulting mesh
+- `triangleCount`: Number of triangles in result
+
+**Example:**
+- Find overlap: `mesh_boolean_intersection({ meshNames: ["Mesh1", "Mesh2"] })`
+
+#### Mesh Decimation and Optimization
+
+##### `decimate_mesh(meshName: string, targetRatio: number, resultName?: string)`
+
+Reduces mesh complexity by removing triangles.
+
+**Parameters:**
+- `meshName` (required): Name of the mesh to decimate
+- `targetRatio` (required): Target reduction ratio (0.0 to 1.0), e.g., 0.5 = 50% of original
+- `resultName` (optional): Name for the resulting mesh
+
+**Returns:**
+- `success`: Whether operation succeeded
+- `originalTriangles`: Original triangle count
+- `newTriangles`: New triangle count after decimation
+- `reduction`: Actual reduction ratio achieved
+
+**Example:**
+- Decimate to 50%: `decimate_mesh({ meshName: "Mesh", targetRatio: 0.5 })`
+
+##### `optimize_mesh(meshName: string, tolerance?: number, resultName?: string)`
+
+Optimizes mesh topology and reduces file size.
+
+**Parameters:**
+- `meshName` (required): Name of the mesh to optimize
+- `tolerance` (optional): Optimization tolerance
+- `resultName` (optional): Name for the resulting mesh
+
+**Returns:**
+- `success`: Whether operation succeeded
+- `resultMesh`: Name of the resulting mesh
+
+**Example:**
+- Optimize mesh: `optimize_mesh({ meshName: "Mesh" })`
+
+#### Mesh Repair Tools
+
+##### `repair_mesh(meshName: string, options?: { fixHoles?: boolean, fixNormals?: boolean, removeDuplicates?: boolean })`
+
+Performs comprehensive mesh repair.
+
+**Parameters:**
+- `meshName` (required): Name of the mesh to repair
+- `options` (optional): Object with repair options
+  - `fixHoles`: Fill holes in the mesh
+  - `fixNormals`: Correct face normals
+  - `removeDuplicates`: Remove duplicate triangles
+
+**Returns:**
+- `success`: Whether repair succeeded
+- `repairedMesh`: Name of the repaired mesh
+- `fixesApplied`: Number of fixes applied
+
+**Example:**
+- Full repair: `repair_mesh({ meshName: "Mesh", options: { fixHoles: true, fixNormals: true, removeDuplicates: true } })`
+
+##### `fill_holes(meshName: string, maxHoleSize?: number)`
+
+Fills holes in a mesh to make it watertight.
+
+**Parameters:**
+- `meshName` (required): Name of the mesh
+- `maxHoleSize` (optional): Maximum hole size to fill
+
+**Returns:**
+- `success`: Whether operation succeeded
+- `filledMesh`: Name of the resulting mesh
+- `holesFilled`: Number of holes filled
+
+**Example:**
+- Fill holes: `fill_holes({ meshName: "Mesh" })`
+
+##### `fix_mesh_normals(meshName: string)`
+
+Fixes face normals of a mesh.
+
+**Parameters:**
+- `meshName` (required): Name of the mesh
+
+**Returns:**
+- `success`: Whether operation succeeded
+- `fixedMesh`: Name of the resulting mesh
+- `normalsFixed`: Number of normals corrected
+
+**Example:**
+- Fix normals: `fix_mesh_normals({ meshName: "Mesh" })`
+
+#### Mesh Validation Tools
+
+##### `validate_mesh(meshName: string)`
+
+Validates mesh integrity and checks for issues.
+
+**Parameters:**
+- `meshName` (required): Name of the mesh to validate
+
+**Returns:**
+- `success`: Whether validation completed
+- `isValid`: Whether mesh is valid
+- `issues`: Array of detected issues
+- `triangleCount`: Number of triangles
+
+**Example:**
+- Validate mesh: `validate_mesh({ meshName: "Mesh" })`
+
+##### `check_watertight(meshName: string)`
+
+Checks if a mesh is watertight (closed, printable).
+
+**Parameters:**
+- `meshName` (required): Name of the mesh to check
+
+**Returns:**
+- `success`: Whether check completed
+- `isWatertight`: Whether mesh is watertight
+- `holesCount`: Number of holes detected
+
+**Example:**
+- Check watertight: `check_watertight({ meshName: "Mesh" })`
+
+##### `get_mesh_info(meshName: string)`
+
+Gets detailed information about a mesh.
+
+**Parameters:**
+- `meshName` (required): Name of the mesh
+
+**Returns:**
+- `success`: Whether operation succeeded
+- `triangleCount`: Number of triangles
+- `vertexCount`: Number of vertices
+- `area`: Surface area
+- `volume`: Volume (if closed)
+- `bounds`: Bounding box dimensions
+
+**Example:**
+- Get mesh info: `get_mesh_info({ meshName: "Mesh" })`
+
+#### Mesh Scale and Offset
+
+##### `scale_mesh(meshName: string, scaleFactor: number, resultName?: string)`
+
+Scales a mesh uniformly.
+
+**Parameters:**
+- `meshName` (required): Name of the mesh to scale
+- `scaleFactor` (required): Scale factor (e.g., 2.0 = double size, 0.5 = half)
+- `resultName` (optional): Name for the resulting mesh
+
+**Returns:**
+- `success`: Whether operation succeeded
+- `scaledMesh`: Name of the resulting mesh
+- `scaleFactor`: Applied scale factor
+- `originalSize`: Original bounding box size
+- `newSize`: New bounding box size
+
+**Example:**
+- Double size: `scale_mesh({ meshName: "Mesh", scaleFactor: 2.0 })`
+
+##### `offset_mesh(meshName: string, offsetDistance: number, resultName?: string)`
+
+Creates an offset (shell) mesh.
+
+**Parameters:**
+- `meshName` (required): Name of the mesh
+- `offsetDistance` (required): Offset distance (positive = outward, negative = inward)
+- `resultName` (optional): Name for the resulting mesh
+
+**Returns:**
+- `success`: Whether operation succeeded
+- `offsetMesh`: Name of the resulting mesh
+- `offsetDistance`: Applied offset distance
+- `triangleCount`: Number of triangles in result
+
+**Example:**
+- Shell outward: `offset_mesh({ meshName: "Mesh", offsetDistance: 1.0 })`
+
+#### Mesh Export Tools
+
+##### `export_stl(meshName: string, outputPath: string, binary?: boolean, precision?: number)`
+
+Exports a mesh to STL format for 3D printing.
+
+**Parameters:**
+- `meshName` (required): Name of the mesh to export
+- `outputPath` (required): Full path for the output STL file
+- `binary` (optional): Export as binary STL (default true), false for ASCII
+- `precision` (optional): Angular deflection precision
+
+**Returns:**
+- `success`: Whether export succeeded
+- `outputPath`: Path where file was saved
+- `fileSize`: Size of the exported file
+- `triangleCount`: Number of triangles exported
+
+**Example:**
+- Export STL: `export_stl({ meshName: "Mesh", outputPath: "C:/print.stl" })`
+
+##### `export_3mf(meshName: string, outputPath: string)`
+
+Exports a mesh to 3MF format (preserves colors and materials).
+
+**Parameters:**
+- `meshName` (required): Name of the mesh to export
+- `outputPath` (required): Full path for the output 3MF file
+
+**Returns:**
+- `success`: Whether export succeeded
+- `outputPath`: Path where file was saved
+- `fileSize`: Size of the exported file
+- `triangleCount`: Number of triangles exported
+
+**Example:**
+- Export 3MF: `export_3mf({ meshName: "Mesh", outputPath: "C:/print.3mf" })`
+
+##### `export_obj(meshName: string, outputPath: string, includeMaterials?: boolean)`
+
+Exports a mesh to OBJ format (Wavefront).
+
+**Parameters:**
+- `meshName` (required): Name of the mesh to export
+- `outputPath` (required): Full path for the output OBJ file
+- `includeMaterials` (optional): Include MTL material file (default true)
+
+**Returns:**
+- `success`: Whether export succeeded
+- `outputPath`: Path where file was saved
+- `fileSize`: Size of the exported file
+- `triangleCount`: Number of triangles exported
+
+**Example:**
+- Export OBJ: `export_obj({ meshName: "Mesh", outputPath: "C:/model.obj" })`
+
+##### `export_ply(meshName: string, outputPath: string)`
+
+Exports a mesh to PLY format.
+
+**Parameters:**
+- `meshName` (required): Name of the mesh to export
+- `outputPath` (required): Full path for the output PLY file
+
+**Returns:**
+- `success`: Whether export succeeded
+- `outputPath`: Path where file was saved
+- `fileSize`: Size of the exported file
+- `triangleCount`: Number of triangles exported
+
+**Example:**
+- Export PLY: `export_ply({ meshName: "Mesh", outputPath: "C:/model.ply" })`
+
+#### Mesh Import Tools
+
+##### `import_stl(inputPath: string, meshName?: string)`
+
+Imports an STL file as a mesh object.
+
+**Parameters:**
+- `inputPath` (required): Full path to the STL file to import
+- `meshName` (optional): Name for the imported mesh object
+
+**Returns:**
+- `success`: Whether import succeeded
+- `meshName`: Name of the imported mesh
+- `triangleCount`: Number of triangles
+- `vertexCount`: Number of vertices
+
+**Example:**
+- Import STL: `import_stl({ inputPath: "C:/part.stl" })`
+
+##### `import_3mf(inputPath: string, meshName?: string)`
+
+Imports a 3MF file as a mesh object (preserves colors and materials).
+
+**Parameters:**
+- `inputPath` (required): Full path to the 3MF file to import
+- `meshName` (optional): Name for the imported mesh object
+
+**Returns:**
+- `success`: Whether import succeeded
+- `meshName`: Name of the imported mesh
+- `triangleCount`: Number of triangles
+- `vertexCount`: Number of vertices
+
+**Example:**
+- Import 3MF: `import_3mf({ inputPath: "C:/part.3mf" })`
+
+##### `import_obj(inputPath: string, meshName?: string)`
+
+Imports an OBJ file as a mesh object.
+
+**Parameters:**
+- `inputPath` (required): Full path to the OBJ file to import
+- `meshName` (optional): Name for the imported mesh object
+
+**Returns:**
+- `success`: Whether import succeeded
+- `meshName`: Name of the imported mesh
+- `triangleCount`: Number of triangles
+- `vertexCount`: Number of vertices
+
+**Example:**
+- Import OBJ: `import_obj({ inputPath: "C:/model.obj" })`
+
+#### Mesh Workflow Guidance
+
+**3D Printing Preparation Workflow:**
+
+```
+1. Convert CAD to mesh: shape_to_mesh({ shapeName: "Body" })
+2. Validate mesh: validate_mesh({ meshName: "Body_Mesh" })
+3. Check watertight: check_watertight({ meshName: "Body_Mesh" })
+4. If not watertight, repair: repair_mesh({ meshName: "Body_Mesh", options: { fixHoles: true } })
+5. Decimate if needed: decimate_mesh({ meshName: "Body_Mesh", targetRatio: 0.5 })
+6. Export for printing: export_stl({ meshName: "Body_Mesh", outputPath: "C:/print.stl" })
+```
+
+**Mesh Format Comparison:**
+
+| Format | Best Use Case | Pros | Cons |
+|--------|---------------|------|------|
+| STL | 3D printing | Universal support, small file size | No colors/materials |
+| 3MF | Full 3D printing metadata | Preserves colors, materials, metadata | Less universal |
+| OBJ | Exchange with other software | Wide support, includes materials | Larger files |
+| PLY | Point clouds, color data | Good for scanning data | Less common in CAD |
+
+---
+
 ### Export Tool (Legacy)
 
 #### `export_model(filePath: string, format: string)`
