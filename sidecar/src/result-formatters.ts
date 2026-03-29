@@ -3008,3 +3008,265 @@ export function formatFEAResults(data: any): string {
 
   return lines.join('\n');
 }
+
+export function formatPathJobCreation(data: any): string {
+  if (!data) return 'No Path job data';
+
+  const lines: string[] = [];
+  lines.push(`Path Job: ${data.jobLabel || data.jobName} (${data.jobName})`);
+  lines.push(`Document: ${data.documentName || '(current)'}`);
+  lines.push('');
+
+  if (data.success) {
+    lines.push('Status: Created successfully');
+    if (data.operations) {
+      lines.push(`Operations: ${data.operations}`);
+    }
+    if (data.toolController) {
+      lines.push(`Tool Controller: ${data.toolController}`);
+    }
+    if (data.stock) {
+      lines.push(`Stock: ${data.stock}`);
+    }
+  } else {
+    lines.push(`Error: ${data.error || 'Unknown error'}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatPathJobList(data: any): string {
+  if (!data) return 'No Path job data';
+
+  const lines: string[] = [];
+  lines.push(`Total Path Jobs: ${data.jobCount || 0}`);
+  lines.push('');
+
+  if (data.jobs && data.jobs.length > 0) {
+    lines.push(formatTableRow(['Name', 'Label', 'Operations', 'Status']));
+    lines.push('─'.repeat(60));
+
+    for (const job of data.jobs) {
+      lines.push(formatTableRow([
+        job.name || '-',
+        job.label || '-',
+        String(job.operationCount || 0),
+        job.status || 'Unknown'
+      ]));
+    }
+  } else {
+    lines.push('(No Path jobs in document)');
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatPathToolCreation(data: any): string {
+  if (!data) return 'No Path tool data';
+
+  const lines: string[] = [];
+  lines.push(`Path Tool: ${data.toolLabel || data.toolName} (${data.toolName})`);
+  lines.push(`Document: ${data.documentName || '(current)'}`);
+  lines.push('');
+
+  if (data.success) {
+    lines.push('Status: Created successfully');
+    if (data.toolType) {
+      lines.push(`Tool Type: ${data.toolType}`);
+    }
+    if (data.diameter) {
+      lines.push(`Diameter: ${data.diameter}`);
+    }
+    if (data.cuttingEdgeAngle) {
+      lines.push(`Cutting Edge Angle: ${data.cuttingEdgeAngle}`);
+    }
+    if (data.toolController) {
+      lines.push(`Tool Controller: ${data.toolController}`);
+    }
+  } else {
+    lines.push(`Error: ${data.error || 'Unknown error'}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatPathToolList(data: any): string {
+  if (!data) return 'No Path tool data';
+
+  const lines: string[] = [];
+  lines.push(`Total Path Tools: ${data.toolCount || 0}`);
+  lines.push('');
+
+  if (data.tools && data.tools.length > 0) {
+    lines.push(formatTableRow(['Name', 'Label', 'Type', 'Diameter']));
+    lines.push('─'.repeat(60));
+
+    for (const tool of data.tools) {
+      lines.push(formatTableRow([
+        tool.name || '-',
+        tool.label || '-',
+        tool.toolType || '-',
+        tool.diameter ? `${tool.diameter}` : '-'
+      ]));
+    }
+  } else {
+    lines.push('(No Path tools in document)');
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatPathOperation(data: any): string {
+  if (!data) return 'No Path operation data';
+
+  const lines: string[] = [];
+  lines.push(`Path Operation: ${data.operationLabel || data.operationName} (${data.operationName})`);
+  lines.push(`Document: ${data.documentName || '(current)'}`);
+  lines.push('');
+
+  if (data.success) {
+    lines.push(`Operation Type: ${data.operationType || 'Path'}`);
+    if (data.jobName) {
+      lines.push(`Job: ${data.jobName}`);
+    }
+    if (data.baseObject) {
+      lines.push(`Base Object: ${data.baseObject}`);
+    }
+    if (data.pathLength !== undefined) {
+      lines.push(`Path Length: ${data.pathLength.toFixed(2)}`);
+    }
+    if (data.tool) {
+      lines.push(`Tool: ${data.tool}`);
+    }
+  } else {
+    lines.push(`Error: ${data.error || 'Unknown error'}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatPathDressup(data: any): string {
+  if (!data) return 'No Path dressup data';
+
+  const lines: string[] = [];
+  lines.push(`Path Dressup: ${data.dressupLabel || data.dressupName} (${data.dressupName})`);
+  lines.push(`Document: ${data.documentName || '(current)'}`);
+  lines.push('');
+
+  if (data.success) {
+    lines.push(`Dressup Type: ${data.dressupType || 'Dressup'}`);
+    if (data.baseOperation) {
+      lines.push(`Base Operation: ${data.baseOperation}`);
+    }
+    if (data.parameters) {
+      for (const [key, value] of Object.entries(data.parameters)) {
+        lines.push(`${key}: ${value}`);
+      }
+    }
+  } else {
+    lines.push(`Error: ${data.error || 'Unknown error'}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatGCodeExport(data: any): string {
+  if (!data) return 'No G-code export data';
+
+  const lines: string[] = [];
+
+  if (data.success) {
+    lines.push('G-code Export: Successful');
+    if (data.filePath) {
+      lines.push(`Output File: ${data.filePath}`);
+    }
+    if (data.lineCount !== undefined) {
+      lines.push(`Lines: ${data.lineCount}`);
+    }
+    if (data.toolChanges) {
+      lines.push(`Tool Changes: ${data.toolChanges}`);
+    }
+    if (data.rapidMoves !== undefined) {
+      lines.push(`Rapid Moves: ${data.rapidMoves}`);
+    }
+    if (data.feedMoves !== undefined) {
+      lines.push(`Feed Moves: ${data.feedMoves}`);
+    }
+  } else {
+    lines.push(`G-code Export Failed: ${data.error || 'Unknown error'}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatPathSimulation(data: any): string {
+  if (!data) return 'No Path simulation data';
+
+  const lines: string[] = [];
+
+  if (data.success) {
+    lines.push('Path Simulation: Complete');
+    if (data.jobName) {
+      lines.push(`Job: ${data.jobName}`);
+    }
+    if (data.duration !== undefined) {
+      lines.push(`Duration: ${data.duration.toFixed(2)}s`);
+    }
+    if (data.toolpathLength !== undefined) {
+      lines.push(`Toolpath Length: ${data.toolpathLength.toFixed(2)}`);
+    }
+    if (data.rapidLength !== undefined) {
+      lines.push(`Rapid Length: ${data.rapidLength.toFixed(2)}`);
+    }
+    if (data.feedLength !== undefined) {
+      lines.push(`Feed Length: ${data.feedLength.toFixed(2)}`);
+    }
+    if (data.toolChanges !== undefined) {
+      lines.push(`Tool Changes: ${data.toolChanges}`);
+    }
+  } else {
+    lines.push(`Simulation Error: ${data.error || 'Unknown error'}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
