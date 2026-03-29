@@ -1,6 +1,6 @@
 # Cycle Count
 
-**Current Cycle**: 11
+**Current Cycle**: 15
 
 ## History
 - Cycle 1: LLM Dock Widget (Qt/C++) - COMPLETED
@@ -13,4 +13,8 @@
 - Cycle 8: Sketcher Constraint Tools - COMPLETED
 - Cycle 9: PartDesign Feature Tools - COMPLETED
 - Cycle 10: Boolean Operation Tools - COMPLETED
-- Cycle 11: In Progress
+- Cycle 11: Assembly Constraint Tools - COMPLETED
+- Cycle 12: Draft Workbench Tools - COMPLETED
+- Cycle 13: TechDraw Workbench Tools - COMPLETED
+- Cycle 14: Pattern and Array Tools - COMPLETED
+- Cycle 15: In Progress
