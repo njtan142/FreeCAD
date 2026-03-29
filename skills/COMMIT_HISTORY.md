@@ -442,3 +442,43 @@ The original large commit for TechDraw Workbench Tools have been refactored into
 - **Files modified**: 4 (__init__.py, agent-tools.ts, result-formatters.ts, sidecar/README.md)
 - **Total insertions**: ~4,410 lines
 - **Total deletions**: ~14 lines
+
+---
+
+## Cycle 14 - Incremental Commits
+
+The original large commit for Pattern and Array Tools have been refactored into 5 incremental commits.
+
+| Commit Hash | Message | Files Changed |
+|-------------|---------|---------------|
+| 92135db77a | feat(python): add pattern handlers for FreeCAD PartDesign operations | pattern_handlers.py |
+| 4c2495f3de | feat(python): register pattern handlers in llm_bridge package | __init__.py |
+| 988c414cf8 | feat(sidecar): add 9 pattern tools to agent-tools | agent-tools.ts |
+| f8c246b49c | feat(sidecar): add result formatters for pattern operations | result-formatters.ts |
+| 67c03df060 | docs(sidecar): document pattern and array tools in README | sidecar/README.md |
+
+### Commit Progression
+
+1. **Python pattern handlers**: Added pattern_handlers.py with 9 handlers for pattern and array operations:
+   - Pattern creation: linear, polar, rectangular, path
+   - Pattern updates: linear, polar
+   - Pattern management: info, delete, list
+
+2. **Handler registration**: Registered all 9 pattern handlers in llm_bridge/__init__.py and exported in __all__ list for WebSocket bridge accessibility
+
+3. **Agent tools implementation**: Added 9 pattern tools to agent-tools.ts:
+   - 4 creation tools (create_linear_pattern, create_polar_pattern, create_rectangular_pattern, create_path_pattern)
+   - 2 update tools (update_linear_pattern, update_polar_pattern)
+   - 3 management tools (get_pattern_info, delete_pattern, list_patterns)
+
+4. **Result formatters**: Added 3 pattern-specific result formatters to result-formatters.ts (formatPatternCreation, formatPatternUpdate, formatPatternInfo)
+
+5. **Sidecar documentation**: Updated sidecar/README.md with comprehensive documentation for all 9 pattern tools including usage examples, parameter descriptions, and pattern type reference
+
+### Summary
+
+- **Total commits**: 5
+- **Files created**: 1 (pattern_handlers.py)
+- **Files modified**: 4 (__init__.py, agent-tools.ts, result-formatters.ts, sidecar/README.md)
+- **Total insertions**: ~1,730 lines
+- **Total deletions**: ~9 lines
