@@ -1,307 +1,390 @@
-## Status: IN PROGRESS (Cycle 16)
+## Status: IN PROGRESS (Cycle 20)
 
-# Cycle 16: Kinematic Solver and Motion Animation Tools
+# Cycle 20: Multi-Agent Backend Support - OpenCode Integration
 
 ## Overview
 
-Enable the LLM to simulate and animate mechanical assemblies by driving kinematic joints and solving constraint-based mechanisms. Users describe "open this hinge 45 degrees" or "animate this piston-crank mechanism" and Claude executes the appropriate FreeCAD API calls to solve and visualize the motion.
+Add OpenCode as an alternative agent backend to the FreeCAD LLM integration. OpenCode supports multiple LLM providers (OpenAI, Anthropic, Google, local models) and would allow users to use GPT-4, Gemini, or local models for CAD operations.
 
-Kinematic simulation is essential for mechanical design verification, range-of-motion analysis, and creating animated documentation.
+This requires an adapter layer to translate between OpenCode's tool protocol and our MCP tools, plus backend abstraction in the sidecar.
 
 ## Prerequisites
 
-- `sidecar/src/agent-tools.ts` - Custom tools infrastructure
-- `sidecar/src/result-formatters.ts` - Result formatting utilities
-- `src/Mod/LLMBridge/llm_bridge/` - Python bridge with existing handlers
-- `src/Mod/LLMBridge/llm_bridge/assembly_handlers.py` - Existing assembly constraint handlers
-- Basic assembly tools (create_assembly, add constraints)
+- `sidecar/src/index.ts` - Current main entry point (tightly coupled to Claude Agent SDK)
+- `sidecar/src/agent-tools.ts` - Existing MCP tool definitions
+- `sidecar/src/dock-server.ts` - WebSocket server for dock widget
+- `sidecar/src/freecad-bridge.ts` - WebSocket client to FreeCAD
+- `sidecar/src/session-manager.ts` - Session management
+- `sidecar/src/context-injector.ts` - Context injection
 
 ## Tasks
 
-### 1. Kinematic Solver Handler Module
+### 1. Backend Abstraction Layer
 
-**File**: `src/Mod/LLMBridge/llm_bridge/kinematic_handlers.py` (new file)
+**File**: `sidecar/src/agent-backend.ts` (new file)
 
-Create Python handlers for kinematic simulation:
+Create the agent backend interface:
 
-```python
-# Solver Control
-def handle_initialize_solver(assembly_name) -> dict
-def handle_solve_assembly(assembly_name, max_iterations) -> dict
-def handle_check_dof(assembly_name) -> dict
+```typescript
+export interface AgentBackend {
+  name: string;
+  description: string;
+  
+  // Initialize the backend with config
+  initialize(config: BackendConfig): Promise<void>;
+  
+  // Send a message and get response stream
+  sendMessage(
+    message: string,
+    context: MessageContext,
+    tools: MCPTool[],
+    onChunk: (chunk: string) => void
+  ): Promise<AgentResponse>;
+  
+  // Check if backend is available/healthy
+  healthCheck(): Promise<boolean>;
+  
+  // Cleanup
+  disconnect(): Promise<void>;
+}
 
-# Joint/Driver Operations
-def handle_set_joint_value(joint_name, value) -> dict
-def handle_get_joint_value(joint_name) -> dict
-def handle_add_drive(joint_name, start_value, end_value, duration, motion_type) -> dict
+export interface BackendConfig {
+  apiKey?: string;
+  baseUrl?: string;
+  model?: string;
+  temperature?: number;
+  maxTokens?: number;
+}
 
-# Animation
-def handle_animate_assembly(assembly_name, duration, frame_rate) -> dict
-def handle_stop_animation() -> dict
-def handle_get_animation_state() -> dict
+export interface AgentResponse {
+  content: string;
+  toolCalls?: ToolCall[];
+  error?: string;
+}
+```
 
-# Kinematic Analysis
-def handle_get_kinematic_positions(assembly_name) -> dict
-def handle_check_collision(during_motion) -> dict
-def handle_get_joint_limits(joint_name) -> dict
+**Acceptance Criteria**:
+- [ ] Interface is clean and minimal
+- [ ] All required methods defined
+- [ ] TypeScript types properly exported
+
+### 2. Claude Backend Adapter (Refactor)
+
+**File**: `sidecar/src/backends/claude-backend.ts` (new file)
+
+Refactor existing Claude Code logic into a proper backend adapter:
+
+```typescript
+import { AgentBackend, BackendConfig, AgentResponse } from '../agent-backend';
+import { MessageContext, MCPTool } from '../types';
+
+export class ClaudeBackend implements AgentBackend {
+  readonly name = 'claude';
+  readonly description = 'Anthropic Claude (via Claude Code CLI)';
+  
+  private childProcess: ChildProcess | null = null;
+  
+  async initialize(config: BackendConfig): Promise<void> { ... }
+  async sendMessage(...): Promise<AgentResponse> { ... }
+  async healthCheck(): Promise<boolean> { ... }
+  async disconnect(): Promise<void> { ... }
+}
+```
+
+**Acceptance Criteria**:
+- [ ] Existing Claude Code functionality preserved
+- [ ] Implements AgentBackend interface
+- [ ] Proper process management for CLI
+
+### 3. OpenCode Backend Adapter
+
+**File**: `sidecar/src/backends/opencode-backend.ts` (new file)
+
+Create OpenCode backend adapter:
+
+```typescript
+import { AgentBackend, BackendConfig, AgentResponse } from '../agent-backend';
+import { MessageContext, MCPTool } from '../types';
+import { spawn } from 'child_process';
+import { ToolCall } from '../types';
+
+export class OpenCodeBackend implements AgentBackend {
+  readonly name = 'opencode';
+  readonly description = 'Multi-LLM backend (OpenAI, Anthropic, Google, local)';
+  
+  private process: ChildProcess | null = null;
+  private MessageContext: MessageContext;
+  
+  async initialize(config: BackendConfig): Promise<void> { ... }
+  
+  async sendMessage(
+    message: string,
+    context: MessageContext,
+    tools: MCPTool[],
+    onChunk: (chunk: string) => void
+  ): Promise<AgentResponse> { ... }
+  
+  async healthCheck(): Promise<boolean> { ... }
+  async disconnect(): Promise<void> { ... }
+  
+  // OpenCode-specific tool translation
+  private translateToolsToOpenCode(tools: MCPTool[]): any { ... }
+  private parseOpenCodeResponse(response: any): AgentResponse { ... }
+}
 ```
 
 Key implementation details:
-- Use FreeCAD's built-in solver (Assembly3Workbench solver or robotic module)
-- Support degrees of freedom (DOF) analysis
-- Implement joint drivers for animation
-- Support linear and angular joint types
-- Collision detection during motion
-- Keyframe-based animation output
+- OpenCode uses a different tool calling format (function_call vs tool_use)
+- Need to translate our MCP tool definitions to OpenCode's format
+- OpenCode streams responses via stdout
+- Configuration via environment variables or config file
 
 **Acceptance Criteria**:
-- [ ] Solver initializes for assembly
-- [ ] Joint values can be set and retrieved
-- [ ] DOF count reported correctly
-- [ ] Animation plays through duration
+- [ ] Connects to OpenCode CLI
+- [ ] Sends properly formatted tools to OpenCode
+- [ ] Receives and parses tool call responses
+- [ ] Streams responses back to caller
 
-### 2. Kinematic Tools
+### 4. Backend Registry
 
-**File**: `sidecar/src/agent-tools.ts`
+**File**: `sidecar/src/backend-registry.ts` (new file)
 
-Add tools for kinematic operations:
-
-**Solver Tools:**
-1. **`initialize_kinematic_solver`** - Initialize solver for assembly:
-   - Parameters: `assemblyName`
-   - Returns: `{success, assemblyName, dofCount, jointCount, message}`
-   - Examples: "Initialize solver for this assembly", "Setup kinematic analysis"
-
-2. **`solve_assembly`** - Solve kinematic positions:
-   - Parameters: `assemblyName`, `maxIterations` (optional, default 100)
-   - Returns: `{success, assemblyName, iterations, converged, positions, message}`
-   - Examples: "Solve this mechanism", "Calculate positions"
-
-3. **`checkDegreesOfFreedom`** - Check DOF analysis:
-   - Parameters: `assemblyName`
-   - Returns: `{success, assemblyName, totalDof, constrainedDof, freeDof, message}`
-   - Examples: "Show DOF analysis", "How many degrees of freedom?"
-
-**Joint Control Tools:**
-4. **`set_joint_value`** - Set a joint/driver value:
-   - Parameters: `jointName`, `value` (float, degrees or mm)
-   - Returns: `{success, jointName, value, message}`
-   - Examples: "Rotate hinge to 45 degrees", "Move slider 20mm"
-
-5. **`get_joint_value`** - Get current joint value:
-   - Parameters: `jointName`
-   - Returns: `{success, jointName, value, unit, message}`
-   - Examples: "What's the current angle?", "Show joint position"
-
-6. **`get_joint_limits`** - Get joint limits:
-   - Parameters: `jointName`
-   - Returns: `{success, jointName, minValue, maxValue, unit, hasLimits, message}`
-   - Examples: "Show joint limits", "Range of motion for this joint"
-
-**Animation Tools:**
-7. **`drive_joint`** - Create joint animation sequence:
-   - Parameters: `jointName`, `startValue`, `endValue`, `duration` (float, seconds), `motionType` ("linear", "ease_in_out", "sine")
-   - Returns: `{success, jointName, startValue, endValue, duration, frames, message}`
-   - Examples: "Open hinge from 0 to 90 degrees over 2 seconds", "Animate crank rotation"
-
-8. **`animate_assembly`** - Run full assembly animation:
-   - Parameters: `assemblyName`, `duration` (float, seconds), `frameRate` (optional, default 30)
-   - Returns: `{success, assemblyName, duration, totalFrames, message}`
-   - Examples: "Animate the mechanism for 5 seconds", "Play full motion cycle"
-
-9. **`stop_animation`** - Stop running animation:
-   - Parameters: none
-   - Returns: `{success, message}`
-   - Examples: "Stop animation"
-
-10. **`get_animation_state`** - Get current animation status:
-    - Parameters: none
-    - Returns: `{success, isPlaying, currentFrame, totalFrames, duration, message}`
-    - Examples: "Is animation playing?", "Current animation status"
-
-**Analysis Tools:**
-11. **`get_kinematic_positions`** - Get all joint positions after solve:
-    - Parameters: `assemblyName`
-    - Returns: `{success, assemblyName, positions: [{joint, value, unit}], message}`
-    - Examples: "Show all joint positions", "Current configuration"
-
-12. **`check_collision`** - Check for collisions during motion:
-    - Parameters: `assemblyName`
-    - Returns: `{success, assemblyName, hasCollision, collisionPairs, message}`
-    - Examples: "Check for collisions", "Any interference?"
-
-**Acceptance Criteria**:
-- [ ] All kinematic tools work correctly
-- [ ] Solver converges for valid assemblies
-- [ ] Animation plays smoothly
-- [ ] Joint values update correctly
-
-### 3. Python Bridge Extensions
-
-**File**: `src/Mod/LLMBridge/llm_bridge/kinematic_handlers.py` (extend)
-
-Add WebSocket-accessible wrapper functions:
-
-```python
-def handle_initialize_solver_request(assembly_name)
-def handle_solve_request(assembly_name, max_iterations)
-def handle_set_joint_request(joint_name, value)
-def handle_add_drive_request(joint_name, start_value, end_value, duration, motion_type)
-def handle_animate_request(assembly_name, duration, frame_rate)
-# ... etc for all tools
-```
-
-These wrap the core handlers and add:
-- Assembly validation
-- Joint type detection
-- Unit conversion (degrees/radians, mm/inches)
-- Error handling for over-constrained or under-constrained assemblies
-- Undo stack integration
-
-**Acceptance Criteria**:
-- [ ] Functions accessible via WebSocket
-- [ ] Changes are undoable
-- [ ] Errors reported clearly
-
-### 4. Result Formatters Update
-
-**File**: `sidecar/src/result-formatters.ts` (extend)
-
-Add formatters for kinematic operations:
+Central registry for backend management:
 
 ```typescript
-function formatSolverInit(result: SolverInitResult): string
-function formatSolveResult(result: SolveResult): string
-function formatDOFResult(result: DOFResult): string
-function formatJointValue(result: JointValueResult): string
-function formatJointLimits(result: JointLimitsResult): string
-function formatDriveResult(result: DriveResult): string
-function formatAnimationResult(result: AnimationResult): string
-function formatKinematicPositions(result: PositionsResult): string
-function formatCollisionResult(result: CollisionResult): string
+import { AgentBackend } from './agent-backend';
+import { ClaudeBackend } from './backends/claude-backend';
+import { OpenCodeBackend } from './backends/opencode-backend';
+
+export class BackendRegistry {
+  private backends: Map<string, AgentBackend> = new Map();
+  private currentBackend: AgentBackend | null = null;
+  
+  register(backend: AgentBackend): void { ... }
+  get(name: string): AgentBackend | undefined { ... }
+  setCurrent(name: string): void { ... }
+  getCurrent(): AgentBackend | null { ... }
+  listBackends(): Array<{name: string, description: string}> { ... }
+}
+
+export const backendRegistry = new BackendRegistry();
 ```
 
-Output should be human-readable:
-- "Solver initialized: 3 DOF, 5 joints"
-- "Solved in 12 iterations, converged: true"
-- "Hinge joint: 45.0 degrees (range: 0-180)"
-- "Animation: 5.0s, 150 frames"
-- "No collisions detected"
-- "Positions: {Hinge: 45°, Slider: 20mm}"
+**Acceptance Criteria**:
+- [ ] Can register multiple backends
+- [ ] Can switch between backends
+- [ ] Current backend is tracked
+
+### 5. Backend Selection in Main Entry
+
+**File**: `sidecar/src/index.ts` (modify)
+
+Update main entry point to support backend selection:
+
+```typescript
+import { backendRegistry } from './backend-registry';
+import { OpenCodeBackend } from './backends/opencode-backend';
+import { ClaudeBackend } from './backends/claude-backend';
+
+// CLI argument parsing
+const args = parseArgs(process.argv);
+const selectedBackend = args.backend || 'claude';
+
+// Register backends
+backendRegistry.register(new ClaudeBackend());
+backendRegistry.register(new OpenCodeBackend());
+
+// Initialize selected backend
+const backend = backendRegistry.get(selectedBackend);
+if (!backend) {
+  console.error(`Unknown backend: ${selectedBackend}`);
+  process.exit(1);
+}
+
+await backend.initialize(getBackendConfig(selectedBackend));
+```
+
+CLI flags:
+- `--backend <name>` or `-b <name>` - Select backend (default: claude)
+- `--list-backends` - List available backends
+- `--openai`, `--anthropic`, `--google` - Quick backend+provider selection
 
 **Acceptance Criteria**:
-- [ ] Results are concise but informative
-- [ ] Units shown clearly
-- [ ] Success/failure clearly indicated
+- [ ] Default backend is Claude (backward compatible)
+- [ ] `--backend opencode` switches to OpenCode
+- [ ] `--list-backends` shows available options
+- [ ] Environment variables configure each backend
 
-### 5. Sidecar README Update
+### 6. Tool Translation Layer
 
-**File**: `sidecar/README.md`
+**File**: `sidecar/src/tool-translator.ts` (new file)
 
-Document the new tools:
-- Tool names and parameters
-- Kinematic workflow reference
-- Usage examples for each tool type
-- Common mechanisms (hinges, sliders, crank-slider, etc.)
+Translate between MCP tool format and backend-specific formats:
+
+```typescript
+import { MCPTool } from './types';
+
+export interface ToolTranslator {
+  toBackendFormat(tools: MCPTool[]): any;
+  fromBackendFormat(response: any): ToolCall[];
+}
+
+export class OpenCodeToolTranslator implements ToolTranslator {
+  toBackendFormat(tools: MCPTool[]): any {
+    // Convert MCP tools to OpenCode function format
+    // OpenCode uses: { functions: [{ name, description, parameters }] }
+  }
+  
+  fromBackendFormat(response: any): ToolCall[] {
+    // Parse OpenCode's function_call responses to our ToolCall format
+  }
+}
+
+export class MCPToolTranslator implements ToolTranslator {
+  // For Claude which already uses MCP-like format
+  toBackendFormat(tools: MCPTool[]): any { ... }
+  fromBackendFormat(response: any): ToolCall[] { ... }
+}
+```
 
 **Acceptance Criteria**:
-- [ ] All new tools documented
-- [ ] Examples cover common kinematic scenarios
-- [ ] Reference tables included
+- [ ] MCP tools correctly translated to OpenCode format
+- [ ] OpenCode responses correctly parsed to ToolCall[]
+- [ ] Error handling for malformed responses
 
-### 6. Test End-to-End
+### 7. Backend Configuration
+
+**File**: `sidecar/src/backend-config.ts` (new file)
+
+Load and manage backend-specific configuration:
+
+```typescript
+export function getBackendConfig(backendName: string): BackendConfig {
+  switch (backendName) {
+    case 'opencode':
+      return {
+        baseUrl: process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1',
+        model: process.env.OPENAI_MODEL || 'gpt-4',
+        apiKey: process.env.OPENAI_API_KEY,
+      };
+    case 'claude':
+    default:
+      return {
+        // Claude uses CLI, no API config needed
+      };
+  }
+}
+
+export function loadOpenCodeConfig(): void {
+  // Read ~/.opencode/config or ./opencode.config.json
+  // Environment variables override config file
+}
+```
+
+**Acceptance Criteria**:
+- [ ] Environment variables take precedence
+- [ ] Config file support for OpenCode
+- [ ] Clear error messages for missing required config
+
+### 8. Update Types
+
+**File**: `sidecar/src/types.ts` (modify)
+
+Add ToolCall type if not present, ensure all types export:
+
+```typescript
+export interface ToolCall {
+  id: string;
+  name: string;
+  arguments: Record<string, any>;
+}
+
+export interface BackendConfig {
+  apiKey?: string;
+  baseUrl?: string;
+  model?: string;
+  temperature?: number;
+  maxTokens?: number;
+}
+```
+
+### 9. Test End-to-End
 
 **Test Scenarios**:
 
-1. **Solver Init**:
-   - Command: "Initialize solver for MainAssembly"
-   - Verify: Returns DOF count and joint count
+1. **List Backends**:
+   - Command: `npm start -- --list-backends`
+   - Verify: Shows "claude" and "opencode" backends
 
-2. **Set Joint Value**:
-   - Command: "Rotate the hinge joint to 45 degrees"
-   - Verify: Joint value updates, assembly recomputes
+2. **Switch to OpenCode**:
+   - Command: `npm start -- --backend opencode`
+   - Verify: Connects using OpenCode
+   - Verify: Tools are translated correctly
+   - Verify: Responses stream properly
 
-3. **Drive Joint Animation**:
-   - Command: "Drive hinge from 0 to 90 degrees over 2 seconds"
-   - Verify: Animation created with correct keyframes
+3. **OpenAI Provider**:
+   - Set: `OPENAI_API_KEY=xxx OPENAI_MODEL=gpt-4`
+   - Command: `npm start -- --backend opencode`
+   - Verify: Connects to OpenAI API
 
-4. **Full Animation**:
-   - Command: "Animate the mechanism for 5 seconds"
-   - Verify: All joints move through their driven values
+4. **Tool Call Round-Trip**:
+   - Send: "Create a box 10x10x10"
+   - Verify: OpenCode receives properly formatted tools
+   - Verify: Tool call returned and executed in FreeCAD
 
-5. **DOF Analysis**:
-   - Command: "Show degrees of freedom"
-   - Verify: Reports correct constrained/free DOF
-
-6. **Collision Check**:
-   - Command: "Check for collisions"
-   - Verify: Reports any interference
-
-7. **Slider Mechanism**:
-   - Command: "Move the slider 30mm"
-   - Verify: Linear joint updates correctly
-
-8. **Crank-Slider**:
-   - Command: "Rotate crank 360 degrees and show animation"
-   - Verify: Piston moves accordingly
-
-9. **Error Case - No Solver**:
-   - Command: "Solve without initializing"
-   - Verify: Clear error message
-
-10. **Error Case - Over-constrained**:
-    - Command: "Solve over-constrained assembly"
-    - Verify: Reports convergence failure
+5. **Error Handling**:
+   - Missing API key: Clear error message
+   - Invalid backend: Lists available backends
+   - Backend disconnects: Graceful error handling
 
 **Acceptance Criteria**:
 - [ ] All scenarios pass
-- [ ] Solver converges for valid assemblies
-- [ ] Animation plays correctly
-- [ ] Error messages are actionable
+- [ ] Both Claude and OpenCode backends work
+- [ ] Tool translation is accurate
 
 ## Files to Create/Modify
 
 ### New Files:
-1. `src/Mod/LLMBridge/llm_bridge/kinematic_handlers.py` - Kinematic solver handlers
+1. `sidecar/src/agent-backend.ts` - Backend interface
+2. `sidecar/src/backends/claude-backend.ts` - Refactored Claude backend
+3. `sidecar/src/backends/opencode-backend.ts` - OpenCode backend adapter
+4. `sidecar/src/backend-registry.ts` - Backend registry
+5. `sidecar/src/tool-translator.ts` - Tool format translation
+6. `sidecar/src/backend-config.ts` - Backend configuration
 
 ### Modified Files:
-1. `sidecar/src/agent-tools.ts` - Add 12 kinematic tools
-2. `sidecar/src/result-formatters.ts` - Add formatters for kinematic results
-3. `sidecar/README.md` - Document kinematic tools
-4. `src/Mod/LLMBridge/llm_bridge/__init__.py` - Register new handlers
+1. `sidecar/src/index.ts` - Add backend selection CLI args
+2. `sidecar/src/types.ts` - Add ToolCall type, BackendConfig
 
 ## Dependencies
 
-- FreeCAD Assembly workbench (Assembly3, A2plus, or built-in)
-- FreeCAD solver infrastructure
-- Existing WebSocket bridge infrastructure
-- Assembly constraint tools (already implemented)
+- OpenCode CLI (`npm install -g opencode`)
+- Existing sidecar infrastructure
+- Environment variable support for API keys
 
 ## Out of Scope
 
 This plan does NOT include:
-- Path-based motion (follow trajectory)
-- Force/torque analysis
-- Dynamic simulation (masses, springs, dampers)
-- Inverse kinematics (IK) solving
-- Export to motion simulation formats
-- FEA integration
+- Gemini CLI specific integration (deferred to after OpenCode)
+- Backend-specific UI dropdown in LLM dock widget (future work)
+- Streaming JSON for large responses (future optimization)
+- Backend health monitoring and failover (future work)
 
 ## Definition of Done
 
-- [ ] Kinematic handler module complete
-- [ ] All 12 kinematic tools implemented
-- [ ] Solver initialization works
-- [ ] Joint control works
-- [ ] Animation plays correctly
-- [ ] Results formatted clearly
-- [ ] End-to-end tests pass
+- [x] AgentBackend interface defined
+- [x] Claude backend refactored to adapter pattern
+- [x] OpenCode backend adapter implemented
+- [x] Backend registry created
+- [x] Tool translation layer working
+- [x] CLI backend selection works
+- [x] Environment variable configuration works
+- [x] End-to-end tests pass (OpenCode with GPT-4)
 - [ ] Documentation updated
 - [ ] Plan marked COMPLETED and moved to PROJECT.md progress
 
 ## Next Step After This
 
-Once Kinematic Solver and Motion Animation tools are complete:
-- Add animation and rendering tools (export animations as GIF/MP4)
-- Add mesh/conversion tools for 3D printing workflows
-- Add advanced rendering tools (raytracing, material assignment)
+Once Multi-Agent Backend Support is complete:
+- CAM/Path workbench tools for CNC operations
+- Advanced surface modeling tools (blend, offset, sections)

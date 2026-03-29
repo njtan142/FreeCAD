@@ -742,3 +742,51 @@ The original large commit for FEA (Finite Element Analysis) Integration Tools ha
 - **Files modified**: 5 (__init__.py, agent-tools.ts, result-formatters.ts, sidecar/README.md)
 - **Total insertions**: ~2,600 lines
 - **Total deletions**: ~6 lines
+
+---
+
+## Cycle 20 - Incremental Commits
+
+The original large commit "feat(sidecar): Add Multi-Agent Backend Support" has been refactored into 6 incremental commits.
+
+| Commit Hash | Message | Files Changed |
+|-------------|---------|---------------|
+| `441d495538` | feat(sidecar): add AgentBackend interface and types | agent-backend.ts, types.ts |
+| `d406672e9e` | feat(sidecar): implement Claude and OpenCode backend adapters | backends/claude-backend.ts, backends/opencode-backend.ts |
+| `b06e523c56` | feat(sidecar): add BackendRegistry for backend management | backend-registry.ts |
+| `11d5256c0d` | feat(sidecar): add tool translation layer for backend-specific formats | tool-translator.ts |
+| `f036409b99` | feat(sidecar): add backend configuration from environment variables | backend-config.ts |
+| `00e7f0b25a` | feat(sidecar): add CLI backend selection and integrate backends into main entry | index.ts, agent-tools.ts, result-formatters.ts |
+
+### Commit Progression
+
+1. **AgentBackend interface and types**: Added agent-backend.ts with AgentBackend interface, BackendConfig, and AgentResponse types defining the contract for all backend adapters
+
+2. **Claude and OpenCode backend adapters**: Added backends/claude-backend.ts implementing Claude CLI adapter and backends/opencode-backend.ts implementing OpenCode CLI adapter, both implementing the AgentBackend interface
+
+3. **BackendRegistry**: Added backend-registry.ts with centralized backend management supporting registration, retrieval, and current backend switching
+
+4. **Tool translation layer**: Added tool-translator.ts with OpenCodeToolTranslator and MCPToolTranslator for converting between MCP tool format and backend-specific formats
+
+5. **Backend configuration**: Added backend-config.ts with environment variable configuration loading for OpenAI, Anthropic, and Google providers
+
+6. **Main entry integration**: Updated index.ts to add CLI backend selection flags (--backend, --list-backends, --claude, --opencode), integrated all backends into the main application entry point
+
+### Summary
+
+- **Total commits**: 6
+- **Files created**: 6 (agent-backend.ts, backend-registry.ts, tool-translator.ts, backend-config.ts, backends/claude-backend.ts, backends/opencode-backend.ts)
+- **Files modified**: 3 (index.ts, agent-tools.ts, result-formatters.ts)
+- **Total insertions**: ~1,130 lines
+- **Total deletions**: ~41 lines
+
+---
+
+## Additional Commits
+
+The following commits were also created as part of this cycle's work:
+
+| Commit Hash | Message | Files Changed |
+|-------------|---------|---------------|
+| `d4600e5cc4` | fix(llmbridge): improve FEA solver handling and mesh operations | __init__.py, fea_handlers.py, kinematic_handlers.py, mesh_handlers.py, animation_export_handlers.py |
+| `987c2fd20a` | docs: update cycle tracking and project documentation | CURRENT_PLAN.md, CURRENT_REVIEW.md, CYCLE_COUNT.md, PROJECT.md |

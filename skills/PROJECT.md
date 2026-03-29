@@ -118,6 +118,11 @@ This is a diverging fork. We modify FreeCAD directly without worrying about upst
   - Extended `sidecar/src/result-formatters.ts` with formatters for Boolean operations and shape analysis results
   - Implemented shape validation and healing with tolerance checking
   - All end-to-end test scenarios passed (basic fuse/union, cut/difference, common/intersection, multi-object fuse, compound creation, shape validation, shape healing, shape info query, error handling)
+- [x] **Cycle 16: Kinematic Solver and Motion Animation Tools** (COMPLETED)
+- [x] **Cycle 17: Animation and Rendering Tools** (COMPLETED)
+- [x] **Cycle 18: Mesh/Conversion Tools for 3D Printing** (COMPLETED)
+- [x] **Cycle 19: FEA Integration Tools for Basic Stress Analysis** (COMPLETED)
+- [x] **Cycle 20: Multi-Agent Backend Support - OpenCode Integration** (IN PROGRESS)
 - [ ] Define additional custom tools as needed
 - [ ] **Multi-Agent Backend Support** — Support alternative LLM agents beyond Claude Code CLI
   - [ ] **OpenCode integration** — Add OpenCode as an alternative agent backend
