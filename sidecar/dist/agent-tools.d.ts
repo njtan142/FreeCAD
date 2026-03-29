@@ -636,6 +636,20 @@ export declare function createAgentTools(freeCADBridge: FreeCADBridge): (import(
 }> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
     surfaceName: z.ZodString;
 }> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
+    surface1: z.ZodString;
+    surface2: z.ZodString;
+    continuity: z.ZodDefault<z.ZodOptional<z.ZodEnum<["G0", "G1", "G2"]>>>;
+}> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
+    surfaceName: z.ZodString;
+    distance: z.ZodNumber;
+}> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
+    surfaceName: z.ZodString;
+    tolerance: z.ZodOptional<z.ZodNumber>;
+}> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
+    loftName: z.ZodString;
+}> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
+    sweepName: z.ZodString;
+}> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
     assemblyName: z.ZodString;
     maxIterations: z.ZodOptional<z.ZodNumber>;
 }> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
@@ -851,5 +865,116 @@ export declare function createAgentTools(freeCADBridge: FreeCADBridge): (import(
 }> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
     analysisName: z.ZodString;
     config: z.ZodRecord<z.ZodString, z.ZodAny>;
+}> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
+    modelObject: z.ZodString;
+    name: z.ZodOptional<z.ZodString>;
+}> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
+    jobName: z.ZodString;
+    toolController: z.ZodOptional<z.ZodString>;
+    stock: z.ZodOptional<z.ZodString>;
+}> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
+    jobName: z.ZodString;
+}> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
+    name: z.ZodString;
+    toolType: z.ZodEnum<["endmill", "ball_endmill", "chamfer", "v-bit", "drill", "tap"]>;
+    diameter: z.ZodNumber;
+    cuttingEdgeAngle: z.ZodOptional<z.ZodNumber>;
+}> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
+    geometry: z.ZodObject<{
+        type: z.ZodEnum<["cylinder", "cone"]>;
+        diameter: z.ZodOptional<z.ZodNumber>;
+        tipDiameter: z.ZodOptional<z.ZodNumber>;
+        length: z.ZodNumber;
+        cuttingEdgeLength: z.ZodNumber;
+    }, "strip", z.ZodTypeAny, {
+        length: number;
+        type: "cylinder" | "cone";
+        cuttingEdgeLength: number;
+        diameter?: number | undefined;
+        tipDiameter?: number | undefined;
+    }, {
+        length: number;
+        type: "cylinder" | "cone";
+        cuttingEdgeLength: number;
+        diameter?: number | undefined;
+        tipDiameter?: number | undefined;
+    }>;
+    name: z.ZodOptional<z.ZodString>;
+}> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
+    jobName: z.ZodString;
+    tool: z.ZodString;
+    speed: z.ZodOptional<z.ZodNumber>;
+    feedRate: z.ZodOptional<z.ZodUnion<[z.ZodString, z.ZodNumber]>>;
+}> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
+    baseObject: z.ZodString;
+    jobName: z.ZodOptional<z.ZodString>;
+    name: z.ZodOptional<z.ZodString>;
+    offsetSide: z.ZodOptional<z.ZodEnum<["outside", "inside", "on"]>>;
+}> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
+    baseObject: z.ZodString;
+    jobName: z.ZodOptional<z.ZodString>;
+    name: z.ZodOptional<z.ZodString>;
+}> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
+    centers: z.ZodArray<z.ZodObject<{
+        x: z.ZodNumber;
+        y: z.ZodNumber;
+        z: z.ZodNumber;
+    }, "strip", z.ZodTypeAny, {
+        x: number;
+        y: number;
+        z: number;
+    }, {
+        x: number;
+        y: number;
+        z: number;
+    }>, "many">;
+    jobName: z.ZodOptional<z.ZodString>;
+    name: z.ZodOptional<z.ZodString>;
+    cycle: z.ZodOptional<z.ZodEnum<["drilling", "peck", "deep", "break", "tap"]>>;
+}> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
+    baseObject: z.ZodString;
+    jobName: z.ZodOptional<z.ZodString>;
+    name: z.ZodOptional<z.ZodString>;
+    cutClamp: z.ZodOptional<z.ZodNumber>;
+}> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
+    jobName: z.ZodString;
+    radiusCompensation: z.ZodOptional<z.ZodBoolean>;
+    radius: z.ZodOptional<z.ZodNumber>;
+}> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
+    jobName: z.ZodString;
+    tagWidth: z.ZodOptional<z.ZodNumber>;
+    tagHeight: z.ZodOptional<z.ZodNumber>;
+    tagSpacing: z.ZodOptional<z.ZodNumber>;
+}> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
+    jobName: z.ZodString;
+    leadIn: z.ZodOptional<z.ZodObject<{
+        length: z.ZodNumber;
+        radius: z.ZodNumber;
+        angle: z.ZodNumber;
+    }, "strip", z.ZodTypeAny, {
+        length: number;
+        radius: number;
+        angle: number;
+    }, {
+        length: number;
+        radius: number;
+        angle: number;
+    }>>;
+    leadOut: z.ZodOptional<z.ZodObject<{
+        length: z.ZodNumber;
+        radius: z.ZodNumber;
+        angle: z.ZodNumber;
+    }, "strip", z.ZodTypeAny, {
+        length: number;
+        radius: number;
+        angle: number;
+    }, {
+        length: number;
+        radius: number;
+        angle: number;
+    }>>;
+}> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
+    jobName: z.ZodString;
+    filePath: z.ZodString;
 }>)[];
 //# sourceMappingURL=agent-tools.d.ts.map

@@ -31,5 +31,16 @@ export declare class FreeCADBridge {
     executePython(code: string, timeoutMs?: number): Promise<ExecuteResult>;
     disconnect(): Promise<void>;
     getStatus(): 'connected' | 'connecting' | 'disconnected';
+    getDocumentInfo(): Promise<{
+        name: string;
+        label: string;
+        modified: boolean;
+        objectCount: number;
+    } | null>;
+    getSelectedObjects(): Promise<Array<{
+        name: string;
+        label: string;
+        type: string;
+    }>>;
 }
 //# sourceMappingURL=freecad-bridge.d.ts.map

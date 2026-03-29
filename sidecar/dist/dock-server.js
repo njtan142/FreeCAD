@@ -69,11 +69,27 @@ class DockServer {
             inputSchema: tool.inputSchema,
         }));
     }
-    buildMessageContext(sessionId) {
+    async buildMessageContext(sessionId) {
+        let documentInfo = undefined;
+        let selectedObjects = undefined;
+        if (this.config.freeCADBridge) {
+            try {
+                documentInfo = await this.config.freeCADBridge.getDocumentInfo() ?? undefined;
+            }
+            catch {
+                // Ignore errors, leave documentInfo undefined
+            }
+            try {
+                selectedObjects = await this.config.freeCADBridge.getSelectedObjects() ?? undefined;
+            }
+            catch {
+                // Ignore errors, leave selectedObjects undefined
+            }
+        }
         return {
             sessionId,
-            documentInfo: this.config.freeCADBridge.getDocumentInfo?.() ?? undefined,
-            selectedObjects: this.config.freeCADBridge.getSelectedObjects?.() ?? undefined,
+            documentInfo,
+            selectedObjects,
         };
     }
     async start() {
@@ -286,7 +302,7 @@ class DockServer {
             if (!backend) {
                 throw new Error('No backend configured');
             }
-            const context = this.buildMessageContext(sessionId);
+            const context = await this.buildMessageContext(sessionId);
             const tools = this.getBackendTools();
             let fullResponse = '';
             console.log(`[DockServer] Using backend: ${backend.name}`);

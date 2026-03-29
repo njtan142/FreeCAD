@@ -188,6 +188,55 @@ class FreeCADBridge {
         }
         return 'disconnected';
     }
+    async getDocumentInfo() {
+        const code = `
+import json
+doc = App.ActiveDocument
+if doc:
+    result = {
+        "name": doc.Name,
+        "label": doc.Label,
+        "modified": doc.Modified,
+        "objectCount": len(doc.Objects)
+    }
+else:
+    result = None
+json.dumps(result)
+`;
+        const response = await this.executePython(code);
+        if (response.success && response.output) {
+            try {
+                return JSON.parse(response.output.trim());
+            }
+            catch {
+                return null;
+            }
+        }
+        return null;
+    }
+    async getSelectedObjects() {
+        const code = `
+import json
+selection = []
+for obj in Gui.Selection.getSelection():
+    selection.append({
+        "name": obj.Name,
+        "label": obj.Label,
+        "type": obj.TypeId
+    })
+json.dumps(selection)
+`;
+        const response = await this.executePython(code);
+        if (response.success && response.output) {
+            try {
+                return JSON.parse(response.output.trim());
+            }
+            catch {
+                return [];
+            }
+        }
+        return [];
+    }
 }
 exports.FreeCADBridge = FreeCADBridge;
 //# sourceMappingURL=freecad-bridge.js.map

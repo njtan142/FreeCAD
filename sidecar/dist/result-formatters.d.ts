@@ -194,6 +194,30 @@ export declare function formatSurfaceOperation(data: any): string;
  */
 export declare function formatSurfaceInfo(data: any): string;
 /**
+ * Format blend surface creation result
+ */
+export declare function formatBlendSurface(data: any): string;
+/**
+ * Format offset surface creation result
+ */
+export declare function formatOffsetSurface(data: any): string;
+/**
+ * Format surface analysis result
+ */
+export declare function formatSurfaceAnalysis(data: any): string;
+/**
+ * Format surface rebuild result
+ */
+export declare function formatSurfaceRebuild(data: any): string;
+/**
+ * Format loft info result
+ */
+export declare function formatLoftInfo(data: any): string;
+/**
+ * Format sweep info result
+ */
+export declare function formatSweepInfo(data: any): string;
+/**
  * Format solver initialization result
  */
 export declare function formatSolverInit(data: any): string;
@@ -269,5 +293,13 @@ export declare function formatFEAMaterial(data: any): string;
 export declare function formatFEAConstraint(data: any): string;
 export declare function formatFEASolver(data: any): string;
 export declare function formatFEAResults(data: any): string;
+export declare function formatPathJobCreation(data: any): string;
+export declare function formatPathJobList(data: any): string;
+export declare function formatPathToolCreation(data: any): string;
+export declare function formatPathToolList(data: any): string;
+export declare function formatPathOperation(data: any): string;
+export declare function formatPathDressup(data: any): string;
+export declare function formatGCodeExport(data: any): string;
+export declare function formatPathSimulation(data: any): string;
 export {};
 //# sourceMappingURL=result-formatters.d.ts.map
