@@ -113,6 +113,7 @@ from .pattern_handlers import (
     handle_create_polar_pattern,
     handle_create_rectangular_pattern,
     handle_create_path_pattern,
+    handle_create_transform_link,
     handle_update_linear_pattern,
     handle_update_polar_pattern,
     handle_get_pattern_info,
@@ -142,6 +143,20 @@ from .techdraw_handlers import (
     handle_create_leader_line,
     handle_export_to_svg,
     handle_export_to_pdf,
+)
+
+from .surface_handlers import (
+    handle_create_loft,
+    handle_create_loft_with_transition,
+    handle_get_loft_info,
+    handle_create_sweep,
+    handle_create_multi_section_sweep,
+    handle_get_sweep_info,
+    handle_analyze_surface,
+    handle_validate_surface,
+    handle_rebuild_surface,
+    handle_create_blend_surface,
+    handle_create_offset_surface,
 )
 
 __all__ = [
@@ -256,9 +271,21 @@ __all__ = [
     "handle_create_polar_pattern",
     "handle_create_rectangular_pattern",
     "handle_create_path_pattern",
+    "handle_create_transform_link",
     "handle_update_linear_pattern",
     "handle_update_polar_pattern",
     "handle_get_pattern_info",
     "handle_delete_pattern",
     "handle_list_patterns",
+    "handle_create_loft",
+    "handle_create_loft_with_transition",
+    "handle_get_loft_info",
+    "handle_create_sweep",
+    "handle_create_multi_section_sweep",
+    "handle_get_sweep_info",
+    "handle_analyze_surface",
+    "handle_validate_surface",
+    "handle_rebuild_surface",
+    "handle_create_blend_surface",
+    "handle_create_offset_surface",
 ]
