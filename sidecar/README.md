@@ -1,6 +1,6 @@
 # FreeCAD LLM Sidecar
 
-Node.js sidecar application that bridges Claude Agent SDK with FreeCAD's Python execution environment.
+Node.js sidecar application that bridges LLM agent backends with FreeCAD's Python execution environment.
 
 ## Architecture
 
@@ -12,11 +12,61 @@ Node.js Sidecar
 FreeCAD Python Bridge
 ```
 
+### Multi-Agent Backend Architecture
+
+The sidecar supports multiple LLM agent backends through a modular adapter pattern:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     Sidecar Application                      │
+├─────────────────────────────────────────────────────────────┤
+│  Backend Registry                                           │
+│  ┌─────────────────┐  ┌─────────────────┐                  │
+│  │ ClaudeBackend   │  │ OpenCodeBackend │  ┌───────────┐  │
+│  │ (Claude Code)   │  │ (Multi-LLM)     │  │ Future... │  │
+│  └─────────────────┘  └─────────────────┘  └───────────┘  │
+├─────────────────────────────────────────────────────────────┤
+│  Tool Translation Layer                                     │
+│  (Translates MCP tools to backend-specific formats)         │
+├─────────────────────────────────────────────────────────────┤
+│  WebSocket Server / Bridge Client                          │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Components:**
+- **Backend Registry**: Central registry managing backend adapters
+- **AgentBackend Interface**: Common interface all backends must implement
+- **Tool Translation Layer**: Translates MCP tool definitions to backend-specific formats
+- **Backend Adapters**: Backend-specific implementations (Claude, OpenCode)
+
+## Backend Support
+
+The sidecar supports multiple LLM backends:
+
+| Backend | Description | LLM Providers |
+|---------|-------------|---------------|
+| `claude` | Anthropic Claude via Claude Code CLI | Claude (Anthropic) |
+| `opencode` | OpenCode multi-LLM backend | OpenAI, Anthropic, Google, local models |
+| (future) | Additional backends | Various providers |
+
+### Backend Comparison
+
+| Feature | Claude | OpenCode |
+|---------|--------|----------|
+| **API Type** | CLI-based | CLI + API |
+| **Provider** | Anthropic only | Multiple (OpenAI, Anthropic, Google, local) |
+| **Configuration** | API key | API key or config file |
+| **Tool Format** | MCP-native | Function calling format |
+| **Streaming** | Via CLI | Via stdout |
+| **Local Models** | No | Yes |
+
 ## Prerequisites
 
 - Node.js >= 18.0.0
 - npm or yarn
 - FreeCAD with LLM Bridge module installed
+- For Claude backend: Claude Code CLI (`npm install -g @anthropic/claude-code`)
+- For OpenCode backend: OpenCode CLI (`npm install -g opencode`)
 
 ## Installation
 
@@ -35,6 +85,23 @@ npm run build
 
 ## Configuration
 
+### Backend Selection
+
+Use the `--backend` or `-b` flag to select which backend to use:
+
+```bash
+# Use Claude (default)
+npm start -- --backend claude
+
+# Use OpenCode
+npm start -- --backend opencode
+
+# List available backends
+npm start -- --list-backends
+```
+
+### Environment Variables
+
 Configure via environment variables:
 
 | Variable | Default | Description |
@@ -42,14 +109,56 @@ Configure via environment variables:
 | `DOCK_SERVER_PORT` | `8765` | Port for dock widget WebSocket server |
 | `FREECAD_BRIDGE_PORT` | `8766` | Port for FreeCAD Python bridge |
 | `FREECAD_BRIDGE_HOST` | `localhost` | Host for FreeCAD Python bridge |
-| `ANTHROPIC_API_KEY` | - | Your Anthropic API key for Claude |
+| `BACKEND` | `claude` | Default backend to use |
+
+### Claude Backend Configuration
+
+| Variable | Description |
+|----------|-------------|
+| `ANTHROPIC_API_KEY` | Your Anthropic API key for Claude |
+
+### OpenCode Backend Configuration
+
+OpenCode supports multiple LLM providers. Configure via environment variables:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `OPENAI_API_KEY` | - | OpenAI API key |
+| `OPENAI_MODEL` | `gpt-4` | OpenAI model to use |
+| `OPENAI_BASE_URL` | `https://api.openai.com/v1` | OpenAI base URL |
+| `ANTHROPIC_API_KEY` | - | Anthropic API key (for Claude via OpenCode) |
+| `ANTHROPIC_MODEL` | `claude-3-5-sonnet-20241022` | Anthropic model |
+| `GOOGLE_API_KEY` | - | Google API key |
+| `GOOGLE_MODEL` | `gemini-pro` | Google model |
+
+Alternatively, configure OpenCode via config file at `~/.opencode/config` or `./opencode.config.json`:
+
+```json
+{
+  "provider": "openai",
+  "model": "gpt-4",
+  "api_key": "your-api-key-here"
+}
+```
+
+Environment variables take precedence over config file settings.
 
 ### Example `.env` file
 
 Create a `.env` file in the sidecar directory:
 
 ```env
-ANTHROPIC_API_KEY=your-api-key-here
+# Backend selection
+BACKEND=opencode
+
+# OpenCode configuration
+OPENAI_API_KEY=your-api-key-here
+OPENAI_MODEL=gpt-4
+
+# Or Claude configuration
+# ANTHROPIC_API_KEY=your-api-key-here
+
+# Ports
 DOCK_SERVER_PORT=8765
 FREECAD_BRIDGE_PORT=8766
 FREECAD_BRIDGE_HOST=localhost
@@ -69,6 +178,72 @@ npm run dev
 npm run build
 npm start
 ```
+
+### Backend-Specific Usage
+
+**Using Claude backend:**
+```bash
+ANTHROPIC_API_KEY=your-key npm start -- --backend claude
+```
+
+**Using OpenCode with OpenAI:**
+```bash
+OPENAI_API_KEY=your-key npm start -- --backend opencode
+```
+
+**Using OpenCode with local model:**
+```bash
+OPENAI_API_KEY=local npm start -- --backend opencode
+```
+
+## Tool Translation Layer
+
+The tool translation layer enables compatibility between the sidecar's MCP tool definitions and backend-specific tool formats. Each backend adapter includes a translator to convert:
+
+1. **MCP Tool Definitions → Backend Format**: Translates FreeCAD's tool definitions (execute_freecad_python, set_object_property, etc.) to the backend's function calling format
+
+2. **Backend Responses → ToolCall Format**: Parses backend responses containing tool calls into a unified `ToolCall` format for execution
+
+The translation layer handles differences such as:
+- Tool name and parameter formatting
+- Argument encoding (JSON vs special formats)
+- Response parsing for tool call results
+
+## Adding a New Backend
+
+To add support for a new LLM backend:
+
+1. **Create the backend adapter** in `src/backends/<backend-name>-backend.ts`:
+   ```typescript
+   import { AgentBackend, BackendConfig, AgentResponse } from '../agent-backend';
+   import { MessageContext, MCPTool } from '../types';
+
+   export class <BackendName>Backend implements AgentBackend {
+     readonly name = '<backend-name>';
+     readonly description = 'Description of the backend';
+
+     async initialize(config: BackendConfig): Promise<void> { ... }
+     async sendMessage(message: string, context: MessageContext, tools: MCPTool[], onChunk: (chunk: string) => void): Promise<AgentResponse> { ... }
+     async healthCheck(): Promise<boolean> { ... }
+     async disconnect(): Promise<void> { ... }
+   }
+   ```
+
+2. **Create a tool translator** in `src/tool-translator.ts`:
+   ```typescript
+   export class <BackendName>ToolTranslator implements ToolTranslator {
+     toBackendFormat(tools: MCPTool[]): any { ... }
+     fromBackendFormat(response: any): ToolCall[] { ... }
+   }
+   ```
+
+3. **Register the backend** in `src/index.ts`:
+   ```typescript
+   import { <BackendName>Backend } from './backends/<backend-name>-backend';
+   backendRegistry.register(new <BackendName>Backend());
+   ```
+
+4. **Add configuration** in `src/backend-config.ts` if needed
 
 ## Available Tools
 
@@ -8136,7 +8311,7 @@ Imports an OBJ file as a mesh object.
 
 ### FEA (Finite Element Analysis) Tools
 
-Perform stress analysis, thermal analysis, and other finite element simulations.
+Perform static stress analysis with mesh generation, material assignment, boundary conditions, and results interpretation.
 
 #### Analysis Management
 
@@ -8243,16 +8418,6 @@ Assign a material preset to an object.
 - `objectName` (required): Name of the object
 - `materialName` (required): Material preset name
 
-**Available Materials:**
-| Material | Young's Modulus (MPa) | Poisson's Ratio | Yield Strength (MPa) |
-|----------|----------------------|-----------------|---------------------|
-| Steel | 210,000 | 0.30 | 250 |
-| Aluminum | 70,000 | 0.33 | 270 |
-| Copper | 130,000 | 0.34 | 33 |
-| Brass | 100,000 | 0.34 | 180 |
-| Titanium | 110,000 | 0.34 | 140 |
-| Plastic | 2,200 | 0.35 | 50 |
-
 **Example:**
 - Assign steel: `set_fea_material({ objectName: "Box", materialName: "Steel" })`
 
@@ -8266,7 +8431,7 @@ Get the current material assignment.
 **Example:**
 - Get material: `get_fea_material({ objectName: "Box" })`
 
-#### Boundary Conditions
+#### Boundary Conditions (Constraints)
 
 ##### `add_fea_fixed_constraint(analysisName: string, faceReferences: string[])`
 
@@ -8469,13 +8634,40 @@ Get reaction forces at constraints.
    - Reactions: get_fea_reactions({ analysisName: "StressAnalysis" })
 ```
 
-**Result Interpretation:**
+**Material Properties:**
 
-| Result | What It Shows | Acceptable Range |
-|--------|---------------|------------------|
-| Displacement | How much the part deforms | Depends on design requirements |
-| Von Mises Stress | Combined stress magnitude | Below material yield strength |
-| Reaction Forces | Forces at constraints | Should balance applied loads |
+| Material | Young's Modulus (MPa) | Poisson's Ratio | Density (kg/mm³) | Yield Strength (MPa) |
+|----------|----------------------|-----------------|------------------|---------------------|
+| Steel    | 210000               | 0.30            | 7.85e-6          | 250                 |
+| Aluminum | 70000                | 0.33            | 2.70e-6          | 270                 |
+| Copper   | 130000               | 0.34            | 8.96e-6          | 33                  |
+| Brass    | 100000               | 0.34            | 8.53e-6          | 180                 |
+| Titanium | 110000               | 0.34            | 4.51e-6          | 140                 |
+| Plastic  | 2200                 | 0.35            | 1.20e-6          | 50                  |
+
+**Constraint Types Explained:**
+
+| Constraint | Description | When to Use |
+|------------|-------------|-------------|
+| Fixed | Constrains all DOF (x, y, z translations) | Anchoring a part to ground |
+| Force | Concentrated load in N | Point loads or distributed loads on small areas |
+| Pressure | Distributed load in MPa | Loads spread over a face (fluid pressure, wind) |
+| Displacement | Prescribed displacement or partial constraint | Roller supports, thermal expansion |
+| Self-Weight | Gravity load (g=9.81 m/s²) | When body weight matters |
+
+**Result Interpretation Guide:**
+
+| Result | What It Shows | How to Interpret |
+|--------|---------------|-----------------|
+| Displacement | How much the part deforms | Check against design deflection limits |
+| Von Mises Stress | Combined stress magnitude | Compare to yield strength for pass/fail |
+| Reaction Forces | Forces at constraint locations | Should balance applied loads (verify equilibrium) |
+
+**Pass/Fail Criteria:**
+
+- **Displacement**: Design-dependent. Common rule: max displacement < L/200 where L is span length
+- **Von Mises Stress**: PASS if max stress < yield strength (with safety factor). Common safety factors: 1.5 to 3.0
+- **Reactions**: PASS if sum of reactions equals applied forces (within numerical tolerance)
 
 **Common Pitfalls:**
 
@@ -8484,6 +8676,8 @@ Get reaction forces at constraints.
 3. **Stress concentration**: Sharp corners cause high local stress - use fillets
 4. **Units mismatch**: Ensure force (N) and pressure (MPa) are consistent
 5. **Singular matrix**: Usually caused by improper constraints or unstable model
+6. **Mesh too coarse**: May miss stress concentrations - refine mesh locally where needed
+7. **Load units**: Remember FreeCAD uses N for force, MPa for pressure (1 MPa = 1 N/mm²)
 
 ---
 
