@@ -832,3 +832,54 @@ The original large commit for CAM/Path Workbench Tools have been refactored into
 - **Files modified**: 2 (agent-tools.ts, result-formatters.ts)
 - **Total insertions**: ~1,803 lines
 - **Total deletions**: ~0 lines
+
+---
+
+## Additional Commits
+
+The following additional commits were created as part of bug fixes and documentation updates:
+
+| Commit Hash | Message | Files Changed |
+|-------------|---------|---------------|
+| `9244c6cae6` | fix(llm): patch critical bugs in CAM/Path handlers | path_handlers.py |
+| `5bf6909097` | docs(skills): complete Cycle 21 and advance to Cycle 22 | skills/*, sidecar/dist/* |
+
+### Bug Fixes Details
+
+**Critical bugs patched in `path_handlers.py`:**
+1. `handle_create_path_toolbit`: Changed `baseObject` to `baseObjects` (array) for consistency
+2. `handle_create_path_drill`: Added validation to reject point coordinates with clear error message
+3. `handle_create_path_dressup_leadoff`: Added type validation for `lead_in`/`lead_out` parameters
+4. `handle_export_gcode`: Added file path security validation (reject absolute paths and path traversal)
+
+---
+
+## Cycle 22 - Incremental Commits
+
+The original large commit for Advanced Surface Modeling Tools have been refactored into 1 incremental commit (with additional bug fixes).
+
+| Commit Hash | Message | Files Changed |
+|-------------|---------|---------------|
+| `5ca1103571` | feat(sidecar): add remaining surface modeling tools | agent-tools.ts, result-formatters.ts |
+
+### Commit Progression
+
+1. **Surface modeling tools**: Added 6 new surface modeling tools to agent-tools.ts:
+   - createBlendSurfaceTool: Creates smooth transition surface between two surfaces
+   - createOffsetSurfaceTool: Creates parallel surface at specified distance
+   - analyzeSurfaceTool: Returns curvature statistics (Gaussian, mean, principal)
+   - rebuildSurfaceTool: Rebuilds surface with optional tolerance
+   - getLoftInfoTool: Returns detailed loft parameters and statistics
+   - getSweepInfoTool: Returns detailed sweep parameters and statistics
+
+2. **Result formatters**: Added 6 surface-specific result formatters to result-formatters.ts:
+   - formatBlendSurface, formatOffsetSurface, formatSurfaceAnalysis
+   - formatSurfaceRebuild, formatLoftInfo, formatSweepInfo
+
+### Summary
+
+- **Total commits**: 1 (main implementation)
+- **Files created**: 0
+- **Files modified**: 2 (agent-tools.ts, result-formatters.ts)
+- **Total insertions**: ~698 lines
+- **Total deletions**: ~4 lines
