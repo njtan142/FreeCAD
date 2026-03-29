@@ -7204,6 +7204,518 @@ Check for collisions during motion.
 
 ---
 
+### Rendering and Animation Tools
+
+#### View Tools
+
+##### `set_view_angle(viewName: "top" | "bottom" | "front" | "back" | "left" | "right" | "iso" | "home")`
+
+Set viewport camera to a preset viewing angle.
+
+**Parameters:**
+- `viewName` (required): Preset view name
+
+**Response format:**
+```json
+{
+  "success": true,
+  "viewName": "iso",
+  "message": "View set to isometric"
+}
+```
+
+**Example usage:**
+```typescript
+{
+  name: "set_view_angle",
+  arguments: {
+    viewName: "iso"
+  }
+}
+```
+
+**Natural language examples:**
+- "Set view to isometric"
+- "Look from top"
+- "Show front view"
+
+---
+
+##### `zoom_to_fit()`
+
+Zoom the viewport to fit all visible objects in view.
+
+**Parameters:** None
+
+**Response format:**
+```json
+{
+  "success": true,
+  "message": "View zoomed to fit"
+}
+```
+
+**Example usage:**
+```typescript
+{
+  name: "zoom_to_fit",
+  arguments: {}
+}
+```
+
+**Natural language examples:**
+- "Zoom to fit all objects"
+- "Fit everything in view"
+
+---
+
+##### `set_camera_position(position: {x, y, z}, target?: {x, y, z})`
+
+Set exact camera position and look-at target.
+
+**Parameters:**
+- `position` (required): Camera position as {x, y, z}
+- `target` (optional): Look-at target as {x, y, z}, defaults to origin
+
+**Response format:**
+```json
+{
+  "success": true,
+  "position": {"x": 100, "y": 100, "z": 50},
+  "target": {"x": 0, "y": 0, "z": 0},
+  "message": "Camera position set"
+}
+```
+
+**Example usage:**
+```typescript
+{
+  name: "set_camera_position",
+  arguments: {
+    position: { x: 100, y: 100, z: 50 }
+  }
+}
+
+{
+  name: "set_camera_position",
+  arguments: {
+    position: { x: 50, y: 50, z: 50 },
+    target: { x: 0, y: 0, z: 0 }
+  }
+}
+```
+
+**Natural language examples:**
+- "Position camera at 100,100,50"
+- "View from angle looking at origin"
+
+---
+
+#### Render Tools
+
+##### `render_view(outputPath: string, width?: number, height?: number, renderer?: "opengl" | "raytracing" | "embree")`
+
+Render the current viewport view to an image file.
+
+**Parameters:**
+- `outputPath` (required): Path to output image file (.png, .jpg)
+- `width` (optional): Image width in pixels (default 1920)
+- `height` (optional): Image height in pixels (default 1080)
+- `renderer` (optional): Renderer to use (default "opengl")
+
+**Response format:**
+```json
+{
+  "success": true,
+  "outputPath": "/home/user/render.png",
+  "width": 1920,
+  "height": 1080,
+  "message": "Rendered successfully"
+}
+```
+
+**Example usage:**
+```typescript
+{
+  name: "render_view",
+  arguments: {
+    outputPath: "~/render.png"
+  }
+}
+
+{
+  name: "render_view",
+  arguments: {
+    outputPath: "~/4k_render.png",
+    width: 3840,
+    height: 2160,
+    renderer: "raytracing"
+  }
+}
+```
+
+**Natural language examples:**
+- "Render to ~/render.png"
+- "Export 4K raytraced image"
+- "Take a screenshot"
+
+---
+
+##### `set_renderer(rendererName: "opengl" | "raytracing" | "embree")`
+
+Select the rendering engine for viewport and exports.
+
+**Parameters:**
+- `rendererName` (required): Renderer name
+
+**Response format:**
+```json
+{
+  "success": true,
+  "rendererName": "raytracing",
+  "message": "Renderer set to raytracing"
+}
+```
+
+**Example usage:**
+```typescript
+{
+  name: "set_renderer",
+  arguments: {
+    rendererName: "raytracing"
+  }
+}
+```
+
+**Natural language examples:**
+- "Use raytracing renderer"
+- "Switch to Embree"
+
+---
+
+##### `set_render_quality(quality: "draft" | "medium" | "high" | "ultra")`
+
+Set the render quality level for the current renderer.
+
+**Parameters:**
+- `quality` (required): Quality level
+
+**Response format:**
+```json
+{
+  "success": true,
+  "quality": "high",
+  "message": "Render quality set to high"
+}
+```
+
+**Example usage:**
+```typescript
+{
+  name: "set_render_quality",
+  arguments: {
+    quality: "high"
+  }
+}
+```
+
+**Natural language examples:**
+- "Set high quality render"
+- "Use draft mode for quick preview"
+
+---
+
+#### Material Tools
+
+##### `set_object_material(objectName: string, materialName: string)`
+
+Apply a material from the FreeCAD material database to an object.
+
+**Parameters:**
+- `objectName` (required): Name of the object to modify
+- `materialName` (required): Name of material from FreeCAD material database
+
+**Response format:**
+```json
+{
+  "success": true,
+  "objectName": "Box",
+  "materialName": "Steel",
+  "message": "Material applied"
+}
+```
+
+**Example usage:**
+```typescript
+{
+  name: "set_object_material",
+  arguments: {
+    objectName: "Box",
+    materialName: "Steel"
+  }
+}
+```
+
+**Natural language examples:**
+- "Apply steel to Box"
+- "Use plastic material for Housing"
+
+---
+
+##### `set_object_color(objectName: string, color: {r, g, b, a?})`
+
+Set the display color of an object.
+
+**Parameters:**
+- `objectName` (required): Name of the object to modify
+- `color` (required): Color as {r, g, b, a} with values 0-255
+
+**Response format:**
+```json
+{
+  "success": true,
+  "objectName": "Box",
+  "message": "Color set"
+}
+```
+
+**Example usage:**
+```typescript
+{
+  name: "set_object_color",
+  arguments: {
+    objectName: "Box",
+    color: { r: 255, g: 0, b: 0 }
+  }
+}
+
+{
+  name: "set_object_color",
+  arguments: {
+    objectName: "Sphere",
+    color: { r: 0, g: 0, b: 255, a: 128 }
+  }
+}
+```
+
+**Natural language examples:**
+- "Make it red"
+- "Set color to blue with 50% transparency"
+
+---
+
+#### Lighting Tools
+
+##### `configure_lighting(lightingType: "default" | "studio" | "outdoor" | "museum")`
+
+Configure the scene lighting with a preset.
+
+**Parameters:**
+- `lightingType` (required): Lighting preset
+
+**Response format:**
+```json
+{
+  "success": true,
+  "lightingType": "studio",
+  "message": "Lighting configured"
+}
+```
+
+**Example usage:**
+```typescript
+{
+  name: "configure_lighting",
+  arguments: {
+    lightingType: "studio"
+  }
+}
+```
+
+**Natural language examples:**
+- "Use studio lighting"
+- "Set outdoor lighting"
+
+---
+
+#### Animation Export Tools
+
+##### `start_animation_capture(outputDir: string, fps?: number)`
+
+Start capturing animation frames to a directory.
+
+**Parameters:**
+- `outputDir` (required): Directory to save frames
+- `fps` (optional): Frames per second (default 30)
+
+**Response format:**
+```json
+{
+  "success": true,
+  "outputDir": "/tmp/anim",
+  "fps": 30,
+  "message": "Animation capture started"
+}
+```
+
+**Example usage:**
+```typescript
+{
+  name: "start_animation_capture",
+  arguments: {
+    outputDir: "/tmp/anim"
+  }
+}
+```
+
+**Natural language examples:**
+- "Start capturing at 30fps"
+- "Begin animation capture"
+
+---
+
+##### `capture_animation_frame()`
+
+Capture a single frame during animation capture.
+
+**Parameters:** None
+
+**Response format:**
+```json
+{
+  "success": true,
+  "frameNumber": 1,
+  "message": "Frame captured"
+}
+```
+
+**Example usage:**
+```typescript
+{
+  name: "capture_animation_frame",
+  arguments: {}
+}
+```
+
+**Natural language examples:**
+- "Capture this frame"
+
+---
+
+##### `stop_animation_capture(outputPath: string, format: "mp4" | "gif" | "webm", quality?: "low" | "medium" | "high")`
+
+Stop animation capture and encode to video file.
+
+**Parameters:**
+- `outputPath` (required): Output video file path
+- `format` (required): Video format
+- `quality` (optional): Video quality (default "high")
+
+**Response format:**
+```json
+{
+  "success": true,
+  "outputPath": "~/video.mp4",
+  "format": "mp4",
+  "totalFrames": 150,
+  "message": "Video exported"
+}
+```
+
+**Example usage:**
+```typescript
+{
+  name: "stop_animation_capture",
+  arguments: {
+    outputPath: "~/video.mp4",
+    format: "mp4"
+  }
+}
+```
+
+**Natural language examples:**
+- "Stop and save as video.mp4"
+- "Export as GIF"
+
+---
+
+##### `export_animation(assemblyName: string, outputPath: string, format: "mp4" | "gif", duration: number, fps?: number)`
+
+Export a complete animation from assembly in a single call.
+
+**Parameters:**
+- `assemblyName` (required): Name of the assembly to animate
+- `outputPath` (required): Output video file path
+- `format` (required): Video format
+- `duration` (required): Animation duration in seconds
+- `fps` (optional): Frames per second (default 30)
+
+**Response format:**
+```json
+{
+  "success": true,
+  "outputPath": "~/robot.mp4",
+  "format": "mp4",
+  "duration": 5,
+  "totalFrames": 150,
+  "message": "Animation exported"
+}
+```
+
+**Example usage:**
+```typescript
+{
+  name: "export_animation",
+  arguments: {
+    assemblyName: "Robot",
+    outputPath: "~/robot.mp4",
+    format: "mp4",
+    duration: 5
+  }
+}
+```
+
+**Natural language examples:**
+- "Export animation as video.mp4"
+- "Create 5-second GIF of mechanism"
+
+---
+
+#### Common Rendering and Animation Workflows
+
+**Workflow 1: Render an Image**
+
+```
+1. Set view angle: set_view_angle({ viewName: "iso" })
+2. Configure lighting: configure_lighting({ lightingType: "studio" })
+3. Set material: set_object_material({ objectName: "Box", materialName: "Steel" })
+4. Render: render_view({ outputPath: "~/render.png", width: 1920, height: 1080 })
+```
+
+**Workflow 2: Export Animation as Video**
+
+```
+1. Initialize solver: initialize_kinematic_solver({ assemblyName: "CrankSlider" })
+2. Export animation: export_animation({ assemblyName: "CrankSlider", outputPath: "~/anim.mp4", format: "mp4", duration: 5 })
+```
+
+**Workflow 3: Manual Frame Capture**
+
+```
+1. Start capture: start_animation_capture({ outputDir: "/tmp/anim", fps: 30 })
+2. Drive joint: drive_joint({ jointName: "Crank", startValue: 0, endValue: 360, duration: 4 })
+3. For each frame: capture_animation_frame({})
+4. Stop and encode: stop_animation_capture({ outputPath: "~/video.mp4", format: "mp4" })
+```
+
+**Workflow 4: Create GIF**
+
+```
+1. Export as GIF: export_animation({ assemblyName: "Motor", outputPath: "~/motor.gif", format: "gif", duration: 3 })
+```
+
+---
+
 ### Export Tool (Legacy)
 
 #### `export_model(filePath: string, format: string)`
