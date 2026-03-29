@@ -232,7 +232,7 @@ export function formatDocumentInfo(data: any): string {
 /**
  * Helper: Format a table row
  */
-function formatTableRow(cells: string[]): string {
+export function formatTableRow(cells: string[]): string {
   const maxWidth = 15;
   const padded = cells.map(cell => {
     const truncated = cell.length > maxWidth ? cell.substring(0, maxWidth - 2) + '..' : cell;
@@ -1400,8 +1400,8 @@ export function formatDimensionCreation(data: any): string {
 
   if (data.measurement !== undefined) {
     if (data.measurementType === 'angular') {
-      lines.push(`Angle: ${data.measurement.toFixed(1)}°`);
-    } else {
+      lines.push(`Angle: ${data.measurement.toFixed(1)}`);
+    } else if (data.objectType !== 'AngularDimension') {
       lines.push(`Measurement: ${data.measurement.toFixed(2)} mm`);
     }
   }
@@ -1478,7 +1478,11 @@ export function formatModificationResult(data: any, operation: string): string {
   } else if (operation === 'rotate') {
     lines.push(`Rotated ${data.objectNames?.length || 1} object(s): ${(data.objectNames || []).join(', ')}`);
     if (data.angle !== undefined) {
-      lines.push(`Angle: ${data.angle}°`);
+      if (typeof data.angle === 'string') {
+        lines.push(`Angle: ${data.angle}`);
+      } else {
+        lines.push(`Angle: ${data.angle}°`);
+      }
     }
     if (data.center) {
       lines.push(`Center: (${data.center.x?.toFixed(2) || 0}, ${data.center.y?.toFixed(2) || 0}, ${data.center.z?.toFixed(2) || 0})`);
@@ -1504,6 +1508,213 @@ export function formatModificationResult(data: any, operation: string): string {
     lines.push(`Split ${data.originalName} into ${data.newObjectNames?.length || 0} object(s): ${(data.newObjectNames || []).join(', ')}`);
   } else {
     lines.push(`${opName} operation completed`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+// ============================================================================
+// TechDraw Workbench Result Formatters
+// ============================================================================
+
+/**
+ * Format TechDraw page creation result
+ */
+export function formatPageCreation(data: any): string {
+  if (!data) return 'No page data';
+
+  const lines: string[] = [];
+  lines.push(`Page: ${data.pageLabel || data.pageName} (${data.pageName})`);
+
+  if (data.template) {
+    lines.push(`Template: ${data.template}`);
+  }
+
+  if (data.paperSize) {
+    lines.push(`Paper Size: ${data.paperSize}`);
+  }
+
+  if (data.viewCount !== undefined) {
+    lines.push(`Views: ${data.viewCount}`);
+  }
+
+  if (data.views && data.views.length > 0) {
+    lines.push('');
+    lines.push('Views on page:');
+    for (const view of data.views) {
+      lines.push(`  - ${view.label || view.name} (${view.type || 'View'})`);
+    }
+  }
+
+  if (data.pageCount !== undefined) {
+    lines.push('');
+    lines.push(`Total pages: ${data.pageCount}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Format TechDraw view creation result
+ */
+export function formatViewCreation(data: any): string {
+  if (!data) return 'No view data';
+
+  const lines: string[] = [];
+
+  if (data.groupName) {
+    lines.push(`Projection Group: ${data.groupLabel || data.groupName} (${data.groupName})`);
+    lines.push(`Source: ${data.sourceObject}`);
+    lines.push('');
+    lines.push('Views created:');
+    if (data.views && data.views.length > 0) {
+      for (const view of data.views) {
+        lines.push(`  - ${view.viewLabel || view.viewName} (${view.viewType || 'View'})`);
+      }
+    }
+  } else {
+    lines.push(`View: ${data.viewLabel || data.viewName} (${data.viewName})`);
+    lines.push(`Type: ${data.viewType || data.type || 'Standard'}`);
+    lines.push(`Source: ${data.sourceObject}`);
+
+    if (data.projectionType) {
+      lines.push(`Projection: ${data.projectionType} Angle`);
+    }
+
+    if (data.scale !== undefined) {
+      lines.push(`Scale: ${data.scale}`);
+    }
+
+    if (data.cutLine) {
+      lines.push(`Cut Line: from (${data.cutLine.point1?.x}, ${data.cutLine.point1?.y}) to (${data.cutLine.point2?.x}, ${data.cutLine.point2?.y})`);
+    }
+  }
+
+  if (data.pageName) {
+    lines.push(`Page: ${data.pageName}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Format TechDraw dimension creation result
+ */
+export function formatTechDrawDimension(data: any): string {
+  if (!data) return 'No dimension data';
+
+  const lines: string[] = [];
+  lines.push(`Dimension: ${data.dimensionLabel || data.dimensionName} (${data.dimensionName})`);
+
+  const dimType = data.dimensionType || data.type || 'Dimension';
+  lines.push(`Type: ${dimType}`);
+
+  if (data.measurement !== undefined) {
+    if (dimType.toLowerCase().includes('angular')) {
+      lines.push(`Angle: ${typeof data.measurement === 'number' ? data.measurement.toFixed(1) + '°' : data.measurement}`);
+    } else if (dimType.toLowerCase().includes('diameter')) {
+      lines.push(`Diameter: ${typeof data.measurement === 'number' ? data.measurement.toFixed(2) + ' mm' : data.measurement}`);
+    } else if (dimType.toLowerCase().includes('radial') || dimType.toLowerCase().includes('radius')) {
+      lines.push(`Radius: ${typeof data.measurement === 'number' ? data.measurement.toFixed(2) + ' mm' : data.measurement}`);
+    } else {
+      lines.push(`Measurement: ${typeof data.measurement === 'number' ? data.measurement.toFixed(2) + ' mm' : data.measurement}`);
+    }
+  }
+
+  if (data.startPoint && data.endPoint) {
+    lines.push(`From: (${data.startPoint.x}, ${data.startPoint.y})`);
+    lines.push(`To: (${data.endPoint.x}, ${data.endPoint.y})`);
+  }
+
+  if (data.circleName) {
+    lines.push(`Circle: ${data.circleName}`);
+  }
+
+  if (data.direction) {
+    lines.push(`Direction: ${data.direction}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Format TechDraw annotation creation result
+ */
+export function formatAnnotationCreation(data: any): string {
+  if (!data) return 'No annotation data';
+
+  const lines: string[] = [];
+
+  if (data.textName) {
+    lines.push(`Text: ${data.textLabel || data.textName} (${data.textName})`);
+  } else if (data.balloonName) {
+    lines.push(`Balloon: ${data.balloonLabel || data.balloonName} (${data.balloonName})`);
+  } else if (data.leaderName) {
+    lines.push(`Leader: ${data.leaderLabel || data.leaderName} (${data.leaderName})`);
+  }
+
+  if (data.text) {
+    lines.push(`Content: "${data.text}"`);
+  }
+
+  if (data.position) {
+    lines.push(`Position: (${data.position.x}, ${data.position.y})`);
+  }
+
+  if (data.targetPoint) {
+    lines.push(`Target: (${data.targetPoint.x}, ${data.targetPoint.y})`);
+  }
+
+  if (data.points) {
+    lines.push(`Path: ${data.points.length} points`);
+  }
+
+  if (data.pageName) {
+    lines.push(`Page: ${data.pageName}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Format TechDraw export result
+ */
+export function formatExportResult(data: any): string {
+  if (!data) return 'No export data';
+
+  const lines: string[] = [];
+
+  if (data.success) {
+    lines.push(`Exported: ${data.pageName}`);
+    lines.push(`Format: ${data.format?.toUpperCase() || (data.outputPath?.endsWith('.svg') ? 'SVG' : 'PDF')}`);
+    lines.push(`Path: ${data.outputPath}`);
+  } else {
+    lines.push(`Export failed: ${data.error || 'Unknown error'}`);
   }
 
   if (data.message) {
