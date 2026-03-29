@@ -4220,19 +4220,20 @@ export function formatBuildingHierarchy(data: any): string {
   const lines: string[] = [];
   lines.push('Building Hierarchy:');
 
-  if (data.sites && Array.isArray(data.sites)) {
-    for (const site of data.sites) {
-      lines.push(`  Site: ${site.name || site.objectLabel} (${site.objectName})`);
-      if (site.buildings) {
-        for (const building of site.buildings) {
-          lines.push(`    Building: ${building.name || building.objectLabel} (${building.objectName})`);
-          if (building.levels) {
-            for (const level of building.levels) {
-              lines.push(`      Level: ${level.name || level.objectLabel} (${level.objectName})`);
-            }
-          }
-        }
+  function formatNode(node: any, indent: number = 0) {
+    const prefix = '  '.repeat(indent);
+    const nodeType = node.ifcType || node.type || 'Unknown';
+    lines.push(`${prefix}${nodeType}: ${node.name || node.objectLabel || node.objectName || 'Unnamed'}`);
+    if (node.children && Array.isArray(node.children)) {
+      for (const child of node.children) {
+        formatNode(child, indent + 1);
       }
+    }
+  }
+
+  if (data.hierarchy && Array.isArray(data.hierarchy)) {
+    for (const node of data.hierarchy) {
+      formatNode(node, 0);
     }
   }
 
