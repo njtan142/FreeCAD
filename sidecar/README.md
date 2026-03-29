@@ -2508,6 +2508,563 @@ Get detailed information about a shape's properties and topology.
 
 ---
 
+### Pattern and Array Tools
+
+The pattern and array tools allow you to create parametric pattern features in PartDesign. Patterns replicate a source feature (pad, pocket, hole, etc.) in linear, polar, rectangular, or path-based arrangements. Patterns are associative by default - when the source feature changes, all pattern copies update automatically.
+
+**Pattern Workflow Overview:**
+
+1. **Create Source Feature** - Build a feature to pattern (pad, pocket, sketch-based cut)
+2. **Create Pattern** - Choose pattern type and specify arrangement
+3. **Adjust Parameters** - Modify count, spacing, angle as needed
+4. **Update/Remove** - Change pattern or delete when no longer needed
+
+---
+
+#### `create_linear_pattern(sourceObject: string, direction: object, count: number, spacing: number | string, createLinks?: boolean, name?: string)`
+
+Create a 1D linear pattern that replicates a feature along a direction vector.
+
+**Parameters:**
+- `sourceObject` (required): Name of the feature to pattern (e.g., "Pocket", "Pad001")
+- `direction` (required): Direction vector as `{x, y, z}` or object name (edge name) to align with
+- `count` (required): Number of copies (including original), integer >= 2
+- `spacing` (required): Distance between copies. Can be numeric (mm) or string with units: `"10mm"`, `"2cm"`
+- `createLinks` (optional): If `true` (default), pattern copies are linked to source and update when source changes
+- `name` (optional): Name for the pattern. If omitted, auto-generated
+
+**Response format:**
+```json
+{
+  "success": true,
+  "patternName": "LinearPattern",
+  "patternLabel": "LinearPattern",
+  "sourceObject": "Pocket",
+  "count": 5,
+  "spacing": "10.00mm",
+  "direction": {"x": 1, "y": 0, "z": 0},
+  "createLinks": true,
+  "message": "Created LinearPattern 'LinearPattern' with 5 copies, 10.00mm spacing"
+}
+```
+
+**Example usage:**
+```typescript
+// Create a linear pattern of 5 holes 10mm apart
+{
+  name: "create_linear_pattern",
+  arguments: {
+    sourceObject: "Pocket",
+    direction: {"x": 1, "y": 0, "z": 0},
+    count: 5,
+    spacing: "10mm"
+  }
+}
+
+// Create pattern along Y-axis with 20mm spacing
+{
+  name: "create_linear_pattern",
+  arguments: {
+    sourceObject: "Pad001",
+    direction: {"x": 0, "y": 1, "z": 0},
+    count: 3,
+    spacing: 20,
+    name: "VerticalPattern"
+  }
+}
+```
+
+**Natural language examples:**
+- "Create a linear pattern of 5 holes"
+- "Array these slots 10mm apart along the X axis"
+- "Make a horizontal pattern with 20mm spacing"
+- "Pattern the cylinder 4 times along the Y direction"
+
+---
+
+#### `update_linear_pattern(patternName: string, count?: number, spacing?: number | string)`
+
+Modify an existing linear pattern's count or spacing.
+
+**Parameters:**
+- `patternName` (required): Name of the linear pattern to update
+- `count` (optional): New number of copies
+- `spacing` (optional): New spacing value. Can be numeric or string with units
+
+**Response format:**
+```json
+{
+  "success": true,
+  "patternName": "LinearPattern",
+  "count": 8,
+  "spacing": "15.00mm",
+  "message": "Updated LinearPattern: now 8 copies, 15.00mm spacing"
+}
+```
+
+**Example usage:**
+```typescript
+// Change pattern to 8 copies
+{
+  name: "update_linear_pattern",
+  arguments: {
+    patternName: "LinearPattern",
+    count: 8
+  }
+}
+
+// Double the spacing
+{
+  name: "update_linear_pattern",
+  arguments: {
+    patternName: "LinearPattern",
+    spacing: "20mm"
+  }
+}
+```
+
+**Natural language examples:**
+- "Change the pattern to 8 copies"
+- "Double the spacing to 20mm"
+- "Update the linear pattern to have 10 instances"
+
+---
+
+#### `create_polar_pattern(sourceObject: string, centerPoint: object, axis: object, count: number, angle?: number | string, createLinks?: boolean, name?: string)`
+
+Create a polar (circular) pattern that replicates a feature around an axis.
+
+**Parameters:**
+- `sourceObject` (required): Name of the feature to pattern
+- `centerPoint` (required): Center of rotation as `{x, y, z}`
+- `axis` (required): Axis of rotation as `{x, y, z}` (e.g., `{"x": 0, "y": 0, "z": 1}` for Z-axis)
+- `count` (required): Number of copies (including original), integer >= 2
+- `angle` (optional): Total angular span in degrees. Default: `360`. Can be numeric or string: `"270deg"`
+- `createLinks` (optional): If `true` (default), copies are linked to source
+- `name` (optional): Name for the pattern
+
+**Response format:**
+```json
+{
+  "success": true,
+  "patternName": "PolarPattern",
+  "patternLabel": "PolarPattern",
+  "sourceObject": "Pocket",
+  "count": 6,
+  "angle": "360.00deg",
+  "centerPoint": {"x": 0, "y": 0, "z": 0},
+  "axis": {"x": 0, "y": 0, "z": 1},
+  "message": "Created PolarPattern 'PolarPattern' with 6 instances around 360.00deg"
+}
+```
+
+**Example usage:**
+```typescript
+// Create 6 bolts in a full circle
+{
+  name: "create_polar_pattern",
+  arguments: {
+    sourceObject: "Pocket",
+    centerPoint: {"x": 0, "y": 0, "z": 0},
+    axis: {"x": 0, "y": 0, "z": 1},
+    count: 6
+  }
+}
+
+// Create pattern around 270 degrees
+{
+  name: "create_polar_pattern",
+  arguments: {
+    sourceObject: "Pad001",
+    centerPoint: {"x": 0, "y": 0, "z": 0},
+    axis: {"x": 0, "y": 0, "z": 1},
+    count: 4,
+    angle: "270deg",
+    name: "PartialPolar"
+  }
+}
+```
+
+**Natural language examples:**
+- "Create a polar pattern of 6 bolts"
+- "Array around 270 degrees"
+- "Make a circular pattern of 8 holes"
+- "Pattern the feature around the Z axis"
+
+---
+
+#### `update_polar_pattern(patternName: string, count?: number, angle?: number | string)`
+
+Modify an existing polar pattern's count or angle.
+
+**Parameters:**
+- `patternName` (required): Name of the polar pattern to update
+- `count` (optional): New number of copies
+- `angle` (optional): New angular span in degrees
+
+**Response format:**
+```json
+{
+  "success": true,
+  "patternName": "PolarPattern",
+  "count": 8,
+  "angle": "180.00deg",
+  "message": "Updated PolarPattern: now 8 copies, 180.00deg span"
+}
+```
+
+**Example usage:**
+```typescript
+// Increase to 8 instances
+{
+  name: "update_polar_pattern",
+  arguments: {
+    patternName: "PolarPattern",
+    count: 8
+  }
+}
+
+// Reduce to 180 degree arc
+{
+  name: "update_polar_pattern",
+  arguments: {
+    patternName: "PolarPattern",
+    angle: 180
+  }
+}
+```
+
+**Natural language examples:**
+- "Increase to 8 instances"
+- "Reduce angle to 180 degrees"
+- "Change the polar pattern to 12 copies"
+
+---
+
+#### `create_rectangular_pattern(sourceObject: string, directionX: object, countX: number, spacingX: number | string, directionY: object, countY: number, spacingY: number | string, createLinks?: boolean, name?: string)`
+
+Create a 2D rectangular grid pattern that replicates a feature in two directions.
+
+**Parameters:**
+- `sourceObject` (required): Name of the feature to pattern
+- `directionX` (required): First direction vector as `{x, y, z}`
+- `countX` (required): Number of copies in X direction (including original)
+- `spacingX` (required): Spacing in X direction
+- `directionY` (required): Second direction vector as `{x, y, z}`
+- `countY` (required): Number of copies in Y direction (including original)
+- `spacingY` (required): Spacing in Y direction
+- `createLinks` (optional): If `true` (default), copies are linked to source
+- `name` (optional): Name for the pattern
+
+**Response format:**
+```json
+{
+  "success": true,
+  "patternName": "RectangularPattern",
+  "patternLabel": "RectangularPattern",
+  "sourceObject": "Pocket",
+  "countX": 3,
+  "countY": 4,
+  "totalCount": 12,
+  "spacingX": "10.00mm",
+  "spacingY": "15.00mm",
+  "message": "Created RectangularPattern 'RectPattern': 3x4 grid (12 total copies)"
+}
+```
+
+**Example usage:**
+```typescript
+// Create 3x4 grid pattern
+{
+  name: "create_rectangular_pattern",
+  arguments: {
+    sourceObject: "Pocket",
+    directionX: {"x": 1, "y": 0, "z": 0},
+    countX: 3,
+    spacingX: "10mm",
+    directionY: {"x": 0, "y": 1, "z": 0},
+    countY: 4,
+    spacingY: "15mm"
+  }
+}
+
+// Create 5x5 grid with custom name
+{
+  name: "create_rectangular_pattern",
+  arguments: {
+    sourceObject: "Pad001",
+    directionX: {"x": 1, "y": 0, "z": 0},
+    countX: 5,
+    spacingX: 20,
+    directionY: {"x": 0, "y": 1, "z": 0},
+    countY: 5,
+    spacingY: 20,
+    name: "GridPattern"
+  }
+}
+```
+
+**Natural language examples:**
+- "Create a 3x4 rectangular array"
+- "Make a 5 by 5 grid"
+- "Pattern as a 4x6 matrix with 10mm spacing"
+- "Create a grid pattern 3 across and 4 down"
+
+---
+
+#### `create_path_pattern(sourceObject: string, pathObject: string, count: number, spacing: number | string, alignToPath?: boolean, createLinks?: boolean, name?: string)`
+
+Create a pattern that distributes copies along a path (wire or sketch edge).
+
+**Parameters:**
+- `sourceObject` (required): Name of the feature to pattern
+- `pathObject` (required): Name of the path object or sketch containing the path
+- `count` (required): Number of copies (including original)
+- `spacing` (required): Distance between copies along the path
+- `alignToPath` (optional): If `true` (default), copies rotate to follow the path tangent
+- `createLinks` (optional): If `true` (default), copies are linked to source
+- `name` (optional): Name for the pattern
+
+**Response format:**
+```json
+{
+  "success": true,
+  "patternName": "PathPattern",
+  "patternLabel": "PathPattern",
+  "sourceObject": "Pocket",
+  "pathObject": "Sketch",
+  "count": 5,
+  "spacing": "20.00mm",
+  "alignToPath": true,
+  "message": "Created PathPattern 'PathPattern' with 5 copies along path"
+}
+```
+
+**Example usage:**
+```typescript
+// Pattern along a sketch edge
+{
+  name: "create_path_pattern",
+  arguments: {
+    sourceObject: "Pocket",
+    pathObject: "Sketch",
+    count: 5,
+    spacing: "20mm"
+  }
+}
+
+// Pattern along path without rotation
+{
+  name: "create_path_pattern",
+  arguments: {
+    sourceObject: "Pad001",
+    pathObject: "Sketch001",
+    count: 8,
+    spacing: 15,
+    alignToPath: false,
+    name: "LinearPathPattern"
+  }
+}
+```
+
+**Natural language examples:**
+- "Pattern along this curve"
+- "Array along the sketch edge"
+- "Distribute 5 copies along this path"
+- "Create a path-based pattern"
+
+---
+
+#### `create_transform_link(sourceObject: string, xTranslation: number, yTranslation: number, zTranslation: number, xCount: number, yCount?: number, zCount?: number, name?: string)`
+
+Create positioned links (transform pattern) that replicate a feature at specified translation intervals in 3D space.
+
+**Parameters:**
+- `sourceObject` (required): Name of the feature to pattern
+- `xTranslation` (required): Translation distance in X direction (mm)
+- `yTranslation` (required): Translation distance in Y direction (mm)
+- `zTranslation` (required): Translation distance in Z direction (mm)
+- `xCount` (required): Number of copies in X direction (including original)
+- `yCount` (optional): Number of copies in Y direction. Default: 1
+- `zCount` (optional): Number of copies in Z direction. Default: 1
+- `name` (optional): Name for the transform
+
+**Response format:**
+```json
+{
+  "success": true,
+  "transformName": "TransformLink",
+  "transformLabel": "TransformLink",
+  "sourceObject": "Pad",
+  "xCount": 3,
+  "yCount": 2,
+  "zCount": 1,
+  "totalCount": 6,
+  "xTranslation": "10.00mm",
+  "yTranslation": "20.00mm",
+  "zTranslation": "0.00mm",
+  "message": "Created TransformLink 'TransformLink': 3x2x1 grid (6 total copies)"
+}
+```
+
+**Example usage:**
+```typescript
+// Transform 3 times in X direction only
+{
+  name: "create_transform_link",
+  arguments: {
+    sourceObject: "Pad",
+    xTranslation: 10,
+    yTranslation: 0,
+    zTranslation: 0,
+    xCount: 3
+  }
+}
+
+// Create 3x2x1 grid pattern
+{
+  name: "create_transform_link",
+  arguments: {
+    sourceObject: "Cylinder",
+    xTranslation: 15,
+    yTranslation: 20,
+    zTranslation: 0,
+    xCount: 3,
+    yCount: 2,
+    zCount: 1,
+    name: "GridTransform"
+  }
+}
+```
+
+**Natural language examples:**
+- "Transform this feature 3 times in X direction"
+- "Create a 3x2 grid of the cylinder"
+- "Make 6 copies (3x1x2) with 15mm spacing"
+- "Array in 3D space with 10mm increments"
+
+---
+
+#### `get_pattern_info(patternName: string)`
+
+Get detailed information about a pattern including its type, parameters, and positions.
+
+**Parameters:**
+- `patternName` (required): Name of the pattern to query
+
+**Response format:**
+```json
+{
+  "success": true,
+  "patternName": "LinearPattern",
+  "patternLabel": "LinearPattern",
+  "type": "LinearPattern",
+  "sourceObject": "Pocket",
+  "count": 5,
+  "spacing": "10.00mm",
+  "direction": {"x": 1, "y": 0, "z": 0},
+  "createLinks": true,
+  "positions": [
+    {"x": 0, "y": 0, "z": 0},
+    {"x": 10, "y": 0, "z": 0},
+    {"x": 20, "y": 0, "z": 0},
+    {"x": 30, "y": 0, "z": 0},
+    {"x": 40, "y": 0, "z": 0}
+  ],
+  "message": "Pattern info retrieved successfully"
+}
+```
+
+**Example usage:**
+```typescript
+// Get pattern details
+{
+  name: "get_pattern_info",
+  arguments: {
+    patternName: "LinearPattern"
+  }
+}
+```
+
+**Natural language examples:**
+- "Show pattern details"
+- "What are the pattern parameters?"
+- "Tell me about this polar pattern"
+
+---
+
+#### `delete_pattern(patternName: string)`
+
+Remove a pattern from the document. The source feature is preserved.
+
+**Parameters:**
+- `patternName` (required): Name of the pattern to delete
+
+**Response format:**
+```json
+{
+  "success": true,
+  "patternName": "LinearPattern",
+  "message": "Deleted pattern 'LinearPattern'"
+}
+```
+
+**Example usage:**
+```typescript
+// Delete a pattern
+{
+  name: "delete_pattern",
+  arguments: {
+    patternName: "LinearPattern"
+  }
+}
+```
+
+**Natural language examples:**
+- "Delete this pattern"
+- "Remove the array"
+- "Delete the polar pattern"
+
+---
+
+### Pattern Types Reference
+
+| Pattern Type | Use Case | Parameters |
+|--------------|----------|------------|
+| **Linear** | Holes, slots, studs in a line | Direction, count, spacing |
+| **Polar** | Bolts, holes around a circle | Center, axis, count, angle |
+| **Rectangular** | Grid of features | DirectionX, countX, spacingX, DirectionY, countY, spacingY |
+| **Path** | Features along a curve | Path, count, spacing, alignToPath |
+| **Transform** | 3D grid distribution | Translation X/Y/Z, count X/Y/Z |
+
+### Common Pattern Workflows
+
+**Creating a row of holes:**
+1. Create a sketch with hole circles
+2. Create a pocket to cut the holes
+3. Create a linear pattern of the pocket
+4. Adjust count and spacing as needed
+
+**Creating a flange with bolt holes:**
+1. Create the base pad/revolution
+2. Create a sketch on the flange face with bolt circles
+3. Create through-all pockets for the holes
+4. Create a polar pattern around the center
+
+**Creating a heatsink grid:**
+1. Create the heatsink base shape
+2. Create a sketch with fin profiles
+3. Create pads for the fins
+4. Create a rectangular pattern in X and Y directions
+
+**Creating holes along a curved edge:**
+1. Create the curved surface or edge
+2. Create sketch with hole circles
+3. Create a path pattern using the curved edge
+4. Enable alignToPath so holes follow the curve
+
+---
+
 ### Assembly Constraint Tools
 
 The assembly constraint tools allow you to create and manage assemblies with parametric constraints between multiple parts. After creating individual parts using Part or PartDesign workbenches, you can assemble them together using constraints like Coincident, Parallel, Perpendicular, Angle, Distance, and more to define their spatial relationships.
@@ -4665,6 +5222,52 @@ Delete a TechDraw page.
 
 ---
 
+##### `get_drawing_page_properties(pageName: string)`
+
+Get detailed properties of a TechDraw page.
+
+**Parameters:**
+- `pageName` (required): Name of the page to query
+
+**Response format:**
+```json
+{
+  "success": true,
+  "pageName": "Page",
+  "pageLabel": "Page",
+  "properties": {
+    "name": "Page",
+    "label": "Page",
+    "type": "TechDraw::Page",
+    "template": ":/TEAM/A4_LandscapeTD.svg",
+    "pageWidth": 210,
+    "pageHeight": 297,
+    "scale": 1.0,
+    "scaleType": "None",
+    "views": [],
+    "viewCount": 0
+  },
+  "message": "Retrieved properties for TechDraw page 'Page'"
+}
+```
+
+**Example usage:**
+```typescript
+{
+  name: "get_drawing_page_properties",
+  arguments: {
+    pageName: "Page"
+  }
+}
+```
+
+**Natural language examples:**
+- "Show properties of this drawing page"
+- "What template is this page using?"
+- "List all views on this page"
+
+---
+
 #### View Creation Tools
 
 ##### `create_standard_view(sourceObject: string, viewName?: string, projectionType?: "Third" | "First")`
@@ -4972,6 +5575,49 @@ Create a projection group with multiple related views.
 
 ---
 
+##### `create_detail_view(sourceView: string, center: {x: number, y: number}, scale?: number, pageName?: string, viewName?: string)`
+
+Create a detail (enlarged) view showing a zoomed portion of a source view.
+
+**Parameters:**
+- `sourceView` (required): Name of the source view to detail
+- `center` (required): Center point of the detail as `{x, y}` coordinates
+- `scale` (optional): Scale factor for magnification (default: 2.0)
+- `pageName` (optional): Name of the page containing the source view. If omitted, finds automatically.
+- `viewName` (optional): Name for the detail view. If omitted, auto-generated.
+
+**Response format:**
+```json
+{
+  "success": true,
+  "viewName": "Detail",
+  "sourceView": "Front",
+  "scale": 2.0,
+  "detailPoint": {"x": 50, "y": 50},
+  "message": "Created detail view at {'x': 50.00, 'y': 50.00, 'z': 0.00}"
+}
+```
+
+**Example usage:**
+```typescript
+{
+  name: "create_detail_view",
+  arguments: {
+    sourceView: "Front",
+    center: {"x": 50, "y": 50},
+    scale: 2.0,
+    pageName: "Page"
+  }
+}
+```
+
+**Natural language examples:**
+- "Create a detail view of this area"
+- "Add a 2x magnification detail"
+- "Show an enlarged view of this feature"
+
+---
+
 #### Dimension Tools
 
 ##### `add_linear_dimension(pageName: string, viewName: string, startPoint: {x: number, y: number}, endPoint: {x: number, y: number})`
@@ -5239,6 +5885,56 @@ Add a balloon annotation (circled number) to identify components.
 - "Add balloon to this component"
 - "Number this part"
 - "Add balloon with text 'A' to the main body"
+
+---
+
+##### `create_leader_line(pageName: string, points: Array<[number, number]>, text?: string, viewName?: string)`
+
+Add a leader line with optional text annotation to a TechDraw page.
+
+**Parameters:**
+- `pageName` (required): Name of the page containing the view
+- `points` (required): Array of [x, y] coordinates defining the leader line path
+- `text` (optional): Text to display at the end of the leader line
+- `viewName` (optional): Name of the view to add the leader to
+
+**Response format:**
+```json
+{
+  "success": true,
+  "leaderName": "Leader",
+  "points": [[10, 50], [10, 100], [50, 100]],
+  "text": "MAX",
+  "message": "Created leader line 'Leader'"
+}
+```
+
+**Example usage:**
+```typescript
+{
+  name: "create_leader_line",
+  arguments: {
+    pageName: "Page",
+    points: [[10, 50], [10, 100], [50, 100]],
+    text: "MAX"
+  }
+}
+
+// Leader without text
+{
+  name: "create_leader_line",
+  arguments: {
+    pageName: "Page",
+    viewName: "Front",
+    points: [[0, 0], [0, 50]]
+  }
+}
+```
+
+**Natural language examples:**
+- "Add a leader line pointing to this feature"
+- "Create a callout with text 'MAX'"
+- "Add an annotation line with label"
 
 ---
 
