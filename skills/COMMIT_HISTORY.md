@@ -398,3 +398,47 @@ The original large commits for Draft Workbench Tools have been refactored into 5
 - **Files modified**: 4 (__init__.py, agent-tools.ts, result-formatters.ts, sidecar/README.md)
 - **Total insertions**: ~4,400 lines
 - **Total deletions**: ~400 lines
+
+---
+
+## Cycle 13 - Incremental Commits
+
+The original large commit for TechDraw Workbench Tools have been refactored into 5 incremental commits.
+
+| Commit Hash | Message | Files Changed |
+|-------------|---------|---------------|
+| 6e2f61dc19 | feat(python): add TechDraw workbench handlers for 2D drawing creation | techdraw_handlers.py |
+| a651fefe43 | feat(python): register TechDraw workbench handlers in llm_bridge package | __init__.py |
+| 7e0711dc31 | feat(sidecar): add 18 TechDraw workbench tools to agent | agent-tools.ts |
+| 6dba2de587 | feat(sidecar): add result formatters for TechDraw workbench operations | result-formatters.ts |
+| b8de475dae | docs(sidecar): document TechDraw workbench tools in README | README.md |
+
+### Commit Progression
+
+1. **Python TechDraw handlers**: Added techdraw_handlers.py with 22 handlers for TechDraw workbench operations:
+   - Page management: create, list, delete, get properties
+   - View creation: standard, isometric, front, top, side, section, projection group, detail
+   - Dimension tools: linear, radial, diameter, angular
+   - Annotations: text, balloon, leader line
+   - Export: SVG, PDF
+
+2. **Handler registration**: Registered all 22 TechDraw handlers in llm_bridge/__init__.py and exported in __all__ list for WebSocket bridge accessibility
+
+3. **Agent tools implementation**: Added 18 TechDraw workbench tools to agent-tools.ts:
+   - 4 page management tools (create_drawing_page, list_drawing_pages, delete_drawing_page, get_drawing_page_properties)
+   - 7 view creation tools (create_standard_view, create_isometric_view, create_front_view, create_top_view, create_side_view, create_section_view, create_projection_group, create_detail_view)
+   - 4 dimension tools (add_linear_dimension, add_radial_dimension, add_diameter_dimension, add_angular_dimension)
+   - 3 annotation tools (add_text_annotation, add_balloon, add_leader_line)
+   - 2 export tools (export_to_svg, export_to_pdf)
+
+4. **Result formatters**: Added 5 TechDraw-specific result formatters to result-formatters.ts (formatPageCreation, formatViewCreation, formatTechDrawDimension, formatAnnotationCreation, formatExportResult)
+
+5. **Sidecar documentation**: Updated sidecar/README.md with comprehensive documentation for all 18 TechDraw tools including usage examples, parameter descriptions, view types reference table, and drawing workflow guidance
+
+### Summary
+
+- **Total commits**: 5
+- **Files created**: 1 (techdraw_handlers.py)
+- **Files modified**: 4 (__init__.py, agent-tools.ts, result-formatters.ts, sidecar/README.md)
+- **Total insertions**: ~4,410 lines
+- **Total deletions**: ~14 lines
