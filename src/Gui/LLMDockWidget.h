@@ -25,7 +25,10 @@
 #include <QDockWidget>
 #include <QList>
 #include <QString>
-#include <Gui/GuiExport.h>
+#include <QLineEdit>
+#include <QLabel>
+#include <QPushButton>
+#include <FCGlobal.h>
 
 namespace Gui
 {
