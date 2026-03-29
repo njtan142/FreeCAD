@@ -344,6 +344,22 @@ from .bim_handlers import (
     handle_quick_floor,
 )
 
+from .error_handlers import (
+    handle_parse_error,
+    handle_get_error_category,
+    handle_extract_traceback_info,
+    handle_analyze_error_context,
+    handle_get_recovery_suggestions,
+    handle_validate_operation,
+    handle_get_common_errors,
+    handle_get_operation_history,
+    handle_get_last_error,
+    handle_clear_error_history,
+    handle_suggest_undo_strategy,
+    handle_recover_from_validation_error,
+    handle_safe_retry,
+)
+
 __all__ = [
     "handle_document_overview",
     "handle_object_details",
@@ -593,4 +609,17 @@ __all__ = [
     "handle_set_column_width",
     "handle_set_row_height",
     "handle_set_cell_background",
+    "handle_parse_error",
+    "handle_get_error_category",
+    "handle_extract_traceback_info",
+    "handle_analyze_error_context",
+    "handle_get_recovery_suggestions",
+    "handle_validate_operation",
+    "handle_get_common_errors",
+    "handle_get_operation_history",
+    "handle_get_last_error",
+    "handle_clear_error_history",
+    "handle_suggest_undo_strategy",
+    "handle_recover_from_validation_error",
+    "handle_safe_retry",
 ]
