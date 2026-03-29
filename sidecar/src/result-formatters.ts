@@ -286,7 +286,6 @@ export function formatPropertyChange(data: any): string {
   } else if (data.afterValue !== undefined) {
     lines.push(`Set to: ${data.afterValue}`);
   }
-  
   if (data.message) {
     lines.push('');
     lines.push(data.message);
@@ -294,6 +293,320 @@ export function formatPropertyChange(data: any): string {
 
   return lines.join('\n');
 }
+
+export function formatSpreadsheetCreate(data: any): string {
+  if (!data) return 'No spreadsheet data';
+
+  const lines: string[] = [];
+
+  if (data.success) {
+    lines.push(`Spreadsheet created: ${data.objectLabel || data.objectName}`);
+    if (data.objectType) {
+      lines.push(`Type: ${data.objectType}`);
+    }
+  } else {
+    lines.push(`Create Spreadsheet Failed: ${data.error || 'Unknown error'}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatSpreadsheetDelete(data: any): string {
+  if (!data) return 'No spreadsheet data';
+
+  const lines: string[] = [];
+
+  if (data.success) {
+    lines.push(`Deleted spreadsheet: ${data.deletedSpreadsheet}`);
+  } else {
+    lines.push(`Delete Spreadsheet Failed: ${data.error || 'Unknown error'}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatSpreadsheetRename(data: any): string {
+  if (!data) return 'No spreadsheet data';
+
+  const lines: string[] = [];
+
+  if (data.success) {
+    lines.push(`Renamed: ${data.oldName} → ${data.newName}`);
+  } else {
+    lines.push(`Rename Spreadsheet Failed: ${data.error || 'Unknown error'}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatSpreadsheetList(data: any): string {
+  if (!data) return 'No spreadsheet data';
+
+  const lines: string[] = [];
+
+  if (data.success) {
+    lines.push(`Found ${data.count} spreadsheet(s):`);
+    if (data.spreadsheets && Array.isArray(data.spreadsheets)) {
+      for (const ss of data.spreadsheets) {
+        lines.push(`  • ${ss.label} (${ss.name})`);
+      }
+    }
+  } else {
+    lines.push(`List Spreadsheets Failed: ${data.error || 'Unknown error'}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatSpreadsheetInfo(data: any): string {
+  if (!data) return 'No spreadsheet data';
+
+  const lines: string[] = [];
+
+  if (data.success) {
+    lines.push(`Spreadsheet: ${data.label || data.name}`);
+    lines.push(`Type: ${data.type}`);
+    if (data.usedRange) {
+      lines.push(`Used Range: ${JSON.stringify(data.usedRange)}`);
+    }
+    lines.push(`Aliases: ${data.aliasCount || 0}`);
+  } else {
+    lines.push(`Get Spreadsheet Info Failed: ${data.error || 'Unknown error'}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatCellValue(data: any): string {
+  if (!data) return 'No cell data';
+
+  const lines: string[] = [];
+
+  if (data.success) {
+    lines.push(`Cell ${data.address} in ${data.spreadsheet}`);
+    lines.push(`Value: ${data.value}`);
+    if (data.hasExpression && data.expression) {
+      lines.push(`Formula: ${data.expression}`);
+    }
+  } else {
+    lines.push(`Get Cell Failed: ${data.error || 'Unknown error'}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatCellExpression(data: any): string {
+  if (!data) return 'No cell data';
+
+  const lines: string[] = [];
+
+  if (data.success) {
+    lines.push(`Cell ${data.address} in ${data.spreadsheet}`);
+    lines.push(`Formula: ${data.expression || '(none)'}`);
+    lines.push(`Computed Value: ${data.computedValue}`);
+  } else {
+    lines.push(`Get Cell Expression Failed: ${data.error || 'Unknown error'}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatAliasList(data: any): string {
+  if (!data) return 'No alias data';
+
+  const lines: string[] = [];
+
+  if (data.success) {
+    lines.push(`Aliases in ${data.spreadsheet} (${data.count}):`);
+    if (data.aliases && Array.isArray(data.aliases)) {
+      for (const alias of data.aliases) {
+        lines.push(`  • ${alias.alias} → ${alias.address} = ${alias.value}`);
+      }
+    }
+  } else {
+    lines.push(`List Aliases Failed: ${data.error || 'Unknown error'}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatBomGeneration(data: any): string {
+  if (!data) return 'No BOM data';
+
+  const lines: string[] = [];
+
+  if (data.success) {
+    lines.push(`BOM Generated: ${data.itemCount} item(s)`);
+    lines.push(`Format: ${data.format}`);
+    if (data.groupedByType) {
+      lines.push('Grouped by type');
+    }
+    if (data.bom && Array.isArray(data.bom) && data.bom.length > 0) {
+      lines.push('');
+      lines.push('Items:');
+      for (let i = 0; i < Math.min(data.bom.length, 10); i++) {
+        const item = data.bom[i];
+        lines.push(`  ${i + 1}. ${item.label || item.name} (${item.type})`);
+      }
+      if (data.bom.length > 10) {
+        lines.push(`  ... and ${data.bom.length - 10} more`);
+      }
+    }
+  } else {
+    lines.push(`Generate BOM Failed: ${data.error || 'Unknown error'}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatBomData(data: any): string {
+  if (!data) return 'No BOM data';
+
+  const lines: string[] = [];
+
+  if (data.success) {
+    lines.push(`Extracted data from ${data.itemCount} object(s):`);
+    if (data.items && Array.isArray(data.items)) {
+      for (const item of data.items) {
+        lines.push(`  • ${item.label || item.name || item.sourceObject}`);
+      }
+    }
+    if (data.errors && data.errors.length > 0) {
+      lines.push('');
+      lines.push('Errors:');
+      for (const err of data.errors) {
+        lines.push(`  • ${err.object}: ${err.error}`);
+      }
+    }
+  } else {
+    lines.push(`Get BOM Data Failed: ${data.error || 'Unknown error'}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatParametricTable(data: any): string {
+  if (!data) return 'No table data';
+
+  const lines: string[] = [];
+
+  if (data.success) {
+    lines.push(`Parametric table created in ${data.spreadsheet}`);
+    lines.push(`Range: ${data.startAddress}:${data.endAddress}`);
+    lines.push(`Size: ${data.rowCount} rows × ${data.columnCount} columns`);
+    if (data.headers) {
+      lines.push(`Headers: ${data.headers.join(', ')}`);
+    }
+  } else {
+    lines.push(`Create Parametric Table Failed: ${data.error || 'Unknown error'}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatTableLookup(data: any): string {
+  if (!data) return 'No lookup data';
+
+  const lines: string[] = [];
+
+  if (data.success) {
+    lines.push(`Lookup: ${data.lookupColumn} = ${data.lookupValue}`);
+    lines.push(`Found at row ${data.foundRow}, address ${data.resultAddress}`);
+    lines.push(`Result: ${data.resultValue}`);
+    if (data.rowData) {
+      lines.push('');
+      lines.push('Row data:');
+      for (const [key, val] of Object.entries(data.rowData)) {
+        lines.push(`  ${key}: ${val}`);
+      }
+    }
+  } else {
+    lines.push(`Table Lookup Failed: ${data.error || 'Unknown error'}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+export function formatColumnWidth(data: any): string {
+  if (!data) return 'No width data';
+
+  const lines: string[] = [];
+
+  if (data.success) {
+    lines.push(`Column ${data.column} in ${data.spreadsheet}`);
+    lines.push(`Width: ${data.width} points`);
+  } else {
+    lines.push(`Set Column Width Failed: ${data.error || 'Unknown error'}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
 
 /**
  * Format dimension update result from update_dimensions

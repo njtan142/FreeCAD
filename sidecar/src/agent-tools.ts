@@ -108,6 +108,19 @@ import {
   formatMeasurement,
   formatDistanceMeasurement,
   formatAngleMeasurement,
+  formatSpreadsheetCreate,
+  formatSpreadsheetDelete,
+  formatSpreadsheetInfo,
+  formatCellValue,
+  formatCellExpression,
+  formatAliasList,
+  formatBomGeneration,
+  formatBomData,
+  formatParametricTable,
+  formatTableLookup,
+  formatColumnWidth,
+  formatRowHeight,
+  formatCellBackground,
 } from './result-formatters';
 import {
   validateFilePath,
@@ -478,6 +491,36 @@ export function createAgentTools(freeCADBridge: FreeCADBridge) {
     measureLengthTool(freeCADBridge),
     measureAreaTool(freeCADBridge),
     getMeasureInfoTool(freeCADBridge),
+    // Spreadsheet lifecycle tools
+    createSpreadsheetTool(freeCADBridge),
+    deleteSpreadsheetTool(freeCADBridge),
+    renameSpreadsheetTool(freeCADBridge),
+    listSpreadsheetsTool(freeCADBridge),
+    getSpreadsheetInfoTool(freeCADBridge),
+    // Cell operation tools
+    setCellTool(freeCADBridge),
+    getCellTool(freeCADBridge),
+    setCellExpressionTool(freeCADBridge),
+    getCellExpressionTool(freeCADBridge),
+    clearCellTool(freeCADBridge),
+    clearRangeTool(freeCADBridge),
+    // Alias tools
+    setAliasTool(freeCADBridge),
+    getAliasTool(freeCADBridge),
+    removeAliasTool(freeCADBridge),
+    listAliasesTool(freeCADBridge),
+    // BOM tools
+    generateBomTool(freeCADBridge),
+    getObjectBomDataTool(freeCADBridge),
+    exportBomToSpreadsheetTool(freeCADBridge),
+    // Parametric table tools
+    createParametricTableTool(freeCADBridge),
+    updateParametricTableTool(freeCADBridge),
+    lookupValueTool(freeCADBridge),
+    // Formatting tools
+    setColumnWidthTool(freeCADBridge),
+    setRowHeightTool(freeCADBridge),
+    setCellBackgroundTool(freeCADBridge),
   ];
 }
 
@@ -18242,6 +18285,1677 @@ print(json.dumps(result))
             },
           ],
         };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+// =============================================================================
+// Spreadsheet Workbench Tools
+// =============================================================================
+
+function createSpreadsheetTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_spreadsheet',
+    `Create a new spreadsheet in the FreeCAD document.
+
+Parameters:
+- name (required): Name for the new spreadsheet
+
+Returns:
+- success: Whether the spreadsheet was created
+- spreadsheetName: Internal name of the spreadsheet
+- spreadsheetLabel: User-friendly label
+- message: Status message
+
+Use this tool when the user wants to create a new spreadsheet for BOM generation, parametric tables, or data organization.`,
+    {
+      name: z.string().describe('Name for the new spreadsheet'),
+    },
+    async (input) => {
+      const { name } = input;
+
+      const code = `
+from llm_bridge.spreadsheet_handlers import handle_create_spreadsheet
+import json
+params = json.loads('${JSON.stringify({ name })}')
+result = handle_create_spreadsheet(name=params['name'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+
+        if (parsed.success) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `${parsed.data.message}`,
+              },
+            ],
+          };
+        } else {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Failed to create spreadsheet: ${parsed.error}`,
+              },
+            ],
+          };
+        }
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function deleteSpreadsheetTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'delete_spreadsheet',
+    `Delete a spreadsheet from the FreeCAD document.
+
+Parameters:
+- name (required): Name or label of the spreadsheet to delete
+
+Returns:
+- success: Whether the spreadsheet was deleted
+- message: Status message
+
+Use this tool when the user wants to remove a spreadsheet.`,
+    {
+      name: z.string().describe('Name or label of the spreadsheet to delete'),
+    },
+    async (input) => {
+      const { name } = input;
+
+      const code = `
+from llm_bridge.spreadsheet_handlers import handle_delete_spreadsheet
+import json
+params = json.loads('${JSON.stringify({ name })}')
+result = handle_delete_spreadsheet(name=params['name'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+
+        if (parsed.success) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `${parsed.data.message}`,
+              },
+            ],
+          };
+        } else {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Failed to delete spreadsheet: ${parsed.error}`,
+              },
+            ],
+          };
+        }
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function renameSpreadsheetTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'rename_spreadsheet',
+    `Rename a spreadsheet.
+
+Parameters:
+- oldName (required): Current name or label of the spreadsheet
+- newName (required): New name for the spreadsheet
+
+Returns:
+- success: Whether the spreadsheet was renamed
+- message: Status message
+
+Use this tool when the user wants to change a spreadsheet's name.`,
+    {
+      oldName: z.string().describe('Current name or label of the spreadsheet'),
+      newName: z.string().describe('New name for the spreadsheet'),
+    },
+    async (input) => {
+      const { oldName, newName } = input;
+
+      const code = `
+from llm_bridge.spreadsheet_handlers import handle_rename_spreadsheet
+import json
+params = json.loads('${JSON.stringify({ oldName, newName })}')
+result = handle_rename_spreadsheet(old_name=params['oldName'], new_name=params['newName'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+
+        if (parsed.success) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `${parsed.data.message}`,
+              },
+            ],
+          };
+        } else {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Failed to rename spreadsheet: ${parsed.error}`,
+              },
+            ],
+          };
+        }
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function listSpreadsheetsTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'list_spreadsheets',
+    `List all spreadsheets in the current FreeCAD document.
+
+Returns:
+- success: Whether the operation succeeded
+- spreadsheets: Array of spreadsheet objects with name, label
+- count: Number of spreadsheets found
+- message: Status message
+
+Use this tool to find available spreadsheets in the document.`,
+    {},
+    async () => {
+      const code = `
+from llm_bridge.spreadsheet_handlers import handle_list_spreadsheets
+import json
+result = handle_list_spreadsheets()
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+
+        if (parsed.success) {
+          const spreadsheets = parsed.data.spreadsheets || [];
+          const lines = spreadsheets.map((ss: { name: string; label: string }) => `- ${ss.label} (${ss.name})`);
+          return {
+            content: [
+              {
+                type: 'text',
+                text: spreadsheets.length > 0 
+                  ? `Spreadsheets:\n${lines.join('\n')}` 
+                  : 'No spreadsheets found in document',
+              },
+            ],
+          };
+        } else {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Failed to list spreadsheets: ${parsed.error}`,
+              },
+            ],
+          };
+        }
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function getSpreadsheetInfoTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'get_spreadsheet_info',
+    `Get metadata about a spreadsheet.
+
+Parameters:
+- name (required): Name or label of the spreadsheet
+
+Returns:
+- success: Whether the operation succeeded
+- name: Spreadsheet internal name
+- label: Spreadsheet label
+- type: Object type
+- aliasCount: Number of aliases defined
+- message: Status message
+
+Use this tool to get details about a specific spreadsheet.`,
+    {
+      name: z.string().describe('Name or label of the spreadsheet'),
+    },
+    async (input) => {
+      const { name } = input;
+
+      const code = `
+from llm_bridge.spreadsheet_handlers import handle_get_spreadsheet_info
+import json
+params = json.loads('${JSON.stringify({ name })}')
+result = handle_get_spreadsheet_info(name=params['name'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+
+        if (parsed.success) {
+          const data = parsed.data;
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Spreadsheet: ${data.label}\nName: ${data.name}\nType: ${data.type}\nAliases: ${data.aliasCount || 0}`,
+              },
+            ],
+          };
+        } else {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Failed to get spreadsheet info: ${parsed.error}`,
+              },
+            ],
+          };
+        }
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function setCellTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'set_cell',
+    `Set a cell value in a spreadsheet.
+
+Parameters:
+- spreadsheetName (required): Name or label of the spreadsheet
+- address (required): Cell address (e.g., 'A1', '$B$2')
+- value (required): Value to set (string, number, or boolean)
+
+Returns:
+- success: Whether the cell was set
+- message: Status message
+
+Use this tool to write data to spreadsheet cells. Cell addresses support both A1 and \$A\$1 notation.`,
+    {
+      spreadsheetName: z.string().describe('Name or label of the spreadsheet'),
+      address: z.string().describe('Cell address (e.g., A1, $B$2)'),
+      value: z.union([z.string(), z.number(), z.boolean()]).describe('Value to set'),
+    },
+    async (input) => {
+      const { spreadsheetName, address, value } = input;
+
+      const code = `
+from llm_bridge.spreadsheet_handlers import handle_set_cell
+import json
+params = json.loads('${JSON.stringify({ spreadsheetName, address, value })}')
+result = handle_set_cell(spreadsheet_name=params['spreadsheetName'], address=params['address'], value=params['value'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+
+        if (parsed.success) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `${parsed.data.message}`,
+              },
+            ],
+          };
+        } else {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Failed to set cell: ${parsed.error}`,
+              },
+            ],
+          };
+        }
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function getCellTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'get_cell',
+    `Get a cell value from a spreadsheet.
+
+Parameters:
+- spreadsheetName (required): Name or label of the spreadsheet
+- address (required): Cell address (e.g., 'A1', '$B$2')
+
+Returns:
+- success: Whether the cell was read
+- address: Cell address
+- value: Cell value
+- expression: Cell expression (if any)
+- hasExpression: Whether cell has an expression
+- message: Status message
+
+Use this tool to read data from spreadsheet cells.`,
+    {
+      spreadsheetName: z.string().describe('Name or label of the spreadsheet'),
+      address: z.string().describe('Cell address (e.g., A1, $B$2)'),
+    },
+    async (input) => {
+      const { spreadsheetName, address } = input;
+
+      const code = `
+from llm_bridge.spreadsheet_handlers import handle_get_cell
+import json
+params = json.loads('${JSON.stringify({ spreadsheetName, address })}')
+result = handle_get_cell(spreadsheet_name=params['spreadsheetName'], address=params['address'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+
+        if (parsed.success) {
+          const data = parsed.data;
+          const hasExpr = data.hasExpression ? ` (formula: ${data.expression})` : '';
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Cell ${address}: ${data.value}${hasExpr}`,
+              },
+            ],
+          };
+        } else {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Failed to get cell: ${parsed.error}`,
+              },
+            ],
+          };
+        }
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function setCellExpressionTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'set_cell_expression',
+    `Set a cell formula/expression in a spreadsheet.
+
+Parameters:
+- spreadsheetName (required): Name or label of the spreadsheet
+- address (required): Cell address (e.g., 'A1', '$B$2')
+- expression (required): Formula/expression to set (e.g., '=A1+B1' or '=Sum(A1:A10)')
+
+Returns:
+- success: Whether the expression was set
+- message: Status message
+
+Use this tool to set formulas in cells. Expressions should start with = for formulas.`,
+    {
+      spreadsheetName: z.string().describe('Name or label of the spreadsheet'),
+      address: z.string().describe('Cell address (e.g., A1, $B$2)'),
+      expression: z.string().describe('Formula/expression (e.g., =A1+B1)'),
+    },
+    async (input) => {
+      const { spreadsheetName, address, expression } = input;
+
+      const code = `
+from llm_bridge.spreadsheet_handlers import handle_set_cell_expression
+import json
+params = json.loads('${JSON.stringify({ spreadsheetName, address, expression })}')
+result = handle_set_cell_expression(spreadsheet_name=params['spreadsheetName'], address=params['address'], expression=params['expression'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+
+        if (parsed.success) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `${parsed.data.message}`,
+              },
+            ],
+          };
+        } else {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Failed to set expression: ${parsed.error}`,
+              },
+            ],
+          };
+        }
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function getCellExpressionTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'get_cell_expression',
+    `Get a cell's formula/expression from a spreadsheet.
+
+Parameters:
+- spreadsheetName (required): Name or label of the spreadsheet
+- address (required): Cell address (e.g., 'A1', '$B$2')
+
+Returns:
+- success: Whether the expression was retrieved
+- address: Cell address
+- expression: Cell expression/formula
+- computedValue: Computed value after formula evaluation
+- hasExpression: Whether cell has an expression
+- message: Status message
+
+Use this tool to check what formula is in a cell.`,
+    {
+      spreadsheetName: z.string().describe('Name or label of the spreadsheet'),
+      address: z.string().describe('Cell address (e.g., A1, $B$2)'),
+    },
+    async (input) => {
+      const { spreadsheetName, address } = input;
+
+      const code = `
+from llm_bridge.spreadsheet_handlers import handle_get_cell_expression
+import json
+params = json.loads('${JSON.stringify({ spreadsheetName, address })}')
+result = handle_get_cell_expression(spreadsheet_name=params['spreadsheetName'], address=params['address'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+
+        if (parsed.success) {
+          const data = parsed.data;
+          if (data.expression) {
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: `Cell ${address}: ${data.expression}\nComputed value: ${data.computedValue}`,
+                },
+              ],
+            };
+          } else {
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: `Cell ${address}: No expression, value is ${data.computedValue}`,
+                },
+              ],
+            };
+          }
+        } else {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Failed to get expression: ${parsed.error}`,
+              },
+            ],
+          };
+        }
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function clearCellTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'clear_cell',
+    `Clear a cell's content in a spreadsheet.
+
+Parameters:
+- spreadsheetName (required): Name or label of the spreadsheet
+- address (required): Cell address (e.g., 'A1', '$B$2')
+
+Returns:
+- success: Whether the cell was cleared
+- message: Status message
+
+Use this tool to clear a single cell. Use clear_range for multiple cells.`,
+    {
+      spreadsheetName: z.string().describe('Name or label of the spreadsheet'),
+      address: z.string().describe('Cell address (e.g., A1, $B$2)'),
+    },
+    async (input) => {
+      const { spreadsheetName, address } = input;
+
+      const code = `
+from llm_bridge.spreadsheet_handlers import handle_clear_cell
+import json
+params = json.loads('${JSON.stringify({ spreadsheetName, address })}')
+result = handle_clear_cell(spreadsheet_name=params['spreadsheetName'], address=params['address'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+
+        if (parsed.success) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `${parsed.data.message}`,
+              },
+            ],
+          };
+        } else {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Failed to clear cell: ${parsed.error}`,
+              },
+            ],
+          };
+        }
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function clearRangeTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'clear_range',
+    `Clear a range of cells in a spreadsheet.
+
+Parameters:
+- spreadsheetName (required): Name or label of the spreadsheet
+- startAddress (required): Start cell address (e.g., 'A1')
+- endAddress (required): End cell address (e.g., 'D10')
+
+Returns:
+- success: Whether the cells were cleared
+- clearedCount: Number of cells cleared
+- message: Status message
+
+Use this tool to clear multiple cells at once.`,
+    {
+      spreadsheetName: z.string().describe('Name or label of the spreadsheet'),
+      startAddress: z.string().describe('Start cell address (e.g., A1)'),
+      endAddress: z.string().describe('End cell address (e.g., D10)'),
+    },
+    async (input) => {
+      const { spreadsheetName, startAddress, endAddress } = input;
+
+      const code = `
+from llm_bridge.spreadsheet_handlers import handle_clear_range
+import json
+params = json.loads('${JSON.stringify({ spreadsheetName, startAddress, endAddress })}')
+result = handle_clear_range(spreadsheet_name=params['spreadsheetName'], start_address=params['startAddress'], end_address=params['endAddress'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+
+        if (parsed.success) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `${parsed.data.message}`,
+              },
+            ],
+          };
+        } else {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Failed to clear range: ${parsed.error}`,
+              },
+            ],
+          };
+        }
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function setAliasTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'set_alias',
+    `Set an alias on a cell for parametric access.
+
+Parameters:
+- spreadsheetName (required): Name or label of the spreadsheet
+- address (required): Cell address (e.g., 'A1', '$B$2')
+- aliasName (required): Name for the alias
+
+Returns:
+- success: Whether the alias was set
+- message: Status message
+
+Use this tool to create a named reference to a cell that can be used in expressions elsewhere in the document.`,
+    {
+      spreadsheetName: z.string().describe('Name or label of the spreadsheet'),
+      address: z.string().describe('Cell address (e.g., A1, $B$2)'),
+      aliasName: z.string().describe('Name for the alias'),
+    },
+    async (input) => {
+      const { spreadsheetName, address, aliasName } = input;
+
+      const code = `
+from llm_bridge.spreadsheet_handlers import handle_set_alias
+import json
+params = json.loads('${JSON.stringify({ spreadsheetName, address, aliasName })}')
+result = handle_set_alias(spreadsheet_name=params['spreadsheetName'], address=params['address'], alias_name=params['aliasName'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+
+        if (parsed.success) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `${parsed.data.message}`,
+              },
+            ],
+          };
+        } else {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Failed to set alias: ${parsed.error}`,
+              },
+            ],
+          };
+        }
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function getAliasTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'get_alias',
+    `Get a cell value by alias name.
+
+Parameters:
+- spreadsheetName (required): Name or label of the spreadsheet
+- aliasName (required): Name of the alias to look up
+
+Returns:
+- success: Whether the alias was found
+- aliasName: Alias name
+- address: Cell address
+- value: Cell value
+- message: Status message
+
+Use this tool to retrieve a cell value using its alias name.`,
+    {
+      spreadsheetName: z.string().describe('Name or label of the spreadsheet'),
+      aliasName: z.string().describe('Name of the alias'),
+    },
+    async (input) => {
+      const { spreadsheetName, aliasName } = input;
+
+      const code = `
+from llm_bridge.spreadsheet_handlers import handle_get_alias
+import json
+params = json.loads('${JSON.stringify({ spreadsheetName, aliasName })}')
+result = handle_get_alias(spreadsheet_name=params['spreadsheetName'], alias_name=params['aliasName'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+
+        if (parsed.success) {
+          const data = parsed.data;
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Alias '${aliasName}' -> ${data.address} = ${data.value}`,
+              },
+            ],
+          };
+        } else {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Failed to get alias: ${parsed.error}`,
+              },
+            ],
+          };
+        }
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function removeAliasTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'remove_alias',
+    `Remove an alias from a cell.
+
+Parameters:
+- spreadsheetName (required): Name or label of the spreadsheet
+- aliasName (required): Name of the alias to remove
+
+Returns:
+- success: Whether the alias was removed
+- message: Status message
+
+Use this tool to delete a cell alias.`,
+    {
+      spreadsheetName: z.string().describe('Name or label of the spreadsheet'),
+      aliasName: z.string().describe('Name of the alias to remove'),
+    },
+    async (input) => {
+      const { spreadsheetName, aliasName } = input;
+
+      const code = `
+from llm_bridge.spreadsheet_handlers import handle_remove_alias
+import json
+params = json.loads('${JSON.stringify({ spreadsheetName, aliasName })}')
+result = handle_remove_alias(spreadsheet_name=params['spreadsheetName'], alias_name=params['aliasName'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+
+        if (parsed.success) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `${parsed.data.message}`,
+              },
+            ],
+          };
+        } else {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Failed to remove alias: ${parsed.error}`,
+              },
+            ],
+          };
+        }
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function listAliasesTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'list_aliases',
+    `List all aliases in a spreadsheet.
+
+Parameters:
+- spreadsheetName (required): Name or label of the spreadsheet
+
+Returns:
+- success: Whether aliases were listed
+- aliases: Array of alias objects with name, address, value
+- count: Number of aliases
+- message: Status message
+
+Use this tool to see all named cell references in a spreadsheet.`,
+    {
+      spreadsheetName: z.string().describe('Name or label of the spreadsheet'),
+    },
+    async (input) => {
+      const { spreadsheetName } = input;
+
+      const code = `
+from llm_bridge.spreadsheet_handlers import handle_list_aliases
+import json
+params = json.loads('${JSON.stringify({ spreadsheetName })}')
+result = handle_list_aliases(spreadsheet_name=params['spreadsheetName'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+
+        if (parsed.success) {
+          const aliases = parsed.data.aliases || [];
+          if (aliases.length === 0) {
+            return {
+              content: [{ type: 'text', text: 'No aliases defined in this spreadsheet' }],
+            };
+          }
+          const lines = aliases.map((a: { alias: string; address: string; value: unknown }) => `- ${a.alias} -> ${a.address} = ${a.value}`);
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Aliases (${aliases.length}):\n${lines.join('\n')}`,
+              },
+            ],
+          };
+        } else {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Failed to list aliases: ${parsed.error}`,
+              },
+            ],
+          };
+        }
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function generateBomTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'generate_bom',
+    `Generate a Bill of Materials from document objects.
+
+Parameters:
+- options (optional): Object with:
+  - includeHidden: boolean - Include hidden objects (default: false)
+  - groupByType: boolean - Group objects by type (default: false)
+  - includeProperties: string[] - Properties to include
+  - outputFormat: 'list' or 'dict' (default: 'list')
+
+Returns:
+- success: Whether BOM was generated
+- bom: Array or grouped object with BOM entries
+- itemCount: Number of items
+- message: Status message
+
+Each BOM entry includes: name, type, label, and common properties like volume, surface area, dimensions.`,
+    {
+      options: z
+        .object({
+          includeHidden: z.boolean().optional(),
+          groupByType: z.boolean().optional(),
+          includeProperties: z.array(z.string()).optional(),
+          outputFormat: z.enum(['list', 'dict']).optional(),
+        })
+        .optional()
+        .describe('BOM generation options'),
+    },
+    async (input) => {
+      const options = input.options || {};
+
+      const code = `
+from llm_bridge.spreadsheet_handlers import handle_generate_bom
+import json
+params = json.loads('${JSON.stringify({ options })}')
+result = handle_generate_bom(options=params['options'] if params.get('options') else None)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+
+        if (parsed.success) {
+          const count = parsed.data.itemCount || 0;
+          const grouped = parsed.data.groupedByType ? ' (grouped by type)' : '';
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Generated BOM with ${count} item(s)${grouped}`,
+              },
+            ],
+          };
+        } else {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Failed to generate BOM: ${parsed.error}`,
+              },
+            ],
+          };
+        }
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function getObjectBomDataTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'get_object_bom_data',
+    `Extract structured data from specific objects for BOM.
+
+Parameters:
+- objectNames (required): Array of object names or labels
+- properties (optional): Array of property names to extract
+
+Returns:
+- success: Whether data was extracted
+- items: Array of extracted data objects
+- itemCount: Number of items
+- message: Status message
+
+Use this to get detailed property data from specific objects for BOM reporting.`,
+    {
+      objectNames: z.array(z.string()).describe('Array of object names or labels'),
+      properties: z.array(z.string()).optional().describe('Property names to extract'),
+    },
+    async (input) => {
+      const { objectNames, properties } = input;
+
+      const code = `
+from llm_bridge.spreadsheet_handlers import handle_get_object_bom_data
+import json
+params = json.loads('${JSON.stringify({ objectNames, properties })}')
+result = handle_get_object_bom_data(object_names=params['objectNames'], properties=params.get('properties'))
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+
+        if (parsed.success) {
+          const count = parsed.data.itemCount || 0;
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Extracted BOM data from ${count} object(s)`,
+              },
+            ],
+          };
+        } else {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Failed to get BOM data: ${parsed.error}`,
+              },
+            ],
+          };
+        }
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function exportBomToSpreadsheetTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'export_bom_to_spreadsheet',
+    `Write BOM data to a spreadsheet.
+
+Parameters:
+- bomData (required): BOM data from generate_bom or get_object_bom_data
+- spreadsheetName (required): Name or label of target spreadsheet
+- startAddress (optional): Starting cell address (default: 'A1')
+
+Returns:
+- success: Whether export succeeded
+- rowsWritten: Number of data rows written
+- message: Status message
+
+Use this to export generated BOM data to a spreadsheet for documentation or further editing.`,
+    {
+      bomData: z.union([z.array(z.record(z.string(), z.unknown())), z.record(z.string(), z.unknown())]).describe('BOM data to export'),
+      spreadsheetName: z.string().describe('Name or label of target spreadsheet'),
+      startAddress: z.string().optional().describe('Starting cell address (default: A1)'),
+    },
+    async (input) => {
+      const { bomData, spreadsheetName, startAddress } = input;
+
+      const code = `
+from llm_bridge.spreadsheet_handlers import handle_export_bom_to_spreadsheet
+import json
+params = json.loads('${JSON.stringify({ bomData, spreadsheetName, startAddress: startAddress || 'A1' })}')
+result = handle_export_bom_to_spreadsheet(bom_data=params['bomData'], spreadsheet_name=params['spreadsheetName'], start_address=params.get('startAddress', 'A1'))
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+
+        if (parsed.success) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `${parsed.data.message}`,
+              },
+            ],
+          };
+        } else {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Failed to export BOM: ${parsed.error}`,
+              },
+            ],
+          };
+        }
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function createParametricTableTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_parametric_table',
+    `Create a parametric lookup table in a spreadsheet.
+
+Parameters:
+- spreadsheetName (required): Name or label of the spreadsheet
+- headers (required): Array of column header names
+- data (required): Array of rows, each row is an array of values
+
+Returns:
+- success: Whether table was created
+- rowCount: Number of data rows
+- columnCount: Number of columns
+- message: Status message
+
+Use this to create lookup tables that can be used with the lookup_value tool.`,
+    {
+      spreadsheetName: z.string().describe('Name or label of the spreadsheet'),
+      headers: z.array(z.string()).describe('Column header names'),
+      data: z.array(z.array(z.union([z.string(), z.number()]))).describe('Array of row data arrays'),
+    },
+    async (input) => {
+      const { spreadsheetName, headers, data } = input;
+
+      const code = `
+from llm_bridge.spreadsheet_handlers import handle_create_parametric_table
+import json
+params = json.loads('${JSON.stringify({ spreadsheetName, headers, data })}')
+result = handle_create_parametric_table(spreadsheet_name=params['spreadsheetName'], headers=params['headers'], data=params['data'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+
+        if (parsed.success) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `${parsed.data.message}`,
+              },
+            ],
+          };
+        } else {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Failed to create table: ${parsed.error}`,
+              },
+            ],
+          };
+        }
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function updateParametricTableTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'update_parametric_table',
+    `Update a row in a parametric table.
+
+Parameters:
+- spreadsheetName (required): Name or label of the spreadsheet
+- rowKey (required): Value in the first column to identify the row
+- updates (required): Object mapping column headers to new values
+
+Returns:
+- success: Whether update succeeded
+- updatedCells: Array of updated cell info
+- message: Status message
+
+Use this to modify existing rows in a lookup table.`,
+    {
+      spreadsheetName: z.string().describe('Name or label of the spreadsheet'),
+      rowKey: z.union([z.string(), z.number()]).describe('Value in first column to identify row'),
+      updates: z.record(z.union([z.string(), z.number()])).describe('Object mapping column headers to new values'),
+    },
+    async (input) => {
+      const { spreadsheetName, rowKey, updates } = input;
+
+      const code = `
+from llm_bridge.spreadsheet_handlers import handle_update_parametric_table
+import json
+params = json.loads('${JSON.stringify({ spreadsheetName, rowKey, updates })}')
+result = handle_update_parametric_table(spreadsheet_name=params['spreadsheetName'], row_key=params['rowKey'], updates=params['updates'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+
+        if (parsed.success) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `${parsed.data.message}`,
+              },
+            ],
+          };
+        } else {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Failed to update table: ${parsed.error}`,
+              },
+            ],
+          };
+        }
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function lookupValueTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'lookup_value',
+    `Lookup a value in a parametric table.
+
+Parameters:
+- spreadsheetName (required): Name or label of the spreadsheet
+- columnKey (required): Column header to return (the "return column")
+- lookupValue (required): Value to search for in the first column
+
+Returns:
+- success: Whether lookup succeeded
+- resultValue: The found value
+- rowData: Full row data
+- message: Status message
+
+Use this to search a lookup table created with create_parametric_table. The search is case-insensitive.`,
+    {
+      spreadsheetName: z.string().describe('Name or label of the spreadsheet'),
+      columnKey: z.string().describe('Column header to return'),
+      lookupValue: z.union([z.string(), z.number()]).describe('Value to search for in first column'),
+    },
+    async (input) => {
+      const { spreadsheetName, columnKey, lookupValue } = input;
+
+      const code = `
+from llm_bridge.spreadsheet_handlers import handle_lookup_value
+import json
+params = json.loads('${JSON.stringify({ spreadsheetName, columnKey, lookupValue })}')
+result = handle_lookup_value(spreadsheet_name=params['spreadsheetName'], column_key=params['columnKey'], lookup_value=params['lookupValue'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+
+        if (parsed.success) {
+          const data = parsed.data;
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Found: ${data.resultValue} (${columnKey} for ${lookupValue})`,
+              },
+            ],
+          };
+        } else {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Lookup failed: ${parsed.error}`,
+              },
+            ],
+          };
+        }
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function setColumnWidthTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'set_column_width',
+    `Set column width in a spreadsheet.
+
+Parameters:
+- spreadsheetName (required): Name or label of the spreadsheet
+- column (required): Column letter (e.g., 'A', 'B', 'AB')
+- width (required): Width in points
+
+Returns:
+- success: Whether width was set
+- column: Column letter
+- width: New width value
+- message: Status message
+
+Use this to adjust column widths for better display.`,
+    {
+      spreadsheetName: z.string().describe('Name or label of the spreadsheet'),
+      column: z.string().describe('Column letter (e.g., A, B, AB)'),
+      width: z.number().describe('Width in points'),
+    },
+    async (input) => {
+      const { spreadsheetName, column, width } = input;
+
+      const code = `
+from llm_bridge.spreadsheet_handlers import handle_set_column_width
+import json
+params = json.loads('${JSON.stringify({ spreadsheetName, column, width })}')
+result = handle_set_column_width(spreadsheet_name=params['spreadsheetName'], column=params['column'], width=params['width'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+
+        if (parsed.success) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `${parsed.data.message}`,
+              },
+            ],
+          };
+        } else {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Failed to set column width: ${parsed.error}`,
+              },
+            ],
+          };
+        }
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function setRowHeightTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'set_row_height',
+    `Set row height in a spreadsheet.
+
+Parameters:
+- spreadsheetName (required): Name or label of the spreadsheet
+- row (required): Row number (1-based)
+- height (required): Height in points
+
+Returns:
+- success: Whether height was set
+- row: Row number
+- height: New height value
+- message: Status message
+
+Use this to adjust row heights for better display.`,
+    {
+      spreadsheetName: z.string().describe('Name or label of the spreadsheet'),
+      row: z.number().int().positive().describe('Row number (1-based)'),
+      height: z.number().describe('Height in points'),
+    },
+    async (input) => {
+      const { spreadsheetName, row, height } = input;
+
+      const code = `
+from llm_bridge.spreadsheet_handlers import handle_set_row_height
+import json
+params = json.loads('${JSON.stringify({ spreadsheetName, row, height })}')
+result = handle_set_row_height(spreadsheet_name=params['spreadsheetName'], row=params['row'], height=params['height'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+
+        if (parsed.success) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `${parsed.data.message}`,
+              },
+            ],
+          };
+        } else {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Failed to set row height: ${parsed.error}`,
+              },
+            ],
+          };
+        }
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+function setCellBackgroundTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'set_cell_background',
+    `Set cell background color.
+
+Parameters:
+- spreadsheetName (required): Name or label of the spreadsheet
+- address (required): Cell address (e.g., 'A1', '$B$2')
+- color (required): Color as hex string (e.g., '#FF0000' for red) or 'default'
+
+Returns:
+- success: Whether color was set
+- address: Cell address
+- color: Applied color
+- message: Status message
+
+Use this to highlight cells with background colors.`,
+    {
+      spreadsheetName: z.string().describe('Name or label of the spreadsheet'),
+      address: z.string().describe('Cell address (e.g., A1, $B$2)'),
+      color: z.string().describe("Color as hex (e.g., '#FF0000') or 'default'"),
+    },
+    async (input) => {
+      const { spreadsheetName, address, color } = input;
+
+      const code = `
+from llm_bridge.spreadsheet_handlers import handle_set_cell_background
+import json
+params = json.loads('${JSON.stringify({ spreadsheetName, address, color })}')
+result = handle_set_cell_background(spreadsheet_name=params['spreadsheetName'], address=params['address'], color=params['color'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+
+        if (parsed.success) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `${parsed.data.message}`,
+              },
+            ],
+          };
+        } else {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Failed to set cell background: ${parsed.error}`,
+              },
+            ],
+          };
+        }
       } catch (error) {
         return {
           content: [
