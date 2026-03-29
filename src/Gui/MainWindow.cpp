@@ -565,7 +565,12 @@ void MainWindow::setupDockWindows()
     setupPythonConsole();
     setupSelectionView();
     setupTaskView();
-    setupLLMDockWidget();
+    try {
+        setupLLMDockWidget();
+    }
+    catch (...) {
+        // LLM dock widget setup failed - continue without it
+    }
 
     initDockWindows(false);
 
@@ -662,11 +667,16 @@ bool MainWindow::setupLLMDockWidget()
     // LLM Assistant dock widget
     if (d->hiddenDockWindows.find("Std_LLMDockWidget") == std::string::npos) {
         auto llmDock = new LLMDockWidget(this);
-        llmDock->setWindowIcon(Gui::BitmapFactory().iconFromTheme("applications-chat"));
+        llmDock->setWindowIcon(Gui::BitmapFactory().iconFromTheme("edit-edit"));
         llmDock->setObjectName(QStringLiteral("LLM Assistant"));
         llmDock->setWindowTitle(QDockWidget::tr("LLM Assistant"));
         llmDock->setMinimumWidth(300);
         llmDock->setMinimumHeight(400);
+
+        // Place on the right side, floating by default
+        addDockWidget(Qt::RightDockWidgetArea, llmDock);
+        llmDock->setFloating(true);
+        llmDock->resize(400, 600);
 
         DockWindowManager* pDockMgr = DockWindowManager::instance();
         pDockMgr->registerDockWindow("Std_LLMDockWidget", llmDock);

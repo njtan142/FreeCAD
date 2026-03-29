@@ -26,7 +26,7 @@
 #include <QScrollArea>
 #include <QVBoxLayout>
 #include <QColor>
-#include <Gui/GuiExport.h>
+#include <FCGlobal.h>
 
 namespace Gui
 {
