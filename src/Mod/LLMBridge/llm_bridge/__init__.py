@@ -252,6 +252,33 @@ from .fea_handlers import (
     handle_get_fea_result_summary,
 )
 
+from .workflow_handlers import (
+    handle_undo,
+    handle_redo,
+    handle_get_undo_stack_size,
+    handle_show_object,
+    handle_hide_object,
+    handle_toggle_visibility,
+    handle_show_all,
+    handle_hide_all,
+    handle_get_visible_objects,
+    handle_set_object_visibility,
+    handle_select_object,
+    handle_deselect_object,
+    handle_select_all,
+    handle_clear_selection,
+    handle_is_selected,
+)
+
+from .measurement_handlers import (
+    handle_measure_distance,
+    handle_measure_object_distance,
+    handle_measure_angle,
+    handle_measure_length,
+    handle_measure_area,
+    handle_get_measure_info,
+)
+
 __all__ = [
     "handle_document_overview",
     "handle_object_details",
@@ -456,4 +483,25 @@ __all__ = [
     "handle_get_fea_strain",
     "handle_get_fea_reactions",
     "handle_get_fea_result_summary",
+    "handle_undo",
+    "handle_redo",
+    "handle_get_undo_stack_size",
+    "handle_show_object",
+    "handle_hide_object",
+    "handle_toggle_visibility",
+    "handle_show_all",
+    "handle_hide_all",
+    "handle_get_visible_objects",
+    "handle_set_object_visibility",
+    "handle_select_object",
+    "handle_deselect_object",
+    "handle_select_all",
+    "handle_clear_selection",
+    "handle_is_selected",
+    "handle_measure_distance",
+    "handle_measure_object_distance",
+    "handle_measure_angle",
+    "handle_measure_length",
+    "handle_measure_area",
+    "handle_get_measure_info",
 ]
