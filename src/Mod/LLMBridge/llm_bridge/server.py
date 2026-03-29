@@ -11,7 +11,6 @@ import threading
 import FreeCAD as App
 
 from .executor import execute_code
-from .main_thread import run_on_main_thread
 from . import query_handlers  # noqa: F401 - Import for availability via WebSocket
 from . import file_handlers  # noqa: F401 - Import for availability via WebSocket
 from . import property_handlers  # noqa: F401 - Import for availability via WebSocket
@@ -147,14 +146,11 @@ class BridgeServer:
                 "stderr": "",
             }
 
-        # Dispatch execution to the main thread and wait for result
+        # Execute code in a thread pool to avoid blocking the asyncio loop
         try:
-            future = run_on_main_thread(lambda: execute_code(code))
-            # Wait for the main thread to complete execution.
-            # We run this in the executor to avoid blocking the asyncio loop.
             loop = asyncio.get_running_loop()
             result = await loop.run_in_executor(
-                None, lambda: future.result(timeout=30)
+                None, lambda: execute_code(code)
             )
             result["id"] = msg_id
             return result
@@ -162,7 +158,7 @@ class BridgeServer:
             return {
                 "id": msg_id,
                 "success": False,
-                "error": "Execution dispatch error: {}".format(e),
+                "error": "Execution error: {}".format(e),
                 "stdout": "",
                 "stderr": "",
             }

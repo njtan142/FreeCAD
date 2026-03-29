@@ -11,6 +11,13 @@ from typing import Optional, Callable, List, Dict, Any
 
 import FreeCAD as App
 
+# Try to import websockets at module level
+try:
+    import websockets
+    WEBSOCKETS_AVAILABLE = True
+except ImportError:
+    WEBSOCKETS_AVAILABLE = False
+
 # Default port for the dock widget WebSocket server (sidecar)
 DEFAULT_SIDECAR_PORT = 8765
 DEFAULT_SIDECAR_HOST = "127.0.0.1"
@@ -59,13 +66,11 @@ class SidecarClient:
     async def connect(self) -> bool:
         """
         Connect to the Node.js sidecar.
-        
+
         Returns:
             True if connection successful, False otherwise.
         """
-        try:
-            import websockets
-        except ImportError:
+        if not WEBSOCKETS_AVAILABLE:
             App.Console.PrintError(
                 "SidecarClient: 'websockets' library not installed. "
                 "Install with: pip install websockets\n"
@@ -77,11 +82,11 @@ class SidecarClient:
             uri = f"ws://{self.host}:{self.port}"
             self._websocket = await websockets.connect(uri)
             self._connected = True
-            
+
             # Start listening for messages
             self._loop = asyncio.get_running_loop()
             asyncio.create_task(self._listen_for_messages())
-            
+
             App.Console.PrintMessage(f"SidecarClient: Connected to sidecar at {uri}\n")
             self._notify_connection(True, f"Connected to sidecar at {uri}")
             return True
@@ -141,10 +146,6 @@ class SidecarClient:
         try:
             async for raw_message in self._websocket:
                 await self._process_response(raw_message)
-        except websockets.exceptions.ConnectionClosed:
-            App.Console.PrintMessage("SidecarClient: Connection closed by server\n")
-            self._connected = False
-            self._notify_connection(False, "Connection closed by server")
         except Exception as e:
             App.Console.PrintError(f"SidecarClient: Listen error - {e}\n")
             self._connected = False
@@ -154,23 +155,23 @@ class SidecarClient:
         """Process a response message from the sidecar."""
         try:
             response = json.loads(raw_message)
-            
+
             msg_type = response.get("type", "response")
             content = response.get("content", "")
             success = response.get("success", True)
-            
+
             # Add assistant response to history
             if msg_type == "response":
                 self._history.append({"role": "assistant", "content": content})
-            
+
             # Notify callback
-            if self._response_callback:
+            if self._response_callback and self._loop and self._loop.is_running():
                 # Run callback in the event loop
                 self._loop.call_soon_threadsafe(
                     self._response_callback,
                     content if success else f"Error: {content}"
                 )
-                
+
         except json.JSONDecodeError as e:
             App.Console.PrintError(f"SidecarClient: Invalid JSON response - {e}\n")
         except Exception as e:
@@ -180,11 +181,12 @@ class SidecarClient:
         """Notify connection status change."""
         if self._connection_callback:
             try:
-                self._loop.call_soon_threadsafe(
-                    self._connection_callback,
-                    connected,
-                    status_message
-                )
+                if self._loop and self._loop.is_running():
+                    self._loop.call_soon_threadsafe(
+                        self._connection_callback,
+                        connected,
+                        status_message
+                    )
             except Exception:
                 pass
 
@@ -212,13 +214,21 @@ class SidecarClientSync:
     def connect(self) -> bool:
         """Attempt to connect to the sidecar (blocking)."""
         try:
-            import threading
-            import asyncio
-            
             # Create a new event loop for the connection
             self._loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(self._loop)
-            
+
+            # Start the event loop in a background thread
+            def run_loop():
+                asyncio.set_event_loop(self._loop)
+                self._loop.run_forever()
+
+            self._thread = threading.Thread(target=run_loop, daemon=True, name="LLMBridge-EventLoop")
+            self._thread.start()
+
+            # Give the loop a moment to start
+            import time
+            time.sleep(0.1)
+
             # Run connection in the loop
             future = asyncio.run_coroutine_threadsafe(
                 self._client.connect(),
@@ -240,6 +250,9 @@ class SidecarClientSync:
                 future.result(timeout=5.0)
             except Exception as e:
                 App.Console.PrintError(f"SidecarClientSync: Disconnect failed - {e}\n")
+
+            # Stop the event loop
+            self._loop.call_soon_threadsafe(self._loop.stop)
 
     def send_message(self, message: str) -> bool:
         """Send a message to the sidecar (blocking)."""
