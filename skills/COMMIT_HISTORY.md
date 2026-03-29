@@ -927,3 +927,53 @@ The original large commit for Undo/Redo, Visibility, and Measurement Tools have 
 - **Files modified**: 3 (__init__.py, agent-tools.ts, result-formatters.ts)
 - **Total insertions**: ~2,435 lines
 - **Total deletions**: ~0 lines
+
+---
+
+## Cycle 24 - Incremental Commits
+
+The original large commit for Spreadsheet Workbench Tools (BOM & Parametric Tables) have been refactored into 3 incremental commits.
+
+| Commit Hash | Message | Files Changed |
+|-------------|---------|---------------|
+| `d662a627da` | feat(llm): add spreadsheet workbench handlers | __init__.py, spreadsheet_handlers.py |
+| `793fec0210` | feat(sidecar): add spreadsheet workbench tools | agent-tools.ts, result-formatters.ts |
+| `e3c9c067a1` | fix(sidecar): align handler/formatter contract | workflow_handlers.py |
+
+### Commit Progression
+
+1. **Python spreadsheet handlers**: Added `spreadsheet_handlers.py` with 23 handlers:
+   - Spreadsheet lifecycle: handle_create_spreadsheet, handle_delete_spreadsheet, handle_rename_spreadsheet, handle_list_spreadsheets, handle_get_spreadsheet_info
+   - Cell operations: handle_set_cell, handle_get_cell, handle_set_cell_expression, handle_get_cell_expression, handle_clear_cell, handle_clear_range
+   - Alias operations: handle_set_alias, handle_get_alias, handle_remove_alias, handle_list_aliases
+   - BOM generation: handle_generate_bom, handle_get_object_bom_data, handle_export_bom_to_spreadsheet
+   - Parametric tables: handle_create_parametric_table, handle_update_parametric_table, handle_lookup_value
+   - Formatting: handle_set_column_width, handle_set_row_height, handle_set_cell_background
+
+   Updated `__init__.py` to export all 23 new handlers
+
+2. **Sidecar agent tools and result formatters**: Added 23 spreadsheet tools to agent-tools.ts:
+   - Spreadsheet lifecycle: createSpreadsheetTool, deleteSpreadsheetTool, renameSpreadsheetTool, listSpreadsheetsTool, getSpreadsheetInfoTool
+   - Cell operations: setCellTool, getCellTool, setCellExpressionTool, getCellExpressionTool, clearCellTool, clearRangeTool
+   - Alias tools: setAliasTool, getAliasTool, removeAliasTool, listAliasesTool
+   - BOM tools: generateBomTool, getObjectBomDataTool, exportBomToSpreadsheetTool
+   - Parametric table tools: createParametricTableTool, updateParametricTableTool, lookupValueTool
+   - Formatting tools: setColumnWidthTool, setRowHeightTool, setCellBackgroundTool
+
+   Added 12 result formatters to result-formatters.ts:
+   - formatSpreadsheetCreate, formatSpreadsheetDelete, formatSpreadsheetInfo
+   - formatCellValue, formatCellExpression
+   - formatAliasList
+   - formatBomGeneration, formatBomData
+   - formatParametricTable, formatTableLookup
+   - formatColumnWidth, formatRowHeight, formatCellBackground
+
+3. **Bug fix**: Fixed handler/formatter contract alignment for workflow tools (handle_undo, handle_redo, handle_get_undo_stack_size) to properly return `data.success` field
+
+### Summary
+
+- **Total commits**: 3
+- **Files created**: 1 (spreadsheet_handlers.py)
+- **Files modified**: 4 (__init__.py, agent-tools.ts, result-formatters.ts, workflow_handlers.py)
+- **Total insertions**: ~2,100 lines
+- **Total deletions**: ~0 lines
