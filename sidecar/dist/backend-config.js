@@ -67,7 +67,7 @@ function loadOpenCodeConfig() {
         }
     }
     catch (err) {
-        // Config file doesn't exist or is invalid, ignore
+        console.warn('[BackendConfig] Failed to load opencode config from home directory:', err instanceof Error ? err.message : err);
     }
     try {
         const fs = require('fs');
@@ -78,7 +78,7 @@ function loadOpenCodeConfig() {
         }
     }
     catch (err) {
-        // Config file doesn't exist or is invalid, ignore
+        console.warn('[BackendConfig] Failed to load local opencode config:', err instanceof Error ? err.message : err);
     }
     return config;
 }

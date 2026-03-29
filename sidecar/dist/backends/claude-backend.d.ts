@@ -10,11 +10,9 @@ export declare class ClaudeBackend implements AgentBackend {
     readonly description = "Anthropic Claude (via Claude Code CLI)";
     private process;
     private config;
-    private mcpConfigPath;
     private sessionId;
     initialize(config: BackendConfig): Promise<void>;
     private generateSessionId;
-    private createMcpConfig;
     sendMessage(message: string, context: MessageContext, tools: MCPTool[], onChunk: (chunk: string) => void): Promise<AgentResponse>;
     private buildContextMessage;
     private parseResponse;

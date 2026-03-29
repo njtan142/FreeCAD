@@ -29,11 +29,15 @@ class OpenCodeBackend {
         const contextMessage = this.buildContextMessage(context);
         const fullMessage = contextMessage ? `${contextMessage}\n\n${message}` : message;
         return new Promise((resolve, reject) => {
-            const args = this.buildArgs(fullMessage, translatedTools);
+            const args = this.buildArgs();
             console.log('[OpenCodeBackend] Spawning opencode with args:', args);
+            const env = { ...process.env };
+            if (this.config.apiKey) {
+                env.OPENAI_API_KEY = this.config.apiKey;
+            }
             const proc = (0, child_process_1.spawn)('opencode', args, {
                 stdio: ['pipe', 'pipe', 'pipe'],
-                env: { ...process.env },
+                env,
             });
             this.process = proc;
             let stdoutBuffer = '';
@@ -69,6 +73,13 @@ class OpenCodeBackend {
                     reject(err);
                 }
             });
+            const input = JSON.stringify({
+                message: fullMessage,
+                tools: translatedTools,
+            }) + '\n';
+            proc.stdin?.write(input, () => {
+                proc.stdin?.end();
+            });
             setTimeout(() => {
                 if (!resolved) {
                     proc.kill();
@@ -81,7 +92,7 @@ class OpenCodeBackend {
             }, 120000);
         });
     }
-    buildArgs(message, tools) {
+    buildArgs() {
         const args = [];
         if (this.config.model) {
             args.push('--model', this.config.model);
@@ -89,17 +100,12 @@ class OpenCodeBackend {
         if (this.config.baseUrl) {
             args.push('--base-url', this.config.baseUrl);
         }
-        if (this.config.apiKey) {
-            args.push('--api-key', this.config.apiKey);
-        }
         if (this.config.temperature !== undefined) {
             args.push('--temperature', String(this.config.temperature));
         }
         if (this.config.maxTokens) {
             args.push('--max-tokens', String(this.config.maxTokens));
         }
-        args.push('--tools', JSON.stringify(tools));
-        args.push(message);
         return args;
     }
     buildContextMessage(context) {

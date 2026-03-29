@@ -3,7 +3,7 @@
  *
  * Loads and manages backend-specific configuration from environment variables.
  */
-import { BackendConfig } from './agent-backend';
+import { BackendConfig } from './types';
 export declare function getBackendConfig(backendName: string): BackendConfig;
 export declare function loadOpenCodeConfig(): Record<string, string>;
 export declare function validateBackendConfig(backendName: string, config: BackendConfig): string[];

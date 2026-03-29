@@ -15,8 +15,4 @@ export declare class OpenCodeToolTranslator implements ToolTranslator {
     private mapSchemaType;
     fromBackendFormat(response: any): ToolCall[];
 }
-export declare class MCPToolTranslator implements ToolTranslator {
-    toBackendFormat(tools: MCPTool[]): any;
-    fromBackendFormat(response: any): ToolCall[];
-}
 //# sourceMappingURL=tool-translator.d.ts.map

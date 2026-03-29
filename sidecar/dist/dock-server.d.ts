@@ -2,7 +2,7 @@
  * Dock Widget WebSocket Server
  *
  * Listens for incoming messages from the FreeCAD LLM dock widget.
- * Forwards chat messages to Claude Agent SDK and returns responses.
+ * Forwards chat messages to the configured agent backend and returns responses.
  */
 import { FreeCADBridge } from './freecad-bridge';
 import { ChatMessage } from './types';
@@ -27,6 +27,8 @@ export declare class DockServer {
     private mcpServer;
     private conversationState;
     constructor(config: DockServerConfig);
+    private getBackendTools;
+    private buildMessageContext;
     start(): Promise<void>;
     private handleConnection;
     private handleMessage;

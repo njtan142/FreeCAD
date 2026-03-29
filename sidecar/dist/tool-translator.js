@@ -6,7 +6,7 @@
  * Each backend has its own tool calling convention.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.MCPToolTranslator = exports.OpenCodeToolTranslator = void 0;
+exports.OpenCodeToolTranslator = void 0;
 class OpenCodeToolTranslator {
     toBackendFormat(tools) {
         return {
@@ -95,40 +95,4 @@ class OpenCodeToolTranslator {
     }
 }
 exports.OpenCodeToolTranslator = OpenCodeToolTranslator;
-class MCPToolTranslator {
-    toBackendFormat(tools) {
-        return tools.map((tool) => ({
-            name: tool.name,
-            description: tool.description,
-            inputSchema: tool.inputSchema,
-        }));
-    }
-    fromBackendFormat(response) {
-        const toolCalls = [];
-        if (!response)
-            return toolCalls;
-        if (response.tool_calls && Array.isArray(response.tool_calls)) {
-            for (const tc of response.tool_calls) {
-                toolCalls.push({
-                    id: tc.id || `call_${Date.now()}`,
-                    name: tc.name,
-                    arguments: tc.input || tc.arguments || {},
-                });
-            }
-        }
-        else if (response.content && Array.isArray(response.content)) {
-            for (const block of response.content) {
-                if (block.type === 'tool_use') {
-                    toolCalls.push({
-                        id: block.id || `call_${Date.now()}`,
-                        name: block.name,
-                        arguments: block.input || {},
-                    });
-                }
-            }
-        }
-        return toolCalls;
-    }
-}
-exports.MCPToolTranslator = MCPToolTranslator;
 //# sourceMappingURL=tool-translator.js.map

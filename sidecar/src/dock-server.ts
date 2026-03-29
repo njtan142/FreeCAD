@@ -63,11 +63,27 @@ export class DockServer {
     }));
   }
 
-  private buildMessageContext(sessionId: string): MessageContext {
+  private async buildMessageContext(sessionId: string): Promise<MessageContext> {
+    let documentInfo: MessageContext['documentInfo'] = undefined;
+    let selectedObjects: MessageContext['selectedObjects'] = undefined;
+
+    if (this.config.freeCADBridge) {
+      try {
+        documentInfo = await this.config.freeCADBridge.getDocumentInfo() ?? undefined;
+      } catch {
+        // Ignore errors, leave documentInfo undefined
+      }
+      try {
+        selectedObjects = await this.config.freeCADBridge.getSelectedObjects() ?? undefined;
+      } catch {
+        // Ignore errors, leave selectedObjects undefined
+      }
+    }
+
     return {
       sessionId,
-      documentInfo: this.config.freeCADBridge.getDocumentInfo?.() ?? undefined,
-      selectedObjects: this.config.freeCADBridge.getSelectedObjects?.() ?? undefined,
+      documentInfo,
+      selectedObjects,
     };
   }
 
@@ -314,7 +330,7 @@ export class DockServer {
         throw new Error('No backend configured');
       }
 
-      const context = this.buildMessageContext(sessionId);
+      const context = await this.buildMessageContext(sessionId);
       const tools = this.getBackendTools();
       let fullResponse = '';
 

@@ -1,108 +1,127 @@
-# Cycle 20 Review: Multi-Agent Backend Support - OpenCode Integration
+# Cycle 20 Review (Re-Review): Multi-Agent Backend Support - OpenCode Integration
 
-## Status: INCOMPLETE - MAJOR ARCHITECTURAL ISSUES
+## Status: IN PROGRESS - Build Errors Prevent Compilation
 
-## Verdict: FAIL - Backend abstraction is not integrated into message flow
+## Verdict: FAIL - TypeScript compilation errors must be fixed
 
 ---
 
-## Critical Issues
+## Critical Issues (From Previous Review - Status)
 
 ### 1. Backend `sendMessage()` Never Called
-**Location:** `sidecar/src/dock-server.ts:326` and `sidecar/src/index.ts`
+**Status:** ✅ FIXED
 
-**Problem:** The backends (`ClaudeBackend`, `OpenCodeBackend`) are registered and initialized in `index.ts`, but their `sendMessage()` method is **never called**. The `dock-server.ts` still uses `query()` from `@anthropic-ai/claude-agent-sdk` directly (line 326).
-
-**Evidence:**
+The `dock-server.ts:323` now properly calls `backend.sendMessage()`:
 ```typescript
-// index.ts lines 198-205: Backend is initialized
-await backend.initialize(backendConfig);
-backendRegistry.setCurrent(selectedBackend);
-
-// BUT in dock-server.ts lines 326-334, the old SDK is still used directly:
-const queryGenerator = query({
-  prompt: fullPrompt,
-  options: {
-    mcpServers: {
-      'freecad-tools': this.mcpServer,
-    },
-    maxTurns: 30,
-  },
-});
+const response = await backend.sendMessage(
+  fullPrompt,
+  context,
+  tools,
+  (chunk: string) => { ... }
+);
 ```
-
-**Impact:** The entire backend abstraction layer is dead code. Messages are still routed through the Claude Agent SDK regardless of which backend is selected.
 
 ---
 
 ### 2. Missing `mcp-tool-wrapper.ts` File
-**Location:** `sidecar/src/backends/claude-backend.ts:41`
+**Status:** ✅ FIXED
 
-```typescript
-args: ['ts-node', path.join(__dirname, 'mcp-tool-wrapper.ts'), tool.name],
-```
-
-**Problem:** This file does not exist in the repository. The `createMcpConfig()` method references a wrapper script that was never created.
-
-**Impact:** If the backend were ever actually used, it would fail when trying to spawn the MCP tool wrapper.
+The `claude-backend.ts` no longer references this file. The old `claude-code-process.ts` still has the reference but is not imported anywhere (superseded by `claude-backend.ts`).
 
 ---
 
 ### 3. API Key Passed as Command-Line Argument
-**Location:** `sidecar/src/backends/opencode-backend.ts:114-115`
+**Status:** ✅ FIXED
 
+`opencode-backend.ts:47-49` now uses environment variable:
 ```typescript
+const env = { ...process.env };
 if (this.config.apiKey) {
-  args.push('--api-key', this.config.apiKey);
+  env.OPENAI_API_KEY = this.config.apiKey;
 }
 ```
 
-**Security Issue:** Passing API keys as command-line arguments exposes them in:
-- Process lists (`ps aux` or Task Manager)
-- Shell history
-- Log files
-
-**Recommendation:** Use environment variables instead, or a configuration file.
-
 ---
 
-### 4. Message Passed as CLI Argument Without Sanitization
-**Location:** `sidecar/src/backends/opencode-backend.ts:128`
+### 4. Message Passed as CLI Argument
+**Status:** ✅ FIXED
 
+`opencode-backend.ts:95-102` now uses stdin:
 ```typescript
-args.push(message);
+const input = JSON.stringify({
+  message: fullMessage,
+  tools: translatedTools,
+}) + '\n';
+
+proc.stdin?.write(input, () => {
+  proc.stdin?.end();
+});
 ```
 
-**Potential Issue:** The user message is passed directly as a command-line argument. If the message contains shell metacharacters, it could cause issues. While `spawn` with array arguments is safer than shell execution, the message could still cause CLI parsing issues.
-
 ---
 
-## Medium Issues
-
 ### 5. Unused `MCPToolTranslator` Class
-**Location:** `sidecar/src/tool-translator.ts:115-151`
+**Status:** ✅ FIXED
 
-The `MCPToolTranslator` class is defined but never instantiated or used by any backend. The `OpenCodeToolTranslator` is used by `OpenCodeBackend`, but `MCPToolTranslator` is dead code.
+Source `tool-translator.ts` only contains `OpenCodeToolTranslator`. Note: `dist/` files are stale and still contain old code.
 
 ---
 
 ### 6. Type Definition Duplication
-**Location:** `sidecar/src/agent-backend.ts:32-40` vs `sidecar/src/types.ts:19-27`
+**Status:** ✅ FIXED
 
-`BackendConfig` is defined in both files with identical structure. This could lead to confusion and maintenance issues.
+`agent-backend.ts:7-8` imports from `types.ts` and re-exports:
+```typescript
+import { ToolCall, BackendConfig, MCPTool } from './types';
+export { ToolCall, BackendConfig, MCPTool };
+```
 
 ---
 
-### 7. Incomplete Error Handling for `loadOpenCodeConfig`
-**Location:** `sidecar/src/backend-config.ts:73,84`
+### 7. Silent Error Ignores
+**Status:** ✅ FIXED
 
+`backend-config.ts:73-75, 84-85` now uses `console.warn`:
 ```typescript
 } catch (err) {
-  // Config file doesn't exist or is invalid, ignore
+  console.warn('[BackendConfig] Failed to load opencode config:', ...);
 }
 ```
 
-The error is caught but silently ignored. If there's a JSON parse error or permission issue, the user won't know.
+---
+
+## New Critical Issues
+
+### 8. TypeScript Build Errors
+**Location:** `sidecar/src/dock-server.ts:69-70`
+
+```typescript
+documentInfo: this.config.freeCADBridge.getDocumentInfo?.() ?? undefined,
+selectedObjects: this.config.freeCADBridge.getSelectedObjects?.() ?? undefined,
+```
+
+**Problem:** `FreeCADBridge` class does not have `getDocumentInfo` or `getSelectedObjects` methods. These are called with optional chaining but TypeScript still errors because the properties don't exist on the type.
+
+**Impact:** Code does not compile (`npm run build` fails).
+
+**Fix Required:** Either:
+1. Add `getDocumentInfo()` and `getSelectedObjects()` methods to `FreeCADBridge` class
+2. Or remove these calls and use Python code execution to get this information
+
+---
+
+## Verification Summary
+
+| Issue | Status |
+|-------|--------|
+| Backend sendMessage() called | ✅ FIXED |
+| mcp-tool-wrapper.ts exists | ✅ FIXED |
+| API key via env var | ✅ FIXED |
+| Message via stdin | ✅ FIXED |
+| MCPToolTranslator removed | ✅ FIXED |
+| Type duplication resolved | ✅ FIXED |
+| Error logging added | ✅ FIXED |
+| Code compiles | ❌ BROKEN |
 
 ---
 
@@ -111,38 +130,35 @@ The error is caught but silently ignored. If there's a JSON parse error or permi
 | Plan Item | Status | Notes |
 |-----------|--------|-------|
 | `agent-backend.ts` interface | ✅ Done | Correctly implements `AgentBackend` interface |
-| `claude-backend.ts` | ⚠️ Partial | Backend adapter exists but never called; references missing file |
-| `opencode-backend.ts` | ⚠️ Partial | Backend adapter exists but never called |
+| `claude-backend.ts` | ✅ Done | Backend adapter properly implemented |
+| `opencode-backend.ts` | ✅ Done | Backend adapter properly implemented |
 | `backend-registry.ts` | ✅ Done | Registry works correctly |
-| `tool-translator.ts` | ⚠️ Partial | `OpenCodeToolTranslator` used, `MCPToolTranslator` unused |
-| `backend-config.ts` | ✅ Done | Config loading works |
+| `tool-translator.ts` | ✅ Done | Only `OpenCodeToolTranslator` exists |
+| `backend-config.ts` | ✅ Done | Config loading works with proper logging |
 | `index.ts` CLI args | ✅ Done | Backend selection CLI works |
-| `types.ts` updates | ✅ Done | `ToolCall` and `BackendConfig` added |
-| README documentation | ✅ Done | Documentation updated |
+| `types.ts` updates | ✅ Done | Types properly defined and exported |
+| **Build succeeds** | ❌ FAIL | TypeScript errors prevent compilation |
 
 ---
 
-## Summary
-
-The Cycle 20 implementation created the **skeleton** of a multi-backend architecture but did not **integrate** it into the actual message flow. The dock-server still uses the Claude Agent SDK directly, making the backend abstraction layer non-functional.
-
-**To fix this, the dock-server would need to:**
-1. Import the `backendRegistry` from `index.ts`
-2. Replace the `query()` call with `backend.sendMessage()`
-3. Handle streaming responses via the `onChunk` callback
-4. Remove the direct dependency on `@anthropic-ai/claude-agent-sdk` for message processing
-
-This is a significant architectural change that was not completed in Cycle 20.
+## Files Reviewed
+- `sidecar/src/dock-server.ts` - Backend integration works, but build errors
+- `sidecar/src/backends/opencode-backend.ts` - Security fixes verified
+- `sidecar/src/backends/claude-backend.ts` - Properly refactored
+- `sidecar/src/backend-registry.ts` - Correct implementation
+- `sidecar/src/backend-config.ts` - Proper error logging
+- `sidecar/src/agent-backend.ts` - Clean interface, imports from types.ts
+- `sidecar/src/tool-translator.ts` - Only one translator class
+- `sidecar/src/index.ts` - Proper backend initialization
+- `sidecar/src/types.ts` - Single source of truth for types
+- `sidecar/src/freecad-bridge.ts` - Missing methods referenced by dock-server
 
 ---
 
-## Files Changed
-- `sidecar/src/agent-backend.ts` - New
-- `sidecar/src/backends/claude-backend.ts` - New
-- `sidecar/src/backends/opencode-backend.ts` - New
-- `sidecar/src/backend-registry.ts` - New
-- `sidecar/src/tool-translator.ts` - New
-- `sidecar/src/backend-config.ts` - New
-- `sidecar/src/index.ts` - Modified
-- `sidecar/src/types.ts` - Modified
-- `sidecar/README.md` - Modified
+## Recommendation
+
+**Before this cycle can be marked complete:**
+
+1. **Fix TypeScript build errors** - Add missing methods to `FreeCADBridge` or refactor `buildMessageContext()` to not use them
+2. **Rebuild dist files** - Current compiled output is stale and contains old code
+3. **Verify runtime** - Once compiled, verify backend switching actually works end-to-end
