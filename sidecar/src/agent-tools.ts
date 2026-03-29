@@ -54,6 +54,12 @@ import {
   formatSweepCreation,
   formatSurfaceOperation,
   formatSurfaceInfo,
+  formatBlendSurface,
+  formatOffsetSurface,
+  formatSurfaceAnalysis,
+  formatSurfaceRebuild,
+  formatLoftInfo,
+  formatSweepInfo,
   formatSolverInit,
   formatSolveResult,
   formatDOFResult,
@@ -310,6 +316,13 @@ export function createAgentTools(freeCADBridge: FreeCADBridge) {
     getSurfaceInfoTool(freeCADBridge),
     listSurfacesTool(freeCADBridge),
     validateSurfaceTool(freeCADBridge),
+    // Advanced surface modeling tools
+    createBlendSurfaceTool(freeCADBridge),
+    createOffsetSurfaceTool(freeCADBridge),
+    analyzeSurfaceTool(freeCADBridge),
+    rebuildSurfaceTool(freeCADBridge),
+    getLoftInfoTool(freeCADBridge),
+    getSweepInfoTool(freeCADBridge),
     // Kinematic solver and animation tools
     initializeKinematicSolverTool(freeCADBridge),
     solveAssemblyTool(freeCADBridge),
@@ -10427,6 +10440,438 @@ print(json.dumps(result))
         const result = await freeCADBridge.executePython(code);
         const parsed = parseLastJsonLine(result.output);
         const formatted = formatSurfaceInfo(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: create_blend_surface
+ *
+ * Create a blend surface between two surfaces with continuity.
+ */
+function createBlendSurfaceTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_blend_surface',
+    `Create a blend surface between two surfaces with continuity.
+
+Parameters:
+- surface1 (required): First surface object name
+- surface2 (required): Second surface object name
+- continuity (optional): Continuity type - "G0" (position), "G1" (tangent), "G2" (curvature). Default: "G1"
+
+Returns:
+- success: Whether the blend surface was created
+- featureName: Internal name of the blend surface
+- featureLabel: User-friendly label
+- sourceSurface1: First source surface
+- sourceSurface2: Second source surface
+- continuity: Continuity type used
+- message: Status message
+
+Use this tool to create smooth transition surfaces between two adjacent surfaces with specified continuity.
+
+Example:
+- Blend with tangent continuity: { surface1: "Surface001", surface2: "Surface002", continuity: "G1" }
+- Blend with curvature continuity: { surface1: "Surface001", surface2: "Surface002", continuity: "G2" }`,
+    {
+      surface1: z.string().describe('First surface object name'),
+      surface2: z.string().describe('Second surface object name'),
+      continuity: z.enum(['G0', 'G1', 'G2']).optional().default('G1').describe('Continuity type'),
+    },
+    async (input) => {
+      const { surface1, surface2, continuity } = input;
+
+      const code = `
+from llm_bridge.surface_handlers import handle_create_blend_surface
+import json
+params = json.loads('${JSON.stringify({ surface1, surface2, continuity }).replace(/'/g, "\\'")}')
+result = handle_create_blend_surface(
+    surface1=params['surface1'],
+    surface2=params['surface2'],
+    continuity=params.get('continuity', 'G1')
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatBlendSurface(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: create_offset_surface
+ *
+ * Create a parallel surface at specified offset distance.
+ */
+function createOffsetSurfaceTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_offset_surface',
+    `Create a parallel surface at a specified offset distance.
+
+Parameters:
+- surfaceName (required): Name of the source surface object
+- distance (required): Offset distance (positive = outward, negative = inward)
+
+Returns:
+- success: Whether the offset surface was created
+- featureName: Internal name of the offset surface
+- featureLabel: User-friendly label
+- sourceSurface: Name of the source surface
+- distance: Offset distance applied
+- message: Status message
+
+Use this tool to create a parallel copy of a surface at a specified distance. Common for creating offset surfaces for mold design, wall thickness analysis, or clearance checking.
+
+Example:
+- Offset outward by 5mm: { surfaceName: "Surface001", distance: 5 }
+- Offset inward by 2mm: { surfaceName: "Surface001", distance: -2 }`,
+    {
+      surfaceName: z.string().describe('Name of the source surface'),
+      distance: z.number().describe('Offset distance (positive = outward, negative = inward)'),
+    },
+    async (input) => {
+      const { surfaceName, distance } = input;
+
+      const code = `
+from llm_bridge.surface_handlers import handle_create_offset_surface
+import json
+params = json.loads('${JSON.stringify({ surfaceName, distance }).replace(/'/g, "\\'")}')
+result = handle_create_offset_surface(
+    surface_name=params['surfaceName'],
+    distance=params['distance']
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatOffsetSurface(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: analyze_surface
+ *
+ * Analyze surface curvature and geometric properties.
+ */
+function analyzeSurfaceTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'analyze_surface',
+    `Analyze surface curvature and geometric properties.
+
+Parameters:
+- surfaceName (required): Name of the surface object to analyze
+
+Returns:
+- success: Whether the analysis completed
+- surfaceName: Name of the analyzed surface
+- surfaceType: Type of surface
+- area: Surface area in mm²
+- facesCount: Number of faces
+- edgesCount: Number of edges
+- boundingBox: Bounding box coordinates
+- curvatureStatistics: Curvature analysis (Gaussian, mean, principal)
+- curvatureSampleCount: Number of curvature samples taken
+- message: Status message
+
+Use this tool to analyze surface quality including curvature statistics. Returns Gaussian curvature, mean curvature, and principal curvatures at sample points.
+
+Example:
+- Analyze surface curvature: { surfaceName: "Surface001" }`,
+    {
+      surfaceName: z.string().describe('Name of the surface to analyze'),
+    },
+    async (input) => {
+      const { surfaceName } = input;
+
+      const code = `
+from llm_bridge.surface_handlers import handle_analyze_surface
+import json
+params = json.loads('${JSON.stringify({ surfaceName }).replace(/'/g, "\\'")}')
+result = handle_analyze_surface(surface_name=params['surfaceName'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatSurfaceAnalysis(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: rebuild_surface
+ *
+ * Rebuild a surface with specified tolerance.
+ */
+function rebuildSurfaceTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'rebuild_surface',
+    `Rebuild a surface with optional tolerance.
+
+Parameters:
+- surfaceName (required): Name of the surface object to rebuild
+- tolerance (optional): Tolerance value for rebuilding
+
+Returns:
+- success: Whether the rebuild completed
+- originalSurface: Name of the original surface
+- rebuiltSurface: Name of the rebuilt surface
+- rebuiltLabel: User-friendly label
+- tolerance: Tolerance value used
+- isValid: Whether the rebuilt surface is valid
+- message: Status message
+
+Use this tool to rebuild a surface with improved geometry. The tolerance parameter controls the precision of the reconstruction.
+
+Example:
+- Rebuild with default tolerance: { surfaceName: "Surface001" }
+- Rebuild with specific tolerance: { surfaceName: "Surface001", tolerance: 0.01 }`,
+    {
+      surfaceName: z.string().describe('Name of the surface to rebuild'),
+      tolerance: z.number().optional().describe('Optional tolerance value'),
+    },
+    async (input) => {
+      const { surfaceName, tolerance } = input;
+
+      const code = `
+from llm_bridge.surface_handlers import handle_rebuild_surface
+import json
+params = json.loads('${JSON.stringify({ surfaceName, tolerance: tolerance || null }).replace(/'/g, "\\'")}')
+result = handle_rebuild_surface(
+    surface_name=params['surfaceName'],
+    tolerance=params.get('tolerance')
+)
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatSurfaceRebuild(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: get_loft_info
+ *
+ * Get detailed information about a loft feature.
+ */
+function getLoftInfoTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'get_loft_info',
+    `Get detailed information about a loft feature.
+
+Parameters:
+- loftName (required): Name of the loft object to query
+
+Returns:
+- success: Whether the query was successful
+- loftName: Internal name of the loft
+- loftLabel: User-friendly label
+- loftType: Type of loft feature
+- isValid: Whether the loft is valid
+- solid: Whether the loft is a solid
+- closed: Whether the loft is closed
+- profileCount: Number of profile sections
+- facesCount: Number of faces in the loft
+- edgesCount: Number of edges
+- area: Surface area if available
+- boundingBox: Bounding box coordinates
+- transitionMode: Transition mode if available
+- message: Status message
+
+Use this tool to inspect loft parameters and statistics before modifying or duplicating.
+
+Example:
+- Get loft info: { loftName: "Loft001" }`,
+    {
+      loftName: z.string().describe('Name of the loft to query'),
+    },
+    async (input) => {
+      const { loftName } = input;
+
+      const code = `
+from llm_bridge.surface_handlers import handle_get_loft_info
+import json
+params = json.loads('${JSON.stringify({ loftName }).replace(/'/g, "\\'")}')
+result = handle_get_loft_info(loft_name=params['loftName'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatLoftInfo(parsed.data);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: parsed.success ? formatted : `Error: ${parsed.error}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool execution error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+}
+
+/**
+ * Tool: get_sweep_info
+ *
+ * Get detailed information about a sweep feature.
+ */
+function getSweepInfoTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'get_sweep_info',
+    `Get detailed information about a sweep feature.
+
+Parameters:
+- sweepName (required): Name of the sweep object to query
+
+Returns:
+- success: Whether the query was successful
+- sweepName: Internal name of the sweep
+- sweepLabel: User-friendly label
+- sweepType: Type of sweep feature
+- isValid: Whether the sweep is valid
+- solid: Whether the sweep is a solid
+- frenet: Whether Frenet frame was used
+- profileCount: Number of profile sections
+- facesCount: Number of faces in the sweep
+- edgesCount: Number of edges
+- area: Surface area if available
+- boundingBox: Bounding box coordinates
+- message: Status message
+
+Use this tool to inspect sweep parameters and statistics before modifying or duplicating.
+
+Example:
+- Get sweep info: { sweepName: "Sweep001" }`,
+    {
+      sweepName: z.string().describe('Name of the sweep to query'),
+    },
+    async (input) => {
+      const { sweepName } = input;
+
+      const code = `
+from llm_bridge.surface_handlers import handle_get_sweep_info
+import json
+params = json.loads('${JSON.stringify({ sweepName }).replace(/'/g, "\\'")}')
+result = handle_get_sweep_info(sweep_name=params['sweepName'])
+print(json.dumps(result))
+`.trim();
+
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        const formatted = formatSweepInfo(parsed.data);
         return {
           content: [
             {

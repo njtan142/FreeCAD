@@ -2085,6 +2085,249 @@ export function formatSurfaceInfo(data: any): string {
 }
 
 /**
+ * Format blend surface creation result
+ */
+export function formatBlendSurface(data: any): string {
+  if (!data) return 'No blend surface data';
+
+  const lines: string[] = [];
+  lines.push(`Blend Surface: ${data.featureLabel || data.featureName} (${data.featureName})`);
+  lines.push(`Type: ${data.featureType || 'Blend'}`);
+  lines.push('');
+
+  lines.push(`Source Surface 1: ${data.sourceSurface1}`);
+  lines.push(`Source Surface 2: ${data.sourceSurface2}`);
+  lines.push(`Continuity: ${data.continuity || 'G1'}`);
+
+  if (data.isValid !== undefined) {
+    lines.push(`Valid: ${data.isValid ? 'Yes' : 'No'}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Format offset surface creation result
+ */
+export function formatOffsetSurface(data: any): string {
+  if (!data) return 'No offset surface data';
+
+  const lines: string[] = [];
+  lines.push(`Offset Surface: ${data.featureLabel || data.featureName} (${data.featureName})`);
+  lines.push(`Type: ${data.featureType || 'Offset'}`);
+  lines.push('');
+
+  lines.push(`Source Surface: ${data.sourceSurface}`);
+  if (data.distance !== undefined) {
+    lines.push(`Offset Distance: ${data.distance.toFixed(2)} mm`);
+  }
+
+  if (data.isValid !== undefined) {
+    lines.push(`Valid: ${data.isValid ? 'Yes' : 'No'}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Format surface analysis result
+ */
+export function formatSurfaceAnalysis(data: any): string {
+  if (!data) return 'No surface analysis data';
+
+  const lines: string[] = [];
+  lines.push(`Surface Analysis: ${data.surfaceLabel || data.surfaceName} (${data.surfaceName})`);
+  lines.push(`Type: ${data.surfaceType || 'Surface'}`);
+  lines.push('');
+
+  if (data.area !== undefined) {
+    lines.push(`Area: ${data.area.toFixed(2)} mm²`);
+  }
+
+  lines.push(`Faces: ${data.facesCount || 0}`);
+  lines.push(`Edges: ${data.edgesCount || 0}`);
+
+  if (data.isValid !== undefined) {
+    lines.push(`Valid: ${data.isValid ? 'Yes' : 'No'}`);
+  }
+
+  if (data.boundingBox) {
+    const bb = data.boundingBox;
+    lines.push('');
+    lines.push('Bounding Box:');
+    lines.push(`  X: ${bb.minX?.toFixed(2) || 0} to ${bb.maxX?.toFixed(2) || 0}`);
+    lines.push(`  Y: ${bb.minY?.toFixed(2) || 0} to ${bb.maxY?.toFixed(2) || 0}`);
+    lines.push(`  Z: ${bb.minZ?.toFixed(2) || 0} to ${bb.maxZ?.toFixed(2) || 0}`);
+  }
+
+  if (data.curvatureStatistics) {
+    lines.push('');
+    lines.push('Curvature Statistics:');
+
+    const stats = data.curvatureStatistics;
+
+    if (stats.gaussianCurvature) {
+      lines.push('  Gaussian Curvature:');
+      lines.push(`    Min: ${stats.gaussianCurvature.min?.toFixed(4) || 'N/A'}`);
+      lines.push(`    Max: ${stats.gaussianCurvature.max?.toFixed(4) || 'N/A'}`);
+      lines.push(`    Avg: ${stats.gaussianCurvature.avg?.toFixed(4) || 'N/A'}`);
+    }
+
+    if (stats.meanCurvature) {
+      lines.push('  Mean Curvature:');
+      lines.push(`    Min: ${stats.meanCurvature.min?.toFixed(4) || 'N/A'}`);
+      lines.push(`    Max: ${stats.meanCurvature.max?.toFixed(4) || 'N/A'}`);
+      lines.push(`    Avg: ${stats.meanCurvature.avg?.toFixed(4) || 'N/A'}`);
+    }
+
+    if (stats.principalCurvature) {
+      lines.push('  Principal Curvature:');
+      lines.push(`    Min: ${stats.principalCurvature.min?.toFixed(4) || 'N/A'}`);
+      lines.push(`    Max: ${stats.principalCurvature.max?.toFixed(4) || 'N/A'}`);
+    }
+  }
+
+  if (data.curvatureSampleCount !== undefined) {
+    lines.push(`Curvature Samples: ${data.curvatureSampleCount}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Format surface rebuild result
+ */
+export function formatSurfaceRebuild(data: any): string {
+  if (!data) return 'No surface rebuild data';
+
+  const lines: string[] = [];
+  lines.push(`Surface Rebuilt: ${data.rebuiltLabel || data.rebuiltSurface} (${data.rebuiltSurface})`);
+  lines.push(`Type: ${data.surfaceType || 'Rebuilt Surface'}`);
+  lines.push('');
+
+  lines.push(`Original Surface: ${data.originalSurface}`);
+  lines.push(`Rebuilt Surface: ${data.rebuiltSurface}`);
+
+  if (data.tolerance !== undefined && data.tolerance !== null) {
+    lines.push(`Tolerance: ${data.tolerance}`);
+  }
+
+  if (data.isValid !== undefined) {
+    lines.push(`Valid: ${data.isValid ? 'Yes' : 'No'}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Format loft info result
+ */
+export function formatLoftInfo(data: any): string {
+  if (!data) return 'No loft info data';
+
+  const lines: string[] = [];
+  lines.push(`Loft: ${data.loftLabel || data.loftName} (${data.loftName})`);
+  lines.push(`Type: ${data.loftType || 'Loft'}`);
+  lines.push('');
+
+  lines.push(`Solid: ${data.solid ? 'Yes' : 'No'}`);
+  lines.push(`Closed: ${data.closed ? 'Yes' : 'No'}`);
+  lines.push(`Profiles: ${data.profileCount || 0}`);
+  lines.push(`Faces: ${data.facesCount || 0}`);
+  lines.push(`Edges: ${data.edgesCount || 0}`);
+
+  if (data.transitionMode !== undefined) {
+    lines.push(`Transition Mode: ${data.transitionMode}`);
+  }
+
+  if (data.area !== undefined) {
+    lines.push(`Area: ${data.area.toFixed(2)} mm²`);
+  }
+
+  if (data.isValid !== undefined) {
+    lines.push(`Valid: ${data.isValid ? 'Yes' : 'No'}`);
+  }
+
+  if (data.boundingBox) {
+    const bb = data.boundingBox;
+    lines.push('');
+    lines.push('Bounding Box:');
+    lines.push(`  X: ${bb.minX?.toFixed(2) || 0} to ${bb.maxX?.toFixed(2) || 0}`);
+    lines.push(`  Y: ${bb.minY?.toFixed(2) || 0} to ${bb.maxY?.toFixed(2) || 0}`);
+    lines.push(`  Z: ${bb.minZ?.toFixed(2) || 0} to ${bb.maxZ?.toFixed(2) || 0}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Format sweep info result
+ */
+export function formatSweepInfo(data: any): string {
+  if (!data) return 'No sweep info data';
+
+  const lines: string[] = [];
+  lines.push(`Sweep: ${data.sweepLabel || data.sweepName} (${data.sweepName})`);
+  lines.push(`Type: ${data.sweepType || 'Sweep'}`);
+  lines.push('');
+
+  lines.push(`Solid: ${data.solid ? 'Yes' : 'No'}`);
+  lines.push(`Frenet Frame: ${data.frenet ? 'Yes' : 'No'}`);
+  lines.push(`Profiles: ${data.profileCount || 0}`);
+  lines.push(`Faces: ${data.facesCount || 0}`);
+  lines.push(`Edges: ${data.edgesCount || 0}`);
+
+  if (data.area !== undefined) {
+    lines.push(`Area: ${data.area.toFixed(2)} mm²`);
+  }
+
+  if (data.isValid !== undefined) {
+    lines.push(`Valid: ${data.isValid ? 'Yes' : 'No'}`);
+  }
+
+  if (data.boundingBox) {
+    const bb = data.boundingBox;
+    lines.push('');
+    lines.push('Bounding Box:');
+    lines.push(`  X: ${bb.minX?.toFixed(2) || 0} to ${bb.maxX?.toFixed(2) || 0}`);
+    lines.push(`  Y: ${bb.minY?.toFixed(2) || 0} to ${bb.maxY?.toFixed(2) || 0}`);
+    lines.push(`  Z: ${bb.minZ?.toFixed(2) || 0} to ${bb.maxZ?.toFixed(2) || 0}`);
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+/**
  * Format solver initialization result
  */
 export function formatSolverInit(data: any): string {
@@ -3044,7 +3287,7 @@ export function formatPathJobList(data: any): string {
   if (!data) return 'No Path job data';
 
   const lines: string[] = [];
-  lines.push(`Total Path Jobs: ${data.jobCount || 0}`);
+  lines.push(`Total Path Jobs: ${data.jobsCount || 0}`);
   lines.push('');
 
   if (data.jobs && data.jobs.length > 0) {
@@ -3055,7 +3298,7 @@ export function formatPathJobList(data: any): string {
       lines.push(formatTableRow([
         job.name || '-',
         job.label || '-',
-        String(job.operationCount || 0),
+        String(job.operationsCount || 0),
         job.status || 'Unknown'
       ]));
     }
@@ -3109,7 +3352,7 @@ export function formatPathToolList(data: any): string {
   if (!data) return 'No Path tool data';
 
   const lines: string[] = [];
-  lines.push(`Total Path Tools: ${data.toolCount || 0}`);
+  lines.push(`Total Path Tools: ${data.toolsCount || 0}`);
   lines.push('');
 
   if (data.tools && data.tools.length > 0) {
@@ -3149,7 +3392,9 @@ export function formatPathOperation(data: any): string {
     if (data.jobName) {
       lines.push(`Job: ${data.jobName}`);
     }
-    if (data.baseObject) {
+    if (data.baseObjects && Array.isArray(data.baseObjects)) {
+      lines.push(`Base Objects: ${data.baseObjects.join(', ')}`);
+    } else if (data.baseObject) {
       lines.push(`Base Object: ${data.baseObject}`);
     }
     if (data.pathLength !== undefined) {
