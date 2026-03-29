@@ -108,6 +108,18 @@ from .draft_handlers import (
     handle_get_draft_properties,
 )
 
+from .pattern_handlers import (
+    handle_create_linear_pattern,
+    handle_create_polar_pattern,
+    handle_create_rectangular_pattern,
+    handle_create_path_pattern,
+    handle_update_linear_pattern,
+    handle_update_polar_pattern,
+    handle_get_pattern_info,
+    handle_delete_pattern,
+    handle_list_patterns,
+)
+
 from .techdraw_handlers import (
     handle_create_drawing_page,
     handle_list_drawing_pages,
@@ -240,4 +252,13 @@ __all__ = [
     "handle_create_leader_line",
     "handle_export_to_svg",
     "handle_export_to_pdf",
+    "handle_create_linear_pattern",
+    "handle_create_polar_pattern",
+    "handle_create_rectangular_pattern",
+    "handle_create_path_pattern",
+    "handle_update_linear_pattern",
+    "handle_update_polar_pattern",
+    "handle_get_pattern_info",
+    "handle_delete_pattern",
+    "handle_list_patterns",
 ]
