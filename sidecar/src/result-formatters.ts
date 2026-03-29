@@ -2075,3 +2075,233 @@ export function formatSurfaceInfo(data: any): string {
 
   return lines.join('\n');
 }
+
+/**
+ * Format solver initialization result
+ */
+export function formatSolverInit(data: any): string {
+  if (!data) return 'No solver data';
+
+  const lines: string[] = [];
+
+  lines.push(`Solver initialized for: ${data.assemblyName || 'Unknown'}`);
+  lines.push(`DOF: ${data.dofCount ?? 0}`);
+  lines.push(`Joints: ${data.jointCount ?? 0}`);
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Format solve assembly result
+ */
+export function formatSolveResult(data: any): string {
+  if (!data) return 'No solve data';
+
+  const lines: string[] = [];
+
+  lines.push(`Assembly: ${data.assemblyName || 'Unknown'}`);
+  lines.push(`Iterations: ${data.iterations ?? 0}`);
+  lines.push(`Converged: ${data.converged ? 'Yes' : 'No'}`);
+
+  if (data.positions && data.positions.length > 0) {
+    lines.push('');
+    lines.push('Positions:');
+    for (const pos of data.positions) {
+      lines.push(`  ${pos.joint || pos.name}: ${pos.value} ${pos.unit || ''}`);
+    }
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Format DOF analysis result
+ */
+export function formatDOFResult(data: any): string {
+  if (!data) return 'No DOF data';
+
+  const lines: string[] = [];
+
+  lines.push(`Assembly: ${data.assemblyName || 'Unknown'}`);
+  lines.push('');
+  lines.push(`Total DOF: ${data.totalDof ?? 0}`);
+  lines.push(`Constrained: ${data.constrainedDof ?? 0}`);
+  lines.push(`Free: ${data.freeDof ?? 0}`);
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Format joint value result
+ */
+export function formatJointValue(data: any): string {
+  if (!data) return 'No joint data';
+
+  const lines: string[] = [];
+  const unit = data.unit || 'deg';
+
+  lines.push(`Joint: ${data.jointName || 'Unknown'}`);
+  lines.push(`Value: ${data.value} ${unit}`);
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Format joint limits result
+ */
+export function formatJointLimits(data: any): string {
+  if (!data) return 'No limits data';
+
+  const lines: string[] = [];
+  const unit = data.unit || 'deg';
+
+  lines.push(`Joint: ${data.jointName || 'Unknown'}`);
+  lines.push(`Range: ${data.minValue} to ${data.maxValue} ${unit}`);
+  lines.push(`Has limits: ${data.hasLimits ? 'Yes' : 'No'}`);
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Format drive joint result
+ */
+export function formatDriveResult(data: any): string {
+  if (!data) return 'No drive data';
+
+  const lines: string[] = [];
+
+  lines.push(`Joint: ${data.jointName || 'Unknown'}`);
+  lines.push(`Motion: ${data.startValue} → ${data.endValue}`);
+  lines.push(`Duration: ${data.duration}s`);
+  lines.push(`Frames: ${data.frames || 0}`);
+  lines.push(`Motion type: ${data.motionType || 'linear'}`);
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Format animation result
+ */
+export function formatAnimationResult(data: any): string {
+  if (!data) return 'No animation data';
+
+  const lines: string[] = [];
+
+  lines.push(`Assembly: ${data.assemblyName || 'Unknown'}`);
+  lines.push(`Duration: ${data.duration}s`);
+  lines.push(`Frame rate: ${data.frameRate || 30} fps`);
+  lines.push(`Total frames: ${data.totalFrames || 0}`);
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Format animation state result
+ */
+export function formatAnimationState(data: any): string {
+  if (!data) return 'No animation state';
+
+  const lines: string[] = [];
+
+  lines.push(`Status: ${data.isPlaying ? 'Playing' : 'Stopped'}`);
+  lines.push(`Current frame: ${data.currentFrame || 0} / ${data.totalFrames || 0}`);
+  lines.push(`Duration: ${data.duration || 0}s`);
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Format kinematic positions result
+ */
+export function formatKinematicPositions(data: any): string {
+  if (!data) return 'No positions data';
+
+  const lines: string[] = [];
+
+  lines.push(`Assembly: ${data.assemblyName || 'Unknown'}`);
+  lines.push('');
+
+  if (data.positions && data.positions.length > 0) {
+    lines.push('Joint positions:');
+    for (const pos of data.positions) {
+      const unit = pos.unit || 'deg';
+      lines.push(`  ${pos.joint || pos.name}: ${pos.value} ${unit}`);
+    }
+  } else {
+    lines.push('No joint positions available');
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Format collision check result
+ */
+export function formatCollisionResult(data: any): string {
+  if (!data) return 'No collision data';
+
+  const lines: string[] = [];
+
+  lines.push(`Assembly: ${data.assemblyName || 'Unknown'}`);
+  lines.push(`Collisions: ${data.hasCollision ? 'Detected' : 'None'}`);
+
+  if (data.collisionPairs && data.collisionPairs.length > 0) {
+    lines.push('');
+    lines.push('Colliding pairs:');
+    for (const pair of data.collisionPairs) {
+      lines.push(`  ${pair.object1 || pair[0]} ↔ ${pair.object2 || pair[1]}`);
+    }
+  }
+
+  if (data.message) {
+    lines.push('');
+    lines.push(data.message);
+  }
+
+  return lines.join('\n');
+}
