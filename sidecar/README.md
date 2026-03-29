@@ -6649,6 +6649,561 @@ Get detailed information about a surface.
 
 ---
 
+### Kinematic Solver and Motion Animation Tools
+
+The kinematic solver tools enable simulation and animation of mechanical assemblies by driving kinematic joints and solving constraint-based mechanisms. These tools are essential for mechanical design verification, range-of-motion analysis, and creating animated documentation.
+
+**Kinematic Overview:**
+
+- **Solver Initialization** - Setup the kinematic solver for an assembly
+- **Joint Control** - Set and get joint values for direct control
+- **DOF Analysis** - Understand degrees of freedom in the mechanism
+- **Animation** - Create and play joint drive animations
+- **Collision Detection** - Check for interference during motion
+
+---
+
+#### Solver Tools
+
+##### `initialize_kinematic_solver(assemblyName: string)`
+
+Initialize the kinematic solver for an assembly.
+
+**Parameters:**
+- `assemblyName` (required): Name of the assembly to initialize
+
+**Response format:**
+```json
+{
+  "success": true,
+  "assemblyName": "MainAssembly",
+  "dofCount": 3,
+  "jointCount": 5,
+  "message": "Solver initialized for MainAssembly"
+}
+```
+
+**Example usage:**
+```typescript
+{
+  name: "initialize_kinematic_solver",
+  arguments: {
+    assemblyName: "EngineAssembly"
+  }
+}
+```
+
+**Natural language examples:**
+- "Initialize solver for this assembly"
+- "Setup kinematic analysis"
+- "Prepare the mechanism for solving"
+
+---
+
+##### `solve_assembly(assemblyName: string, maxIterations?: number)`
+
+Solve the kinematic positions for an assembly.
+
+**Parameters:**
+- `assemblyName` (required): Name of the assembly to solve
+- `maxIterations` (optional): Maximum solver iterations (default 100)
+
+**Response format:**
+```json
+{
+  "success": true,
+  "assemblyName": "MainAssembly",
+  "iterations": 12,
+  "converged": true,
+  "positions": [
+    { "joint": "Hinge", "value": 45.0, "unit": "deg" },
+    { "joint": "Slider", "value": 20.0, "unit": "mm" }
+  ],
+  "message": "Assembly solved successfully"
+}
+```
+
+**Example usage:**
+```typescript
+// Basic solve
+{
+  name: "solve_assembly",
+  arguments: {
+    assemblyName: "MainAssembly"
+  }
+}
+
+// Solve with more iterations
+{
+  name: "solve_assembly",
+  arguments: {
+    assemblyName: "MainAssembly",
+    maxIterations: 200
+  }
+}
+```
+
+**Natural language examples:**
+- "Solve this mechanism"
+- "Calculate positions"
+- "Solve the assembly with higher precision"
+
+---
+
+##### `check_degrees_of_freedom(assemblyName: string)`
+
+Perform degrees of freedom (DOF) analysis on an assembly.
+
+**Parameters:**
+- `assemblyName` (required): Name of the assembly to analyze
+
+**Response format:**
+```json
+{
+  "success": true,
+  "assemblyName": "CrankSlider",
+  "totalDof": 6,
+  "constrainedDof": 4,
+  "freeDof": 2,
+  "message": "DOF analysis complete"
+}
+```
+
+**Example usage:**
+```typescript
+{
+  name: "check_degrees_of_freedom",
+  arguments: {
+    assemblyName: "CrankSlider"
+  }
+}
+```
+
+**Natural language examples:**
+- "Show DOF analysis"
+- "How many degrees of freedom?"
+- "What is the mobility of this mechanism?"
+
+---
+
+#### Joint Control Tools
+
+##### `set_joint_value(jointName: string, value: number)`
+
+Set the value of a joint or driver.
+
+**Parameters:**
+- `jointName` (required): Name of the joint or driver
+- `value` (required): Target value (degrees for angular, mm for linear)
+
+**Response format:**
+```json
+{
+  "success": true,
+  "jointName": "HingeJoint",
+  "value": 45,
+  "message": "Joint HingeJoint set to 45"
+}
+```
+
+**Example usage:**
+```typescript
+// Rotate hinge to 45 degrees
+{
+  name: "set_joint_value",
+  arguments: {
+    jointName: "HingeJoint",
+    value: 45
+  }
+}
+
+// Move slider 20mm
+{
+  name: "set_joint_value",
+  arguments: {
+    jointName: "SliderJoint",
+    value: 20
+  }
+}
+```
+
+**Natural language examples:**
+- "Rotate hinge to 45 degrees"
+- "Move slider 20mm"
+- "Set the crank angle to 90 degrees"
+
+---
+
+##### `get_joint_value(jointName: string)`
+
+Get the current value of a joint or driver.
+
+**Parameters:**
+- `jointName` (required): Name of the joint or driver
+
+**Response format:**
+```json
+{
+  "success": true,
+  "jointName": "HingeJoint",
+  "value": 45.0,
+  "unit": "deg",
+  "message": "Joint HingeJoint value retrieved"
+}
+```
+
+**Example usage:**
+```typescript
+{
+  name: "get_joint_value",
+  arguments: {
+    jointName: "HingeJoint"
+  }
+}
+```
+
+**Natural language examples:**
+- "What's the current angle?"
+- "Show joint position"
+- "What is the slider position?"
+
+---
+
+##### `get_joint_limits(jointName: string)`
+
+Get the limits (range of motion) of a joint.
+
+**Parameters:**
+- `jointName` (required): Name of the joint or driver
+
+**Response format:**
+```json
+{
+  "success": true,
+  "jointName": "HingeJoint",
+  "minValue": 0.0,
+  "maxValue": 180.0,
+  "unit": "deg",
+  "hasLimits": true,
+  "message": "Joint limits for HingeJoint"
+}
+```
+
+**Example usage:**
+```typescript
+{
+  name: "get_joint_limits",
+  arguments: {
+    jointName: "HingeJoint"
+  }
+}
+```
+
+**Natural language examples:**
+- "Show joint limits"
+- "Range of motion for this joint"
+- "What are the minimum and maximum positions?"
+
+---
+
+#### Animation Tools
+
+##### `drive_joint(jointName: string, startValue: number, endValue: number, duration: number, motionType?: "linear" | "ease_in_out" | "sine")`
+
+Create a joint animation drive sequence.
+
+**Parameters:**
+- `jointName` (required): Name of the joint or driver
+- `startValue` (required): Starting value
+- `endValue` (required): Ending value
+- `duration` (required): Duration in seconds
+- `motionType` (optional): Motion curve type - "linear", "ease_in_out", or "sine" (default "linear")
+
+**Response format:**
+```json
+{
+  "success": true,
+  "jointName": "HingeJoint",
+  "startValue": 0,
+  "endValue": 90,
+  "duration": 2,
+  "motionType": "linear",
+  "frames": 60,
+  "message": "Drive created for HingeJoint: 0 to 90 over 2s"
+}
+```
+
+**Example usage:**
+```typescript
+// Open hinge from 0 to 90 degrees over 2 seconds
+{
+  name: "drive_joint",
+  arguments: {
+    jointName: "HingeJoint",
+    startValue: 0,
+    endValue: 90,
+    duration: 2
+  }
+}
+
+// Smooth slider motion with ease-in-out
+{
+  name: "drive_joint",
+  arguments: {
+    jointName: "SliderJoint",
+    startValue: 0,
+    endValue: 50,
+    duration: 3,
+    motionType: "ease_in_out"
+  }
+}
+```
+
+**Natural language examples:**
+- "Open hinge from 0 to 90 degrees over 2 seconds"
+- "Animate crank rotation"
+- "Slowly move the slider using sine motion"
+
+---
+
+##### `animate_assembly(assemblyName: string, duration: number, frameRate?: number)`
+
+Run a full assembly animation.
+
+**Parameters:**
+- `assemblyName` (required): Name of the assembly to animate
+- `duration` (required): Animation duration in seconds
+- `frameRate` (optional): Frames per second (default 30)
+
+**Response format:**
+```json
+{
+  "success": true,
+  "assemblyName": "EngineAssembly",
+  "duration": 5,
+  "frameRate": 30,
+  "totalFrames": 150,
+  "message": "Animation started: 150 frames over 5s"
+}
+```
+
+**Example usage:**
+```typescript
+// Animate for 5 seconds at default frame rate
+{
+  name: "animate_assembly",
+  arguments: {
+    assemblyName: "EngineAssembly",
+    duration: 5
+  }
+}
+
+// Higher frame rate for smoother animation
+{
+  name: "animate_assembly",
+  arguments: {
+    assemblyName: "CrankSlider",
+    duration: 10,
+    frameRate: 60
+  }
+}
+```
+
+**Natural language examples:**
+- "Animate the mechanism for 5 seconds"
+- "Play full motion cycle"
+- "Run the animation at 60 fps"
+
+---
+
+##### `stop_animation()`
+
+Stop the currently running animation.
+
+**Parameters:** None
+
+**Response format:**
+```json
+{
+  "success": true,
+  "message": "Animation stopped"
+}
+```
+
+**Example usage:**
+```typescript
+{
+  name: "stop_animation",
+  arguments: {}
+}
+```
+
+**Natural language examples:**
+- "Stop animation"
+- "Halt the motion"
+- "Stop the playback"
+
+---
+
+##### `get_animation_state()`
+
+Get the current animation state.
+
+**Parameters:** None
+
+**Response format:**
+```json
+{
+  "success": true,
+  "isPlaying": false,
+  "currentFrame": 75,
+  "totalFrames": 150,
+  "duration": 5.0,
+  "message": "Animation state retrieved"
+}
+```
+
+**Example usage:**
+```typescript
+{
+  name: "get_animation_state",
+  arguments: {}
+}
+```
+
+**Natural language examples:**
+- "Is animation playing?"
+- "Current animation status"
+- "What frame is the animation on?"
+
+---
+
+#### Analysis Tools
+
+##### `get_kinematic_positions(assemblyName: string)`
+
+Get all joint positions after solving.
+
+**Parameters:**
+- `assemblyName` (required): Name of the assembly
+
+**Response format:**
+```json
+{
+  "success": true,
+  "assemblyName": "CrankSlider",
+  "positions": [
+    { "joint": "Crank", "value": 45.0, "unit": "deg" },
+    { "joint": "Slider", "value": 25.4, "unit": "mm" },
+    { "joint": "RockArm", "value": 22.6, "unit": "deg" }
+  ],
+  "message": "Kinematic positions retrieved"
+}
+```
+
+**Example usage:**
+```typescript
+{
+  name: "get_kinematic_positions",
+  arguments: {
+    assemblyName: "CrankSlider"
+  }
+}
+```
+
+**Natural language examples:**
+- "Show all joint positions"
+- "Current configuration"
+- "What are the positions of all joints?"
+
+---
+
+##### `check_collision(assemblyName: string, duringMotion?: boolean)`
+
+Check for collisions during motion.
+
+**Parameters:**
+- `assemblyName` (required): Name of the assembly to check
+- `duringMotion` (optional): Whether to check during animation (default false)
+
+**Response format:**
+```json
+{
+  "success": true,
+  "hasCollision": false,
+  "collisionPairs": [],
+  "message": "No collisions detected"
+}
+```
+
+**Example usage:**
+```typescript
+// Static collision check
+{
+  name: "check_collision",
+  arguments: {
+    assemblyName: "EngineAssembly"
+  }
+}
+
+// Check during animation
+{
+  name: "check_collision",
+  arguments: {
+    assemblyName: "EngineAssembly",
+    duringMotion: true
+  }
+}
+```
+
+**Natural language examples:**
+- "Check for collisions"
+- "Any interference?"
+- "Will parts collide during motion?"
+
+---
+
+#### Common Kinematic Workflows
+
+**Workflow 1: Hinge Rotation**
+
+```
+1. Initialize solver: initialize_kinematic_solver({ assemblyName: "DoorAssembly" })
+2. Set hinge angle: set_joint_value({ jointName: "Hinge", value: 45 })
+3. Solve: solve_assembly({ assemblyName: "DoorAssembly" })
+4. View positions: get_kinematic_positions({ assemblyName: "DoorAssembly" })
+```
+
+**Workflow 2: Slider Animation**
+
+```
+1. Initialize solver: initialize_kinematic_solver({ assemblyName: "CrankSlider" })
+2. Create drive: drive_joint({ jointName: "Crank", startValue: 0, endValue: 360, duration: 2 })
+3. Animate: animate_assembly({ assemblyName: "CrankSlider", duration: 2 })
+4. Check state: get_animation_state({})
+```
+
+**Workflow 3: Range of Motion Analysis**
+
+```
+1. Initialize solver: initialize_kinematic_solver({ assemblyName: "RobotArm" })
+2. Check DOF: check_degrees_of_freedom({ assemblyName: "RobotArm" })
+3. Get joint limits: get_joint_limits({ jointName: "Joint1" })
+4. Drive through range: drive_joint({ jointName: "Joint1", startValue: 0, endValue: 90, duration: 1 })
+5. Check collision: check_collision({ assemblyName: "RobotArm", duringMotion: true })
+```
+
+**Workflow 4: Crank-Slider Mechanism**
+
+```
+1. Initialize solver: initialize_kinematic_solver({ assemblyName: "CrankSlider" })
+2. Drive crank rotation: drive_joint({ jointName: "Crank", startValue: 0, endValue: 360, duration: 4 })
+3. Animate: animate_assembly({ assemblyName: "CrankSlider", duration: 4 })
+4. Get positions at each step: get_kinematic_positions({ assemblyName: "CrankSlider" })
+```
+
+---
+
 ### Export Tool (Legacy)
 
 #### `export_model(filePath: string, format: string)`
