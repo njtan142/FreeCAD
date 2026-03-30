@@ -1085,7 +1085,7 @@ def handle_safe_retry(operation: str, parameters: Dict[str, Any]) -> Dict[str, A
 
     Args:
         operation: The operation to retry
-        parameters: Parameters for the operation
+        parameters: Parameters for the operation including max_retries
 
     Returns:
         dict with success status and operation result
@@ -1106,15 +1106,19 @@ def handle_safe_retry(operation: str, parameters: Dict[str, Any]) -> Dict[str, A
                 "data": None,
             }
 
+        max_retries = parameters.get("max_retries", 1)
+        if not isinstance(max_retries, int) or max_retries < 1:
+            max_retries = 1
+
         object_name = parameters.get("object_name")
         if object_name:
             validation = handle_validate_operation(object_name, operation)
             if validation.get("success"):
                 result = validation["data"]
-                if not result["is_valid"]:
+                if result is None or not result.get("is_valid"):
                     return {
                         "success": False,
-                        "error": f"Operation validation failed: {'; '.join(result['issues'])}",
+                        "error": f"Operation validation failed: {'; '.join(result.get('issues', []))}",
                         "data": {
                             "validation_result": result,
                             "operation": operation,
@@ -1129,50 +1133,97 @@ def handle_safe_retry(operation: str, parameters: Dict[str, Any]) -> Dict[str, A
             "error": None,
         }
 
+        supported_operations = ["undo", "redo"]
+        if operation not in supported_operations:
+            record["status"] = "unsupported_operation"
+            return {
+                "success": False,
+                "error": f"Operation '{operation}' is not supported. Supported operations: {', '.join(supported_operations)}",
+                "data": {
+                    "operation": operation,
+                    "retry_attempted": False,
+                    "supported_operations": supported_operations,
+                    "max_retries": max_retries,
+                },
+            }
+
         try:
             result_data = None
-            if operation == "undo":
-                result_data = handle_undo()
-            elif operation == "redo":
-                result_data = handle_redo()
-            else:
-                record["status"] = "unknown_operation"
-                return {
-                    "success": False,
-                    "error": f"Unknown operation: {operation}",
-                    "data": {
-                        "operation": operation,
-                        "retry_attempted": True,
-                        "result": None,
-                    },
-                }
+            attempt = 0
+            last_error = None
 
-            if result_data:
-                if result_data.get("success"):
-                    record["status"] = "success"
-                    OPERATION_HISTORY.append(record)
-                    return {
-                        "success": True,
-                        "data": {
-                            "operation": operation,
-                            "retry_attempted": True,
-                            "result": result_data.get("data"),
-                        },
-                        "error": None,
-                    }
-                else:
-                    record["status"] = "failed"
-                    record["error"] = result_data.get("error")
-                    ERROR_HISTORY.append(record)
-                    return {
-                        "success": False,
-                        "error": result_data.get("error"),
-                        "data": {
-                            "operation": operation,
-                            "retry_attempted": True,
-                            "result": result_data.get("data"),
-                        },
-                    }
+            while attempt < max_retries:
+                attempt += 1
+                try:
+                    if operation == "undo":
+                        if doc.UndoSize() > 0:
+                            doc.Undo()
+                            result_data = {
+                                "success": True,
+                                "data": {"undone": True},
+                                "error": None,
+                            }
+                        else:
+                            result_data = {
+                                "success": False,
+                                "data": None,
+                                "error": "Nothing to undo",
+                            }
+                    elif operation == "redo":
+                        if doc.RedoSize() > 0:
+                            doc.Redo()
+                            result_data = {
+                                "success": True,
+                                "data": {"redone": True},
+                                "error": None,
+                            }
+                        else:
+                            result_data = {
+                                "success": False,
+                                "data": None,
+                                "error": "Nothing to redo",
+                            }
+
+                    if result_data:
+                        if result_data.get("success"):
+                            record["status"] = "success"
+                            OPERATION_HISTORY.append(record)
+                            return {
+                                "success": True,
+                                "data": {
+                                    "operation": operation,
+                                    "retry_attempted": True,
+                                    "attempts": attempt,
+                                    "result": result_data.get("data"),
+                                },
+                                "error": None,
+                            }
+                        else:
+                            last_error = result_data.get("error")
+                            if attempt >= max_retries:
+                                break
+                    else:
+                        last_error = "Operation did not return a result"
+                        break
+
+                except Exception as op_error:
+                    last_error = str(op_error)
+                    if attempt >= max_retries:
+                        break
+
+            record["status"] = "failed"
+            record["error"] = last_error
+            ERROR_HISTORY.append(record)
+            return {
+                "success": False,
+                "error": last_error or "Operation failed after max retries",
+                "data": {
+                    "operation": operation,
+                    "retry_attempted": True,
+                    "attempts": attempt,
+                    "max_retries": max_retries,
+                },
+            }
 
         except Exception as op_error:
             record["status"] = "exception"
@@ -1187,15 +1238,6 @@ def handle_safe_retry(operation: str, parameters: Dict[str, Any]) -> Dict[str, A
                     "exception_raised": True,
                 },
             }
-
-        return {
-            "success": False,
-            "error": "Operation did not return a result",
-            "data": {
-                "operation": operation,
-                "retry_attempted": True,
-            },
-        }
     except Exception as e:
         return {"success": False, "error": str(e), "data": None}
 
