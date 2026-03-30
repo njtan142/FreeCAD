@@ -29,6 +29,7 @@ import { OpenCodeBackend } from './backends/opencode-backend';
 import { VercelAIBackend } from './backends/vercel-ai-backend';
 import { GeminiBackend } from './backends/gemini-ai-backend';
 import { ClaudeAIBackend } from './backends/claude-ai-backend';
+import { AzureOpenAIBackend } from './backends/azure-openai-backend';
 import { OpenAICompatibleBackend } from './backends/openai-compatible-backend';
 import { getBackendConfig, validateBackendConfig } from './backend-config';
 import { execSync } from 'child_process';
@@ -74,6 +75,8 @@ function parseArgs(): ParsedArgs {
       parsed.backend = 'gemini';
     } else if (arg === '--claude-ai') {
       parsed.backend = 'claude-ai';
+    } else if (arg === '--azure-openai') {
+      parsed.backend = 'azure-openai';
     } else if (arg === '--openai-compatible' || arg === '--ollama' || arg === '--lmstudio' || arg === '--groq') {
       parsed.backend = 'openai-compatible';
     }
@@ -106,6 +109,7 @@ function registerBackends(): void {
   backendRegistry.register(new VercelAIBackend());
   backendRegistry.register(new GeminiBackend());
   backendRegistry.register(new ClaudeAIBackend());
+  backendRegistry.register(new AzureOpenAIBackend());
   backendRegistry.register(new OpenAICompatibleBackend());
 }
 

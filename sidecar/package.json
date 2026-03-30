@@ -10,6 +10,7 @@
     "dev:minimax": "ts-node src/index.ts --backend minimax",
     "dev:gemini": "ts-node src/index.ts --backend gemini",
     "dev:claude-ai": "ts-node src/index.ts --backend claude-ai",
+    "dev:azure-openai": "ts-node src/index.ts --backend azure-openai",
     "dev:ollama": "ts-node src/index.ts --backend openai-compatible",
     "dev:lmstudio": "ts-node src/index.ts --backend openai-compatible",
     "dev:groq": "ts-node src/index.ts --backend openai-compatible",
