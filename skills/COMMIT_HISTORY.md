@@ -1187,3 +1187,38 @@ The original large commit "feat(sidecar): Add OpenAI-compatible backend for Olla
 - **Files modified**: 3 (backend-config.ts, index.ts, package.json, sidecar/README.md)
 - **Total insertions**: ~938 lines
 - **Total deletions**: ~8 lines
+
+---
+
+## Cycle 30 - Incremental Commits
+
+The original large commit "refactor(sidecar): Extract VercelAIBackendBase reducing backends from 2,529 to ~1,020 lines" (169c348973) was kept as a single commit since it is a clean refactoring with logical boundaries.
+
+| Commit Hash | Message | Files Changed |
+|-------------|---------|---------------|
+| `169c348973` | refactor(sidecar): Extract VercelAIBackendBase reducing backends from 2,529 to ~1,020 lines | vercel-ai-backend-base.ts, vercel-ai-backend.ts, gemini-ai-backend.ts, openai-compatible-backend.ts |
+
+### Commit Progression
+
+1. **VercelAIBackendBase extraction** (169c348973): Extracted shared code into new `vercel-ai-backend-base.ts` (858 lines) containing:
+   - Abstract base class `VercelAIBackendBase` implementing `AgentBackend` interface
+   - Shared provider initialization (OpenAI, Google, OpenAI-compatible)
+   - Common streaming and tool-calling logic
+   - MCP tool integration via @modelcontextprotocol/sdk
+   - FreeCAD bridge integration
+   - Message building with system prompt
+   - Session management and health check
+
+   Refactored backends now extend the base:
+   - `vercel-ai-backend.ts` (44 lines) - MiniMax backend extending base
+   - `gemini-ai-backend.ts` (48 lines) - Gemini backend extending base
+   - `openai-compatible-backend.ts` (70 lines) - OpenAI-compatible backend extending base
+
+### Summary
+
+- **Total commits**: 1 (kept as single logical refactoring)
+- **Files created**: 1 (vercel-ai-backend-base.ts)
+- **Files modified**: 3 (vercel-ai-backend.ts, gemini-ai-backend.ts, openai-compatible-backend.ts)
+- **Total insertions**: ~921 lines
+- **Total deletions**: ~2,430 lines
+- **Net reduction**: ~1,509 lines (backends reduced from 2,529 to ~1,020 total)
