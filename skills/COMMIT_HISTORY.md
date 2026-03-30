@@ -1248,3 +1248,29 @@ The original large commit "feat(sidecar): Add Claude AI backend via Vercel AI SD
 - **Files modified**: 2 (package.json, index.ts)
 - **Total insertions**: ~55 lines
 - **Total deletions**: ~0 lines
+
+---
+
+## Cycle 32 - Incremental Commits
+
+The original large commit "feat(sidecar): Add Azure OpenAI backend via Vercel AI SDK" (692237ba9b) was kept as a single commit since it is a clean addition of a new backend.
+
+| Commit Hash | Message | Files Changed |
+|-------------|---------|---------------|
+| `692237ba9b` | feat(sidecar): Add Azure OpenAI backend via Vercel AI SDK | azure-openai-backend.ts, package.json, index.ts |
+
+### Commit Progression
+
+1. **Azure OpenAI backend** (692237ba9b): Added `azure-openai-backend.ts` implementing the AgentBackend interface using Vercel AI SDK with Azure OpenAI provider:
+    - Extends VercelAIBackendBase for shared functionality
+    - Uses AZURE_OPENAI_API_KEY, AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_DEPLOYMENT environment variables
+    - Azure-specific model configuration with API version support
+    - Native streaming and tool calling via AI SDK
+
+### Summary
+
+- **Total commits**: 1 (kept as single logical addition)
+- **Files created**: 1 (azure-openai-backend.ts)
+- **Files modified**: 2 (package.json, index.ts)
+- **Total insertions**: ~67 lines
+- **Total deletions**: ~0 lines
