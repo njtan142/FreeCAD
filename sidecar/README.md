@@ -48,18 +48,19 @@ The sidecar supports multiple LLM backends:
 | `claude` | Anthropic Claude via Claude Code CLI | Claude (Anthropic) |
 | `opencode` | OpenCode multi-LLM backend | OpenAI, Anthropic, Google, local models |
 | `gemini` | Google Gemini via Vercel AI SDK | Gemini (Google) |
+| `openai-compatible` | OpenAI-compatible providers | Ollama, LM Studio, Groq, custom endpoints |
 | (future) | Additional backends | Various providers |
 
 ### Backend Comparison
 
-| Feature | Claude | OpenCode | Gemini |
-|---------|--------|----------|--------|
-| **API Type** | CLI-based | CLI + API | API |
-| **Provider** | Anthropic only | Multiple (OpenAI, Anthropic, Google, local) | Google only |
-| **Configuration** | API key | API key or config file | API key |
-| **Tool Format** | MCP-native | Function calling format | Function calling |
-| **Streaming** | Via CLI | Via stdout | Via SDK |
-| **Local Models** | No | Yes | No |
+| Feature | Claude | OpenCode | Gemini | OpenAI-Compatible |
+|---------|--------|----------|--------|-------------------|
+| **API Type** | CLI-based | CLI + API | API | API |
+| **Provider** | Anthropic only | Multiple (OpenAI, Anthropic, Google, local) | Google only | Multiple (Ollama, LM Studio, Groq, etc.) |
+| **Configuration** | API key | API key or config file | API key | API key or no-key (local) |
+| **Tool Format** | MCP-native | Function calling format | Function calling | Function calling |
+| **Streaming** | Via CLI | Via stdout | Via SDK | Via SDK |
+| **Local Models** | No | Yes | No | Yes |
 
 ## Prerequisites
 
@@ -165,6 +166,52 @@ The Gemini backend uses Google Gemini models via Vercel AI SDK. Configure via en
 | `gemini-2.0-flash-lite` | Lightweight, fastest |
 | `gemini-1.5-pro` | Legacy, still capable |
 | `gemini-1.5-flash` | Legacy, balanced |
+
+### OpenAI-Compatible Backend Configuration
+
+The OpenAI-compatible backend supports any OpenAI-compatible API provider including Ollama, LM Studio, Groq, and more. Configure via environment variables:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `OPENAI_COMPATIBLE_API_KEY` | `no-key` | API key (not needed for local models) |
+| `OPENAI_COMPATIBLE_BASE_URL` | `http://localhost:11434/v1` | API endpoint URL |
+| `OPENAI_COMPATIBLE_MODEL` | `llama3.2` | Model name |
+| `OPENAI_COMPATIBLE_TEMPERATURE` | `0.7` | Sampling temperature |
+| `OPENAI_COMPATIBLE_MAX_TOKENS` | `4096` | Max response tokens |
+
+**Provider-Specific Defaults:**
+
+| Provider | Base URL | Model |
+|----------|----------|-------|
+| Ollama | `http://localhost:11434/v1` | `llama3.2` |
+| LM Studio | `http://localhost:1234/v1` | `local-model` |
+| Groq | `https://api.groq.com/openai/v1` | `llama-3.1-70b-versatile` |
+| Perplexity | `https://api.perplexity.ai` | `llama-3.1-sonar-large-128k-online` |
+
+**Quick Start:**
+
+```bash
+# Ollama
+cp .env.ollama .env
+npm run dev:ollama
+
+# LM Studio
+cp .env.lmstudio .env
+npm run dev:lmstudio
+
+# Groq (edit .env.groq first to add your API key)
+cp .env.groq .env
+npm run dev:groq
+```
+
+**CLI Shortcuts:**
+
+```bash
+# Use --ollama, --lmstudio, or --groq to auto-select OpenAI-compatible backend
+npm start -- --ollama
+npm start -- --lmstudio
+npm start -- --groq
+```
 
 ### Example `.env` file
 
