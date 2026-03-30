@@ -3,19 +3,6 @@
   "version": "1.0.0",
   "description": "Node.js sidecar for FreeCAD LLM integration using Claude Agent SDK",
   "main": "dist/index.js",
-  "scripts": {
-    "build": "tsc",
-    "start": "node dist/index.js",
-    "dev": "ts-node src/index.ts",
-    "dev:minimax": "ts-node src/index.ts --backend minimax",
-    "dev:gemini": "ts-node src/index.ts --backend gemini",
-    "dev:claude-ai": "ts-node src/index.ts --backend claude-ai",
-    "dev:azure-openai": "ts-node src/index.ts --backend azure-openai",
-    "dev:ollama": "ts-node src/index.ts --backend openai-compatible",
-    "dev:lmstudio": "ts-node src/index.ts --backend openai-compatible",
-    "dev:groq": "ts-node src/index.ts --backend openai-compatible",
-    "clean": "rimraf dist"
-  },
   "keywords": [
     "freecad",
     "llm",
@@ -40,7 +27,23 @@
     "@types/ws": "^8.5.13",
     "rimraf": "^6.0.0",
     "ts-node": "^10.9.2",
-    "typescript": "^5.7.0"
+    "typescript": "^5.7.0",
+    "vitest": "^2.0.0"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts",
+    "dev:minimax": "ts-node src/index.ts --backend minimax",
+    "dev:gemini": "ts-node src/index.ts --backend gemini",
+    "dev:claude-ai": "ts-node src/index.ts --backend claude-ai",
+    "dev:azure-openai": "ts-node src/index.ts --backend azure-openai",
+    "dev:ollama": "ts-node src/index.ts --backend openai-compatible",
+    "dev:lmstudio": "ts-node src/index.ts --backend openai-compatible",
+    "dev:groq": "ts-node src/index.ts --backend openai-compatible",
+    "clean": "rimraf dist",
+    "test": "vitest",
+    "test:run": "vitest run"
   },
   "engines": {
     "node": ">=18.0.0"
