@@ -450,6 +450,21 @@ try:
 except ImportError:
     print(json.dumps({'success': False, 'error': 'This tool requires MCP connection'}))`;
 
+      case 'add_geometric_constraint':
+      case 'add_dimensional_constraint':
+      case 'set_constraint_value':
+      case 'list_sketch_constraints':
+      case 'delete_constraint':
+      case 'get_sketch_geometry':
+        return `import json
+try:
+    from llm_bridge.sketcher_handlers import handle_${toolName}
+    params = json.loads('${argsJson}')
+    result = handle_${toolName}(**params)
+    print(json.dumps(result))
+except ImportError:
+    print(json.dumps({'success': False, 'error': 'This tool requires MCP connection'}))`;
+
       case 'create_body':
         return `import json
 try:
@@ -494,6 +509,18 @@ try:
 except ImportError:
     print(json.dumps({'success': False, 'error': 'This tool requires MCP connection'}))`;
 
+      case 'update_feature':
+      case 'replace_sketch':
+      case 'delete_feature':
+        return `import json
+try:
+    from llm_bridge.feature_handlers import handle_${toolName}
+    params = json.loads('${argsJson}')
+    result = handle_${toolName}(**params)
+    print(json.dumps(result))
+except ImportError:
+    print(json.dumps({'success': False, 'error': 'This tool requires MCP connection'}))`;
+
       case 'boolean_fuse':
       case 'boolean_cut':
       case 'boolean_common':
@@ -523,12 +550,42 @@ try:
 except ImportError:
     print(json.dumps({'success': False, 'error': 'This tool requires MCP connection'}))`;
 
+      case 'create_linear_dimension':
+      case 'create_radial_dimension':
+      case 'create_angular_dimension':
+      case 'create_ordinate_dimension':
+      case 'create_text':
+      case 'create_dimension_text':
+        return `import json
+try:
+    from llm_bridge.draft_handlers import handle_${toolName}
+    params = json.loads('${argsJson}')
+    result = handle_${toolName}(**params)
+    print(json.dumps(result))
+except ImportError:
+    print(json.dumps({'success': False, 'error': 'This tool requires MCP connection'}))`;
+
       case 'move_object':
       case 'rotate_object':
       case 'scale_object':
         return `import json
 try:
     from llm_bridge.property_handlers import handle_${toolName}
+    params = json.loads('${argsJson}')
+    result = handle_${toolName}(**params)
+    print(json.dumps(result))
+except ImportError:
+    print(json.dumps({'success': False, 'error': 'This tool requires MCP connection'}))`;
+
+      case 'move':
+      case 'rotate':
+      case 'scale':
+      case 'offset':
+      case 'join':
+      case 'split':
+        return `import json
+try:
+    from llm_bridge.draft_handlers import handle_${toolName}
     params = json.loads('${argsJson}')
     result = handle_${toolName}(**params)
     print(json.dumps(result))
@@ -548,6 +605,21 @@ except ImportError:
       case 'create_polar_pattern':
       case 'create_rectangular_pattern':
       case 'create_path_pattern':
+        return `import json
+try:
+    from llm_bridge.pattern_handlers import handle_${toolName}
+    params = json.loads('${argsJson}')
+    result = handle_${toolName}(**params)
+    print(json.dumps(result))
+except ImportError:
+    print(json.dumps({'success': False, 'error': 'This tool requires MCP connection'}))`;
+
+      case 'create_transform_link':
+      case 'update_linear_pattern':
+      case 'update_polar_pattern':
+      case 'get_pattern_info':
+      case 'delete_pattern':
+      case 'list_patterns':
         return `import json
 try:
     from llm_bridge.pattern_handlers import handle_${toolName}
@@ -586,6 +658,23 @@ try:
 except ImportError:
     print(json.dumps({'success': False, 'error': 'This tool requires MCP connection'}))`;
 
+      case 'add_insert_constraint':
+      case 'add_equal_constraint':
+      case 'add_symmetric_constraint':
+      case 'update_constraint_value':
+      case 'remove_constraint':
+      case 'list_constraints':
+      case 'suppress_constraint':
+      case 'activate_constraint':
+        return `import json
+try:
+    from llm_bridge.assembly_handlers import handle_${toolName}
+    params = json.loads('${argsJson}')
+    result = handle_${toolName}(**params)
+    print(json.dumps(result))
+except ImportError:
+    print(json.dumps({'success': False, 'error': 'This tool requires MCP connection'}))`;
+
       case 'create_drawing_page':
       case 'create_standard_view':
       case 'create_isometric_view':
@@ -605,6 +694,13 @@ except ImportError:
       case 'create_loft':
       case 'create_sweep':
       case 'create_pipe':
+      case 'create_cylinder':
+      case 'create_box':
+      case 'create_sphere':
+      case 'create_cone':
+      case 'create_torus':
+      case 'create_prism':
+      case 'create_helix':
         return `import json
 try:
     from llm_bridge.surface_handlers import handle_${toolName}
@@ -619,6 +715,9 @@ except ImportError:
       case 'check_degrees_of_freedom':
       case 'set_joint_value':
       case 'get_joint_value':
+      case 'add_joint':
+      case 'remove_joint':
+      case 'get_kinematic_errors':
         return `import json
 try:
     from llm_bridge.kinematic_handlers import handle_${toolName}
@@ -631,6 +730,9 @@ except ImportError:
       case 'set_view_angle':
       case 'zoom_to_fit':
       case 'set_camera_position':
+      case 'reset_view':
+      case 'toggle_orthographic':
+      case 'toggle_perspective':
         return `import json
 try:
     from llm_bridge.view_handlers import handle_${toolName}
@@ -641,11 +743,28 @@ except ImportError:
     print(json.dumps({'success': False, 'error': 'This tool requires MCP connection'}))`;
 
       case 'render_view':
+      case 'set_render_quality':
+      case 'apply_material':
+      case 'export_animation':
         return `import json
 try:
-    from llm_bridge.render_handlers import handle_render_view
+    from llm_bridge.render_handlers import handle_${toolName}
     params = json.loads('${argsJson}')
-    result = handle_render_view(**params)
+    result = handle_${toolName}(**params)
+    print(json.dumps(result))
+except ImportError:
+    print(json.dumps({'success': False, 'error': 'This tool requires MCP connection'}))`;
+
+      case 'create_animation':
+      case 'add_keyframe':
+      case 'play_animation':
+      case 'export_animation_video':
+      case 'export_images':
+        return `import json
+try:
+    from llm_bridge.animation_export_handlers import handle_${toolName}
+    params = json.loads('${argsJson}')
+    result = handle_${toolName}(**params)
     print(json.dumps(result))
 except ImportError:
     print(json.dumps({'success': False, 'error': 'This tool requires MCP connection'}))`;
@@ -657,6 +776,9 @@ except ImportError:
       case 'mesh_boolean_intersection':
       case 'decimate_mesh':
       case 'validate_mesh':
+      case 'repair_mesh':
+      case 'check_mesh':
+      case 'refine_mesh':
         return `import json
 try:
     from llm_bridge.mesh_handlers import handle_${toolName}
@@ -682,11 +804,42 @@ try:
 except ImportError:
     print(json.dumps({'success': False, 'error': 'This tool requires MCP connection'}))`;
 
+      case 'get_fea_stress':
+      case 'get_fea_reaction':
+      case 'create_fea_mechanical_constraint':
+      case 'set_fea_pressure':
+      case 'run_fea_static_analysis':
+      case 'run_fea_modal_analysis':
+        return `import json
+try:
+    from llm_bridge.fea_handlers import handle_${toolName}
+    params = json.loads('${argsJson}')
+    result = handle_${toolName}(**params)
+    print(json.dumps(result))
+except ImportError:
+    print(json.dumps({'success': False, 'error': 'This tool requires MCP connection'}))`;
+
       case 'create_path_job':
       case 'create_path_profile':
       case 'create_path_pocket':
       case 'create_path_drill':
       case 'export_gcode':
+        return `import json
+try:
+    from llm_bridge.path_handlers import handle_${toolName}
+    params = json.loads('${argsJson}')
+    result = handle_${toolName}(**params)
+    print(json.dumps(result))
+except ImportError:
+    print(json.dumps({'success': False, 'error': 'This tool requires MCP connection'}))`;
+
+      case 'create_path_helix':
+      case 'create_path_circle':
+      case 'create_path_line':
+      case 'add_path_leade':
+      case 'add_path_extension':
+      case 'create_path_fixture':
+      case 'simulate_path':
         return `import json
 try:
     from llm_bridge.path_handlers import handle_${toolName}
@@ -713,6 +866,22 @@ except ImportError:
       case 'create_door':
       case 'create_roof':
       case 'create_stairs':
+        return `import json
+try:
+    from llm_bridge.bim_handlers import handle_${toolName}
+    params = json.loads('${argsJson}')
+    result = handle_${toolName}(**params)
+    print(json.dumps(result))
+except ImportError:
+    print(json.dumps({'success': False, 'error': 'This tool requires MCP connection'}))`;
+
+      case 'create_column':
+      case 'create_beam':
+      case 'create_slab':
+      case 'create_building':
+      case 'create_space':
+      case 'add_annotation':
+      case 'create_schedule':
         return `import json
 try:
     from llm_bridge.bim_handlers import handle_${toolName}
