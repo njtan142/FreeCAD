@@ -5,12 +5,8 @@
  * Provides native streaming, built-in tool calling, and MCP tool integration.
  */
 
-import { createAI, streamText, CoreTool } from 'ai';
+import { streamText, CoreTool } from 'ai';
 import { openai } from '@ai-sdk/openai';
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
-import * as fs from 'fs';
-import * as path from 'path';
 import { AgentBackend, BackendConfig, AgentResponse, MessageContext, MCPTool } from '../agent-backend';
 import { ToolCall } from '../types';
 
@@ -25,8 +21,6 @@ export class VercelAIBackend implements AgentBackend {
   readonly description = 'MiniMax via Vercel AI SDK';
 
   private config: BackendConfig = {};
-  private mcpClient: Client<StdioClientTransport> | null = null;
-  private mcpConfigPath: string = '';
   private freeCADBridge: FreeCADBridge | null = null;
   private sessionId: string = '';
 
@@ -75,23 +69,33 @@ export class VercelAIBackend implements AgentBackend {
       const messages = this.buildMessages(message, context);
       const mcpTools = await this.initializeMCPTools(tools);
 
-      const ai = createAI({
-        provider: openai({
-          baseURL: this.config.baseUrl,
-          apiKey: this.config.apiKey,
-        }),
+      const model = openai(this.config.model || 'MiniMax-M2.7', {
+        baseURL: this.config.baseUrl,
+        apiKey: this.config.apiKey,
       });
 
       const result = streamText({
-        model: this.config.model || 'MiniMax-M2.7',
+        model,
         messages,
         tools: mcpTools as Record<string, CoreTool<any, any>>,
         maxTokens: this.config.maxTokens || 4096,
         temperature: this.config.temperature || 0.7,
+        onToolCall: async ({ toolCall }) => {
+          const { id, name, args } = toolCall;
+          console.log(`[VercelAIBackend] Executing tool: ${name}`, JSON.stringify(args).substring(0, 200));
+          try {
+            const toolResult = await this.executeViaBridge(name, args);
+            return { toolCallId: id, result: toolResult };
+          } catch (error) {
+            console.error(`[VercelAIBackend] Tool execution failed for ${name}:`, error);
+            return { toolCallId: id, result: { error: error instanceof Error ? error.message : String(error) } };
+          }
+        },
       });
 
       let fullContent = '';
       let toolCalls: ToolCall[] = [];
+      let toolResults: Map<string, any> = new Map();
 
       for await (const delta of result.fullStream) {
         if (delta.type === 'text-delta') {
@@ -105,6 +109,7 @@ export class VercelAIBackend implements AgentBackend {
           });
         } else if (delta.type === 'tool-result') {
           console.log(`[VercelAIBackend] Tool result for ${delta.toolName}:`, JSON.stringify(delta.result).substring(0, 200));
+          toolResults.set(delta.toolCallId, delta.result);
         } else if (delta.type === 'finish') {
           console.log(`[VercelAIBackend] Stream finished. Total content: ${fullContent.length} chars, Tool calls: ${toolCalls.length}`);
         } else if (delta.type === 'error') {
@@ -194,26 +199,6 @@ Objects: ${context.documentInfo.objectCount}`;
 
     console.log(`[VercelAIBackend] Initialized ${mcpTools.length} MCP tools`);
     return mcpTools;
-  }
-
-  async executeMCPTool(toolName: string, args: Record<string, any>): Promise<any> {
-    if (!this.mcpClient) {
-      if (this.freeCADBridge) {
-        return this.executeViaBridge(toolName, args);
-      }
-      throw new Error('MCP client not initialized and no FreeCAD bridge available');
-    }
-
-    try {
-      const response = await this.mcpClient.request(
-        { method: 'tools/call', params: { name: toolName, arguments: args } },
-        { method: 'tools/call' } as any
-      );
-      return response;
-    } catch (error) {
-      console.error(`[VercelAIBackend] MCP tool call failed for ${toolName}:`, error);
-      throw error;
-    }
   }
 
   private async executeViaBridge(toolName: string, args: Record<string, any>): Promise<any> {
@@ -319,7 +304,7 @@ else:
     print(json.dumps({'success': False, 'error': 'No active document'}))`;
 
       default:
-        return `print(json.dumps({'error': 'Unknown tool: ${toolName}'}))`;
+        return `print(json.dumps({'error': 'Unknown tool: ' + ${JSON.stringify(toolName)}}))`;
     }
   }
 
@@ -341,23 +326,6 @@ else:
   }
 
   async disconnect(): Promise<void> {
-    if (this.mcpClient) {
-      try {
-        await this.mcpClient.close();
-      } catch (error) {
-        console.log('[VercelAIBackend] Error closing MCP client:', error);
-      }
-      this.mcpClient = null;
-    }
-
-    if (this.mcpConfigPath && fs.existsSync(this.mcpConfigPath)) {
-      try {
-        fs.unlinkSync(this.mcpConfigPath);
-      } catch {
-        // ignore cleanup errors
-      }
-    }
-
     this.sessionId = '';
     console.log('[VercelAIBackend] Disconnected');
   }
