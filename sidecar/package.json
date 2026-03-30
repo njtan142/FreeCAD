@@ -8,6 +8,7 @@
     "start": "node dist/index.js",
     "dev": "ts-node src/index.ts",
     "dev:minimax": "ts-node src/index.ts --backend minimax",
+    "dev:gemini": "ts-node src/index.ts --backend gemini",
     "clean": "rimraf dist"
   },
   "keywords": [
@@ -19,6 +20,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "@ai-sdk/google": "^0.0.0",
     "@ai-sdk/openai": "^0.0.0",
     "@anthropic-ai/claude-agent-sdk": "^0.1.0",
     "@modelcontextprotocol/sdk": "^1.28.0",
