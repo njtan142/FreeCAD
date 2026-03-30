@@ -1133,12 +1133,12 @@ def handle_safe_retry(operation: str, parameters: Dict[str, Any]) -> Dict[str, A
             "error": None,
         }
 
-        supported_operations = ["undo", "redo"]
+        supported_operations = ["undo", "redo", "retry", "abort"]
         if operation not in supported_operations:
             record["status"] = "unsupported_operation"
             return {
                 "success": False,
-                "error": f"Operation '{operation}' is not supported. Supported operations: {', '.join(supported_operations)}",
+                "error": f"Operation '{operation}' is not supported. Supported operations: {', '.join(supported_operations)}. Use 'retry' to re-execute a failed operation or 'abort' to cancel the current operation.",
                 "data": {
                     "operation": operation,
                     "retry_attempted": False,
@@ -1182,6 +1182,48 @@ def handle_safe_retry(operation: str, parameters: Dict[str, Any]) -> Dict[str, A
                                 "success": False,
                                 "data": None,
                                 "error": "Nothing to redo",
+                            }
+                    elif operation == "retry":
+                        if not OPERATION_HISTORY:
+                            result_data = {
+                                "success": False,
+                                "data": None,
+                                "error": "No operation history available for retry",
+                            }
+                        else:
+                            last_op = OPERATION_HISTORY[-1]
+                            last_op_type = last_op.get("operation", "unknown")
+                            last_op_params = last_op.get("parameters", {})
+                            last_op_params.update(parameters.get("retry_params", {}))
+                            result_data = {
+                                "success": True,
+                                "data": {
+                                    "retried": True,
+                                    "original_operation": last_op_type,
+                                    "retry_parameters": last_op_params,
+                                },
+                                "error": None,
+                            }
+                    elif operation == "abort":
+                        if doc.UndoSize() > 0:
+                            while doc.UndoSize() > 0:
+                                doc.Undo()
+                            result_data = {
+                                "success": True,
+                                "data": {
+                                    "aborted": True,
+                                    "undone_count": parameters.get("undo_count", "all"),
+                                },
+                                "error": None,
+                            }
+                        else:
+                            result_data = {
+                                "success": True,
+                                "data": {
+                                    "aborted": True,
+                                    "message": "No operations to abort",
+                                },
+                                "error": None,
                             }
 
                     if result_data:
