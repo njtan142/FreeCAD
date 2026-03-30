@@ -47,18 +47,19 @@ The sidecar supports multiple LLM backends:
 |---------|-------------|---------------|
 | `claude` | Anthropic Claude via Claude Code CLI | Claude (Anthropic) |
 | `opencode` | OpenCode multi-LLM backend | OpenAI, Anthropic, Google, local models |
+| `gemini` | Google Gemini via Vercel AI SDK | Gemini (Google) |
 | (future) | Additional backends | Various providers |
 
 ### Backend Comparison
 
-| Feature | Claude | OpenCode |
-|---------|--------|----------|
-| **API Type** | CLI-based | CLI + API |
-| **Provider** | Anthropic only | Multiple (OpenAI, Anthropic, Google, local) |
-| **Configuration** | API key | API key or config file |
-| **Tool Format** | MCP-native | Function calling format |
-| **Streaming** | Via CLI | Via stdout |
-| **Local Models** | No | Yes |
+| Feature | Claude | OpenCode | Gemini |
+|---------|--------|----------|--------|
+| **API Type** | CLI-based | CLI + API | API |
+| **Provider** | Anthropic only | Multiple (OpenAI, Anthropic, Google, local) | Google only |
+| **Configuration** | API key | API key or config file | API key |
+| **Tool Format** | MCP-native | Function calling format | Function calling |
+| **Streaming** | Via CLI | Via stdout | Via SDK |
+| **Local Models** | No | Yes | No |
 
 ## Prerequisites
 
@@ -143,6 +144,28 @@ Alternatively, configure OpenCode via config file at `~/.opencode/config` or `./
 
 Environment variables take precedence over config file settings.
 
+### Gemini Backend Configuration
+
+The Gemini backend uses Google Gemini models via Vercel AI SDK. Configure via environment variables:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `GEMINI_API_KEY` | - | Google AI API key (required) |
+| `GEMINI_MODEL` | `gemini-2.0-flash` | Model name |
+| `GEMINI_BASE_URL` | Google AI default | Custom API endpoint |
+| `GEMINI_TEMPERATURE` | `0.7` | Sampling temperature |
+| `GEMINI_MAX_TOKENS` | `4096` | Max response tokens |
+
+**Available Models:**
+
+| Model | Description |
+|-------|-------------|
+| `gemini-2.5-pro` | Most capable, for complex reasoning |
+| `gemini-2.0-flash` | Fast, cost-effective (recommended) |
+| `gemini-2.0-flash-lite` | Lightweight, fastest |
+| `gemini-1.5-pro` | Legacy, still capable |
+| `gemini-1.5-flash` | Legacy, balanced |
+
 ### Example `.env` file
 
 Create a `.env` file in the sidecar directory:
@@ -194,6 +217,16 @@ OPENAI_API_KEY=your-key npm start -- --backend opencode
 **Using OpenCode with local model:**
 ```bash
 OPENAI_API_KEY=local npm start -- --backend opencode
+```
+
+**Using Gemini backend:**
+```bash
+GEMINI_API_KEY=your-key npm run dev:gemini
+```
+
+Or with explicit backend flag:
+```bash
+GEMINI_API_KEY=your-key npm start -- --backend gemini
 ```
 
 ## Tool Translation Layer
