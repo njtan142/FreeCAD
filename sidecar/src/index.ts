@@ -26,6 +26,7 @@ import { ContextInjectionConfig } from './types';
 import { backendRegistry } from './backend-registry';
 import { ClaudeBackend } from './backends/claude-backend';
 import { OpenCodeBackend } from './backends/opencode-backend';
+import { VercelAIBackend } from './backends/vercel-ai-backend';
 import { getBackendConfig, validateBackendConfig } from './backend-config';
 import { execSync } from 'child_process';
 
@@ -64,6 +65,8 @@ function parseArgs(): ParsedArgs {
       parsed.backend = 'claude';
     } else if (arg === '--opencode') {
       parsed.backend = 'opencode';
+    } else if (arg === '--minimax') {
+      parsed.backend = 'minimax';
     }
   }
 
@@ -91,6 +94,7 @@ function isOpenCodeAvailable(): boolean {
 function registerBackends(): void {
   backendRegistry.register(new ClaudeBackend());
   backendRegistry.register(new OpenCodeBackend());
+  backendRegistry.register(new VercelAIBackend());
 }
 
 const config = {
