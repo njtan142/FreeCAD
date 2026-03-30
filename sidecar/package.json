@@ -9,6 +9,9 @@
     "dev": "ts-node src/index.ts",
     "dev:minimax": "ts-node src/index.ts --backend minimax",
     "dev:gemini": "ts-node src/index.ts --backend gemini",
+    "dev:ollama": "ts-node src/index.ts --backend openai-compatible",
+    "dev:lmstudio": "ts-node src/index.ts --backend openai-compatible",
+    "dev:groq": "ts-node src/index.ts --backend openai-compatible",
     "clean": "rimraf dist"
   },
   "keywords": [
