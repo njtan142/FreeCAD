@@ -824,10 +824,8 @@ except ImportError:
     }
 
     try {
-      const response = await fetch(`${this.config.baseUrl}/models`, {
-        headers: {
-          'Authorization': `Bearer ${this.config.apiKey}`,
-        },
+      const response = await fetch(`${this.config.baseUrl}/models?key=${this.config.apiKey}`, {
+        headers: { 'Content-Type': 'application/json' },
       });
       return response.ok;
     } catch {

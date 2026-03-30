@@ -12,6 +12,8 @@ export function getBackendConfig(backendName: string): BackendConfig {
       return getOpenCodeConfig();
     case 'minimax':
       return getMiniMaxConfig();
+    case 'gemini':
+      return getGeminiConfig();
     case 'claude':
     default:
       return getClaudeConfig();
@@ -68,6 +70,16 @@ function getMiniMaxConfig(): BackendConfig {
   };
 }
 
+function getGeminiConfig(): BackendConfig {
+  return {
+    baseUrl: process.env.GEMINI_BASE_URL || 'https://generativelanguage.googleapis.com/v1beta',
+    apiKey: process.env.GEMINI_API_KEY,
+    model: process.env.GEMINI_MODEL || 'gemini-2.0-flash',
+    temperature: process.env.GEMINI_TEMPERATURE ? parseFloat(process.env.GEMINI_TEMPERATURE) : undefined,
+    maxTokens: process.env.GEMINI_MAX_TOKENS ? parseInt(process.env.GEMINI_MAX_TOKENS, 10) : undefined,
+  };
+}
+
 export function loadOpenCodeConfig(): Record<string, string> {
   const config: Record<string, string> = {};
 
@@ -112,6 +124,12 @@ export function validateBackendConfig(backendName: string, config: BackendConfig
   if (backendName === 'minimax') {
     if (!config.apiKey && !process.env.MINIMAX_API_KEY) {
       errors.push('MiniMax backend requires MINIMAX_API_KEY environment variable');
+    }
+  }
+
+  if (backendName === 'gemini') {
+    if (!config.apiKey && !process.env.GEMINI_API_KEY) {
+      errors.push('Gemini backend requires GEMINI_API_KEY environment variable');
     }
   }
 

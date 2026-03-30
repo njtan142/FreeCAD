@@ -220,6 +220,9 @@ async function main() {
     host: config.freeCADBridgeHost,
     port: config.freeCADBridgePort,
   });
+  if ('setFreeCADBridge' in backend) {
+    (backend as any).setFreeCADBridge(freeCADBridge);
+  }
 
   if (cliArgs.resume) {
     const session = loadSession(cliArgs.resume);
