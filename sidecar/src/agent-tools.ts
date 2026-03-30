@@ -588,7 +588,7 @@ export function createAgentTools(freeCADBridge: FreeCADBridge) {
     createFenceTool(freeCADBridge),
     // Equipment and infrastructure tools
     createEquipmentTool(freeCADBridge),
-    createPipeTool(freeCADBridge),
+    createBimPipeTool(freeCADBridge),
     createPipeConnectorTool(freeCADBridge),
     createPanelTool(freeCADBridge),
     // Annotation and grid tools
@@ -20502,6 +20502,30 @@ function createEquipmentTool(freeCADBridge: FreeCADBridge) {
         const result = await freeCADBridge.executePython(code);
         const parsed = parseLastJsonLine(result.output);
         return { content: [{ type: 'text', text: parsed.success ? formatEquipmentCreation(parsed.data) : 'Error: ' + parsed.error }] };
+      } catch (error) {
+        return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
+      }
+    },
+  );
+}
+
+function createBimPipeTool(freeCADBridge: FreeCADBridge) {
+  return tool(
+    'create_bim_pipe',
+    'Create an architectural/BIM pipe element.',
+    {
+      start: z.union([z.object({ x: z.number(), y: z.number(), z: z.number() }), z.array(z.number())]).optional().describe('Start point as {x,y,z} or [x,y,z]'),
+      end: z.union([z.object({ x: z.number(), y: z.number(), z: z.number() }), z.array(z.number())]).optional().describe('End point as {x,y,z} or [x,y,z]'),
+      radius: z.number().optional().describe('Pipe radius'),
+      name: z.string().optional().describe('Name for the pipe'),
+    },
+    async (input) => {
+      const { start, end, radius, name } = input;
+      const code = `from llm_bridge.bim_handlers import handle_create_pipe; import json; params = json.loads('${JSON.stringify({ start: start || null, end: end || null, radius: radius || null, name: name || null }).replace(/'/g, "\\'")}'); result = handle_create_pipe(**params); print(json.dumps(result))`;
+      try {
+        const result = await freeCADBridge.executePython(code);
+        const parsed = parseLastJsonLine(result.output);
+        return { content: [{ type: 'text', text: parsed.success ? formatPipeCreation(parsed.data) : 'Error: ' + parsed.error }] };
       } catch (error) {
         return { content: [{ type: 'text', text: 'Tool execution error: ' + (error instanceof Error ? error.message : String(error)) }] };
       }
