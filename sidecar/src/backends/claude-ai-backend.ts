@@ -1,4 +1,4 @@
-import { anthropic } from '@ai-sdk/anthropic';
+import { createAnthropic } from '@ai-sdk/anthropic';
 import { VercelAIBackendBase } from './vercel-ai-backend-base';
 
 export class ClaudeAIBackend extends VercelAIBackendBase {
@@ -25,10 +25,10 @@ export class ClaudeAIBackend extends VercelAIBackendBase {
   }
 
   protected createModel() {
-    return anthropic(this.config.model || 'claude-3-5-sonnet-20241022', {
-      baseURL: this.config.baseUrl,
+    const anthropic = createAnthropic({
       apiKey: this.config.apiKey,
     });
+    return anthropic(this.config.model || 'claude-3-5-sonnet-20241022');
   }
 
   protected buildHealthCheckUrl(): string {

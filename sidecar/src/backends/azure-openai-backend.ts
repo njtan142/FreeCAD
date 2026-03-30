@@ -1,4 +1,4 @@
-import { openai } from '@ai-sdk/openai';
+import { createOpenAI } from '@ai-sdk/openai';
 import { VercelAIBackendBase } from './vercel-ai-backend-base';
 
 export class AzureOpenAIBackend extends VercelAIBackendBase {
@@ -36,10 +36,11 @@ export class AzureOpenAIBackend extends VercelAIBackendBase {
     const apiVersion = process.env.AZURE_OPENAI_API_VERSION || '2024-02-01';
     const baseUrl = `https://${resource}.openai.azure.com/openai/deployments/${deployment}?api-version=${apiVersion}`;
 
-    return openai(deployment, {
+    const openai = createOpenAI({
       baseURL: baseUrl,
       apiKey: this.config.apiKey,
     });
+    return openai(deployment);
   }
 
   protected buildHealthCheckUrl(): string {

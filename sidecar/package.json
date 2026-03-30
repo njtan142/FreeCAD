@@ -12,9 +12,9 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "@ai-sdk/anthropic": "^0.0.0",
-    "@ai-sdk/google": "^0.0.0",
-    "@ai-sdk/openai": "^0.0.0",
+    "@ai-sdk/anthropic": "^3.0.64",
+    "@ai-sdk/google": "^3.0.54",
+    "@ai-sdk/openai": "^3.0.48",
     "@anthropic-ai/claude-agent-sdk": "^0.1.0",
     "@modelcontextprotocol/sdk": "^1.28.0",
     "ai": "^3.0.0",

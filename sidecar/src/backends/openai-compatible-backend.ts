@@ -6,7 +6,7 @@
  * Provides native streaming, built-in tool calling, and MCP tool integration.
  */
 
-import { openai } from '@ai-sdk/openai';
+import { createOpenAI } from '@ai-sdk/openai';
 import { VercelAIBackendBase } from './vercel-ai-backend-base';
 
 export class OpenAICompatibleBackend extends VercelAIBackendBase {
@@ -31,10 +31,11 @@ export class OpenAICompatibleBackend extends VercelAIBackendBase {
   }
 
   protected createModel() {
-    return openai(this.config.model || 'llama3.2', {
+    const openai = createOpenAI({
       baseURL: this.config.baseUrl,
       apiKey: this.config.apiKey,
     });
+    return openai(this.config.model || 'llama3.2');
   }
 
   protected buildHealthCheckUrl(): string {

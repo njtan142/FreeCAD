@@ -5,7 +5,7 @@
  * Provides native streaming, built-in tool calling, and MCP tool integration.
  */
 
-import { streamText, CoreTool } from 'ai';
+import { streamText, CoreTool, CoreMessage } from 'ai';
 import { AgentBackend, BackendConfig, AgentResponse, MessageContext, MCPTool } from '../agent-backend.js';
 import { ToolCall } from '../types.js';
 
@@ -87,46 +87,39 @@ export abstract class VercelAIBackendBase implements AgentBackend {
 
       const model = this.createModel();
 
-      const result = streamText({
+      console.log(`[${this.name}] Sending request with ${mcpTools.length} tools`);
+
+      const result = await streamText({
         model,
-        messages,
-        tools: mcpTools as Record<string, CoreTool<any, any>>,
+        messages: messages as CoreMessage[],
+        tools: mcpTools as any,
         maxTokens: this.config.maxTokens || 4096,
         temperature: this.config.temperature || 0.7,
-        onToolCall: async ({ toolCall }: { toolCall: { id: string; name: string; args: Record<string, any> } }) => {
-          const { id, name, args } = toolCall;
-          console.log(`[${this.name}] Executing tool: ${name}`, JSON.stringify(args).substring(0, 200));
-          try {
-            const toolResult = await this.executeViaBridge(name, args);
-            return { toolCallId: id, result: toolResult };
-          } catch (error) {
-            console.error(`[${this.name}] Tool execution failed for ${name}:`, error);
-            return { toolCallId: id, result: { error: error instanceof Error ? error.message : String(error) } };
-          }
-        },
       });
 
       let fullContent = '';
       let toolCalls: ToolCall[] = [];
-      let toolResults: Map<string, any> = new Map();
 
       for await (const delta of result.fullStream) {
         if (delta.type === 'text-delta') {
           fullContent += delta.textDelta;
           onChunk(delta.textDelta);
         } else if (delta.type === 'tool-call') {
+          console.log(`[${this.name}] Tool call received: ${delta.toolName}`);
           toolCalls.push({
-            id: delta.toolCall.id,
-            name: delta.toolCall.name,
-            arguments: delta.toolCall.args,
+            id: delta.toolCallId,
+            name: delta.toolName,
+            arguments: delta.args,
           });
-        } else if (delta.type === 'tool-result') {
-          console.log(`[${this.name}] Tool result for ${delta.toolName}:`, JSON.stringify(delta.result).substring(0, 200));
-          toolResults.set(delta.toolCallId, delta.result);
+          // Execute tool and handle result
+          try {
+            const toolResult = await this.executeViaBridge(delta.toolName, delta.args);
+            console.log(`[${this.name}] Tool result:`, JSON.stringify(toolResult).substring(0, 200));
+          } catch (error) {
+            console.error(`[${this.name}] Tool execution failed:`, error);
+          }
         } else if (delta.type === 'finish') {
           console.log(`[${this.name}] Stream finished. Total content: ${fullContent.length} chars, Tool calls: ${toolCalls.length}`);
-        } else if (delta.type === 'error') {
-          console.error(`[${this.name}] Stream error:`, delta.error);
         }
       }
 
@@ -143,8 +136,8 @@ export abstract class VercelAIBackendBase implements AgentBackend {
     }
   }
 
-  protected buildMessages(message: string, context: MessageContext): Array<{ role: string; content: string }> {
-    const messages: Array<{ role: string; content: string }> = [];
+  protected buildMessages(message: string, context: MessageContext): CoreMessage[] {
+    const messages: CoreMessage[] = [];
 
     const systemPrompt = `You are a FreeCAD CAD assistant. You help users create, modify, and query 3D models in FreeCAD.
 

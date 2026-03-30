@@ -22,7 +22,7 @@ export class GeminiBackend extends VercelAIBackendBase {
   }
 
   protected getDefaultModel(): string {
-    return 'gemini-2.0-flash';
+    return 'gemini-3-flash-preview';
   }
 
   protected validateApiKey(): void {
@@ -32,10 +32,7 @@ export class GeminiBackend extends VercelAIBackendBase {
   }
 
   protected createModel() {
-    return google(this.config.model || 'gemini-2.0-flash', {
-      baseURL: this.config.baseUrl,
-      apiKey: this.config.apiKey,
-    });
+    return google(this.config.model || 'gemini-2.5-flash');
   }
 
   protected buildHealthCheckUrl(): string {
