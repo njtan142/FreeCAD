@@ -27,6 +27,7 @@ import { backendRegistry } from './backend-registry';
 import { ClaudeBackend } from './backends/claude-backend';
 import { OpenCodeBackend } from './backends/opencode-backend';
 import { VercelAIBackend } from './backends/vercel-ai-backend';
+import { GeminiBackend } from './backends/gemini-ai-backend';
 import { getBackendConfig, validateBackendConfig } from './backend-config';
 import { execSync } from 'child_process';
 
@@ -67,6 +68,8 @@ function parseArgs(): ParsedArgs {
       parsed.backend = 'opencode';
     } else if (arg === '--minimax') {
       parsed.backend = 'minimax';
+    } else if (arg === '--gemini') {
+      parsed.backend = 'gemini';
     }
   }
 
@@ -95,6 +98,7 @@ function registerBackends(): void {
   backendRegistry.register(new ClaudeBackend());
   backendRegistry.register(new OpenCodeBackend());
   backendRegistry.register(new VercelAIBackend());
+  backendRegistry.register(new GeminiBackend());
 }
 
 const config = {
