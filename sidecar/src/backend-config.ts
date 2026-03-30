@@ -33,7 +33,7 @@ function getOpenCodeConfig(): BackendConfig {
   const baseUrl = process.env.OPENAI_BASE_URL ||
     process.env.ANTHROPIC_BASE_URL ||
     process.env.GOOGLE_BASE_URL ||
-    'https://api.openai.com/v1';
+    '';
 
   const apiKey = process.env.OPENAI_API_KEY ||
     process.env.ANTHROPIC_API_KEY ||
@@ -42,16 +42,6 @@ function getOpenCodeConfig(): BackendConfig {
   let model = process.env.OPENAI_MODEL ||
     process.env.ANTHROPIC_MODEL ||
     process.env.GOOGLE_MODEL;
-
-  if (!model) {
-    if (baseUrl.includes('openai')) {
-      model = 'gpt-4';
-    } else if (baseUrl.includes('anthropic')) {
-      model = 'claude-3-5-sonnet-20241022';
-    } else if (baseUrl.includes('google')) {
-      model = 'gemini-2.0-flash';
-    }
-  }
 
   return {
     baseUrl,
