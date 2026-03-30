@@ -127,6 +127,19 @@ This is a diverging fork. We modify FreeCAD directly without worrying about upst
 - [x] **Cycle 22: Advanced Surface Modeling Tools** (COMPLETED)
 - [x] **Cycle 23: Essential Workflow Tools (Undo/Redo, Visibility, Selection, Measurement)** (COMPLETED)
 - [x] **Cycle 24: Spreadsheet Workbench Tools (BOM & Parametric Tables)** (COMPLETED)
+- [x] **Cycle 25: BIM Workbench Tools (Architecture-Specific Operations)** (COMPLETED)
+- [x] **Cycle 26: Advanced Error Handling and Recovery Tools** (COMPLETED)
+  - Created `src/Mod/LLMBridge/llm_bridge/error_handlers.py` - 13 error handling handlers
+  - Added error parsing, categorization, traceback extraction, context analysis
+  - Added recovery suggestions, validation, operation history tracking
+  - Added undo strategy suggestions and safe retry functionality
+- [ ] **URGENT: Vercel AI SDK + MiniMax Integration** — Use Vercel AI SDK for direct MiniMax API access with MCP tool support
+  - Install `ai`, `@ai-sdk/mcp`, and `vercel-minimax-ai-provider` packages
+  - Create `VercelAIBackend` using `streamText` with `createMCPClient` to connect to FreeCAD's MCP tools
+  - Benefits: Direct API access (no opencode CLI needed), built-in tool calling, streaming support
+  - MiniMax provides OpenAI-compatible API at `https://api.minimaxi.com/v1` with model `MiniMax-M2.7`
+  - MCP tools auto-discovered and converted to AI SDK tools
+  - Add `sidecar:dev:minimax` npm script for easy launching
 - [ ] Define additional custom tools as needed
 - [ ] **Multi-Agent Backend Support** — Support alternative LLM agents beyond Claude Code CLI
   - [x] **OpenCode integration** — Add OpenCode as an alternative agent backend (COMPLETED - Cycle 20)

@@ -1,144 +1,100 @@
-## Status: COMPLETED (Cycle 25)
+## Status: COMPLETED (Cycle 26)
 
-# Cycle 25: BIM Workbench Tools (Architecture-Specific Operations)
+# Cycle 26: Advanced Error Handling and Recovery Tools
 
 ## Overview
 
-Add tools for FreeCAD's BIM/Arch workbench, enabling LLM-powered architectural CAD operations for:
-- Building structure creation (Sites, Buildings, Floors/Levels)
-- Architectural elements (Walls, Windows, Doors, Roofs, Stairs)
-- Structural components (Columns, Beams, Slabs, Frames)
-- IFC data management and property handling
-- Schedules and quantity take-off
+Add sophisticated error handling and recovery tools that help the LLM diagnose problems, suggest fixes, and recover from errors gracefully. This makes the integration more robust and user-friendly by transforming cryptic Python/FreeCAD errors into actionable guidance.
 
-These tools form a coherent unit focused on **architectural/construction workflows** that connect CAD models to building information modeling (BIM) processes.
+Key capabilities:
+- Parse and categorize FreeCAD Python errors with context
+- Provide recovery suggestions based on error type
+- Track operation history for debugging
+- Validate operations before execution to prevent errors
+- Offer intelligent undo/recovery recommendations
+- Extract error patterns and provide structured feedback
 
 ## Prerequisites
 
 - `src/Mod/LLMBridge/llm_bridge/__init__.py` - Existing module structure
 - `sidecar/src/agent-tools.ts` - Existing tool definitions
-- `sidecar/src/result-formatters.ts` - Existing result formatters
-- FreeCAD BIM module (`Arch` namespace)
-- `src/Mod/BIM/` - BIM workbench source
+- `src/Mod/LLMBridge/llm_bridge/server.py` - WebSocket server
+- FreeCAD Python interpreter access
 
 ## Tasks
 
-### 1. Create bim_handlers.py (Python)
+### 1. Create error_handlers.py (Python)
 
-**File**: `src/Mod/LLMBridge/llm_bridge/bim_handlers.py` (create new)
+**File**: `src/Mod/LLMBridge/llm_bridge/error_handlers.py` (create new)
 
-Handlers for BIM/Arch operations:
+Handlers for error analysis and recovery:
 
-#### Building Structure Management
-- `handle_create_site(name)` — Create a new site (land/terrain container)
-- `handle_create_building(object_names, name)` — Create a building containing objects
-- `handle_create_building_part(object_names, name)` — Create a floor/level (BuildingPart)
-- `handle_create_building_level(name, elevation)` — Create a single building level with elevation
-- `handle_get_building_hierarchy()` — Get building/floor/space hierarchy
+#### Error Parsing and Analysis
+- `handle_parse_error(error_text)` — Parse Python/FreeCAD error text into structured data
+- `handle_get_error_category(error_text)` — Categorize error (AttributeError, TypeError, ValueError, etc.)
+- `handle_extract_traceback_info(traceback_text)` — Extract file, line, function from traceback
+- `handle_analyze_error_context(error_text, operation_type)` — Analyze error in context of the operation attempted
 
-#### Architectural Elements
-- `handle_create_wall(placement, length, width, height, name)` — Create a parametric wall
-- `handle_create_window(width, height, placement, name)` — Create a window in a wall
-- `handle_create_door(width, height, placement, name)` — Create a door in a wall
-- `handle_create_roof(base_object, angle, name)` — Create a roof from a profile
-- `handle_create_stairs(length, width, num_steps, name)` — Create staircase
-- `handle_create_curtain_wall(base_object, name)` — Create curtain wall system
-- `handle_create_space(placement, name)` — Create a space/room
+#### Recovery Suggestions
+- `handle_get_recovery_suggestions(error_text, operation)` — Get suggested fixes based on error and operation
+- `handle_validate_operation(object_name, operation)` — Validate an operation can succeed before attempting
+- `handle_get_common_errors(operation_type)` — Get common errors for a given operation type
 
-#### Structural Elements
-- `handle_create_column(placement, width, height, name)` — Create a vertical column
-- `handle_create_beam(start, end, width, height, name)` — Create a horizontal beam
-- `handle_create_slab(base_object, thickness, name)` — Create a floor/roof slab
-- `handle_create_frame(base_object, profile, name)` — Create a frame structure
-- `handle_create_truss(placement, length, height, name)` — Create a truss
-- `handle_create_fence(placement, length, height, name)` — Create a fence
+#### Operation Tracking
+- `handle_get_operation_history(count)` — Get recent operations with their status
+- `handle_get_last_error()` — Get the most recent error details
+- `handle_clear_error_history()` — Clear the error tracking history
 
-#### Equipment & Infrastructure
-- `handle_create_equipment(base_object, placement, name)` — Create equipment/ furniture
-- `handle_create_pipe(start, end, radius, name)` — Create a pipe
-- `handle_create_pipe_connector(objects, name)` — Create pipe connector fitting
-- `handle_create_panel(base_object, name)` — Create a panel/board
+#### Error Recovery Actions
+- `handle_suggest_undo_strategy(object_name, failed_operation)` — Suggest undo approach after failed operation
+- `handle_recover_from_validation_error(validation_result)` — Generate recovery code for validation failures
+- `handle_safe_retry(operation, parameters)` — Execute operation with additional safety checks
 
-#### Annotation & Grids
-- `handle_create_axis(num, spacing, name)` — Create axis system
-- `handle_create_grid(placement, name)` — Create reference grid
-- `handle_create_section_plane(object_names, name)` — Create section plane for views
-- `handle_create_schedule(object_names, name)` — Create quantity takeoff schedule
-
-#### IFC Data Management
-- `handle_set_ifc_type(object_name, ifc_type)` — Set IFC entity type
-- `handle_get_ifc_properties(object_name)` — Get IFC properties
-- `handle_set_ifc_property(object_name, prop_name, value)` — Set IFC property
-- `handle_get_bim_material(object_name)` — Get material from BIM object
-- `handle_assign_material(object_name, material_name)` — Assign material to object
-
-#### Quick Building Construction
-- `handle_quick_wall(start, end, height, thickness, name)` — Quick wall from line
-- `handle_quick_window(wall_name, width, height, position)` — Window in wall
-- `handle_quick_door(wall_name, width, height, position)` — Door in wall
-- `handle_quick_floor(building_name, level, objects)` — Add floor to building
+**Error Categories**:
+```python
+ERROR_CATEGORIES = {
+    "ATTRIBUTE_ERROR": "Object does not have the requested attribute",
+    "TYPE_ERROR": "Wrong type for operation (e.g., string instead of number)",
+    "VALUE_ERROR": "Invalid value provided to function",
+    "REFERENCE_ERROR": "Referenced object not found in document",
+    "CONSTRAINT_ERROR": "Geometric constraint conflict",
+    "SOLVER_ERROR": "Sketch solver failed to converge",
+    "BOOLEAN_ERROR": "Boolean operation failed",
+    "DOCUMENT_ERROR": "Document operation failed",
+    "PLACEMENT_ERROR": "Invalid placement/position",
+    "EXPRESSION_ERROR": "Invalid expression syntax",
+    "PERMISSION_ERROR": "Object is locked or read-only",
+    "MEMORY_ERROR": "Insufficient memory for operation",
+}
+```
 
 **Acceptance Criteria**:
 - [x] All handlers return JSON with success/error structure
 - [x] All handlers handle None/missing active document gracefully
-- [x] Placement parameters support Vector, Placement, or dict formats
-- [x] BIM objects properly tagged with IFC types
+- [x] Error parsing handles multi-line tracebacks
+- [x] Recovery suggestions are context-aware
 
 ### 2. Add Tool Definitions to agent-tools.ts
 
 **File**: `sidecar/src/agent-tools.ts` (modify)
 
-Add BIM tools after existing tools in `createAgentTools()`:
+Add error handling tools after existing tools in `createAgentTools()`:
 
 ```typescript
-// Building structure tools
-createSiteTool(freeCADBridge),
-createBuildingTool(freeCADBridge),
-createBuildingPartTool(freeCADBridge),
-createBuildingLevelTool(freeCADBridge),
-getBuildingHierarchyTool(freeCADBridge),
-
-// Architectural element tools
-createWallTool(freeCADBridge),
-createWindowTool(freeCADBridge),
-createDoorTool(freeCADBridge),
-createRoofTool(freeCADBridge),
-createStairsTool(freeCADBridge),
-createCurtainWallTool(freeCADBridge),
-createSpaceTool(freeCADBridge),
-
-// Structural element tools
-createColumnTool(freeCADBridge),
-createBeamTool(freeCADBridge),
-createSlabTool(freeCADBridge),
-createFrameTool(freeCADBridge),
-createTrussTool(freeCADBridge),
-createFenceTool(freeCADBridge),
-
-// Equipment and infrastructure tools
-createEquipmentTool(freeCADBridge),
-createPipeTool(freeCADBridge),
-createPipeConnectorTool(freeCADBridge),
-createPanelTool(freeCADBridge),
-
-// Annotation and grid tools
-createAxisTool(freeCADBridge),
-createGridTool(freeCADBridge),
-createSectionPlaneTool(freeCADBridge),
-createScheduleTool(freeCADBridge),
-
-// IFC data tools
-setIfcTypeTool(freeCADBridge),
-getIfcPropertiesTool(freeCADBridge),
-setIfcPropertyTool(freeCADBridge),
-getBimMaterialTool(freeCADBridge),
-assignMaterialTool(freeCADBridge),
-
-// Quick construction tools
-quickWallTool(freeCADBridge),
-quickWindowTool(freeCADBridge),
-quickDoorTool(freeCADBridge),
-quickFloorTool(freeCADBridge),
+// Error handling and recovery tools
+parseErrorTool(freeCADBridge),
+categorizeErrorTool(freeCADBridge),
+extractTracebackInfoTool(freeCADBridge),
+analyzeErrorContextTool(freeCADBridge),
+getRecoverySuggestionsTool(freeCADBridge),
+validateOperationTool(freeCADBridge),
+getCommonErrorsTool(freeCADBridge),
+getOperationHistoryTool(freeCADBridge),
+getLastErrorTool(freeCADBridge),
+clearErrorHistoryTool(freeCADBridge),
+suggestUndoStrategyTool(freeCADBridge),
+recoverFromValidationErrorTool(freeCADBridge),
+safeRetryOperationTool(freeCADBridge),
 ```
 
 ### 3. Add Result Formatters
@@ -147,27 +103,16 @@ quickFloorTool(freeCADBridge),
 
 Add formatters:
 ```typescript
-formatSiteCreation(data)
-formatBuildingCreation(data)
-formatBuildingPartCreation(data)
-formatBuildingLevel(data)
-formatBuildingHierarchy(data)
-formatWallCreation(data)
-formatWindowCreation(data)
-formatDoorCreation(data)
-formatRoofCreation(data)
-formatStairsCreation(data)
-formatSpaceCreation(data)
-formatColumnCreation(data)
-formatBeamCreation(data)
-formatSlabCreation(data)
-formatEquipmentCreation(data)
-formatPipeCreation(data)
-formatAxisCreation(data)
-formatSectionPlaneCreation(data)
-formatScheduleCreation(data)
-formatIfcProperties(data)
-formatMaterialAssignment(data)
+formatErrorParse(data)
+formatErrorCategory(data)
+formatTracebackInfo(data)
+formatErrorContext(data)
+formatRecoverySuggestions(data)
+formatValidationResult(data)
+formatCommonErrors(data)
+formatOperationHistory(data)
+formatLastError(data)
+formatUndoStrategy(data)
 ```
 
 ### 4. Update __init__.py Exports
@@ -176,108 +121,92 @@ formatMaterialAssignment(data)
 
 Add exports for new handlers to `__all__`:
 ```python
-# From bim_handlers.py
-'handle_create_site',
-'handle_create_building',
-'handle_create_building_part',
-'handle_create_building_level',
-'handle_get_building_hierarchy',
-'handle_create_wall',
-'handle_create_window',
-'handle_create_door',
-'handle_create_roof',
-'handle_create_stairs',
-'handle_create_curtain_wall',
-'handle_create_space',
-'handle_create_column',
-'handle_create_beam',
-'handle_create_slab',
-'handle_create_frame',
-'handle_create_truss',
-'handle_create_fence',
-'handle_create_equipment',
-'handle_create_pipe',
-'handle_create_pipe_connector',
-'handle_create_panel',
-'handle_create_axis',
-'handle_create_grid',
-'handle_create_section_plane',
-'handle_create_schedule',
-'handle_set_ifc_type',
-'handle_get_ifc_properties',
-'handle_set_ifc_property',
-'handle_get_bim_material',
-'handle_assign_material',
-'handle_quick_wall',
-'handle_quick_window',
-'handle_quick_door',
-'handle_quick_floor',
+from .error_handlers import (
+    handle_parse_error,
+    handle_get_error_category,
+    handle_extract_traceback_info,
+    handle_analyze_error_context,
+    handle_get_recovery_suggestions,
+    handle_validate_operation,
+    handle_get_common_errors,
+    handle_get_operation_history,
+    handle_get_last_error,
+    handle_clear_error_history,
+    handle_suggest_undo_strategy,
+    handle_recover_from_validation_error,
+    handle_safe_retry,
+)
 ```
 
 ## Files to Create/Modify
 
 ### New Files:
-1. `src/Mod/LLMBridge/llm_bridge/bim_handlers.py` - BIM operation handlers (~600 lines)
+1. `src/Mod/LLMBridge/llm_bridge/error_handlers.py` - Error handling handlers (~500 lines)
 
 ### Modified Files:
-1. `src/Mod/LLMBridge/llm_bridge/__init__.py` - Add exports for 30 new handlers
-2. `sidecar/src/agent-tools.ts` - Add 30 new tools
-3. `sidecar/src/result-formatters.ts` - Add 20 new formatters
+1. `src/Mod/LLMBridge/llm_bridge/__init__.py` - Add exports for 13 new handlers
+2. `sidecar/src/agent-tools.ts` - Add 13 new tools
+3. `sidecar/src/result-formatters.ts` - Add 10 new formatters
 
 ## Test Scenarios
 
-1. **Building Structure**:
-   - Create a site, add building, add multiple levels
-   - Verify hierarchy via get_building_hierarchy
+1. **Error Parsing**:
+   - Parse a Python AttributeError traceback
+   - Parse a FreeCAD constraint error
+   - Extract line numbers and function names from multi-line traceback
 
-2. **Architectural Elements**:
-   - Create a wall with specific dimensions
-   - Add windows and doors to wall
-   - Create stairs with given step count
-   - Create roof from sketch profile
+2. **Error Recovery**:
+   - Get recovery suggestions for a failed pad operation
+   - Validate a sketch can be solved before constraint application
+   - Get common errors for boolean operations
 
-3. **Structural Elements**:
-   - Create columns in a grid pattern
-   - Create beams connecting columns
-   - Create slab from base object
+3. **Operation History**:
+   - Track operations and retrieve history
+   - Get last error with full context
+   - Clear history and verify
 
-4. **IFC Data**:
-   - Set IFC type on wall (IfcType = "Wall")
-   - Add custom IFC property (e.g., "FireRating")
-   - Verify properties via get_ifc_properties
+4. **Validation and Retry**:
+   - Validate object exists before operation
+   - Use safe_retry with additional checks
+   - Get undo strategy after failed operation
 
-5. **Quick Construction**:
-   - Create wall from two points
-   - Add window at specific position on wall
-   - Create floor with objects
-
-6. **Integration with other tools**:
-   - Create building, use Draft tools for floor plan
-   - Add walls, windows, doors
-   - Export to IFC format
+5. **Integration**:
+   - Integrate error parsing into existing tool responses
+   - Use validation before sketch constraint operations
+   - Provide recovery suggestions in error messages
 
 ## Acceptance Criteria
 
-- [ ] bim_handlers.py created with 30 handlers
+- [ ] error_handlers.py created with 13 handlers
 - [ ] All handlers properly export from __init__.py
-- [ ] 30 new tools added to agent-tools.ts with Zod schema validation
-- [ ] 20 new result formatters added
+- [ ] 13 new tools added to agent-tools.ts with Zod schema validation
+- [ ] 10 new result formatters added
 - [ ] All tools integrated in createAgentTools()
 - [ ] End-to-end test scenarios pass
 
 ## Definition of Done
 
-- [x] bim_handlers.py created with 35 handlers
-- [x] All handlers exported in __init__.py
-- [x] 35 new tools added to agent-tools.ts
-- [x] 35 new result formatters added
-- [x] All tools integrated in createAgentTools()
-- [ ] End-to-end test scenarios pass (deferred - requires FreeCAD runtime)
-- [x] Plan marked COMPLETED and moved to PROJECT.md progress
+- [ ] error_handlers.py created with 13 handlers
+- [ ] All handlers exported in __init__.py
+- [ ] 13 new tools added to agent-tools.ts
+- [ ] 13 new result formatters added
+- [ ] All tools integrated in createAgentTools()
+- [ ] End-to-end test scenarios pass
+- [ ] Plan marked COMPLETED and moved to PROJECT.md progress
 
 ## Next Step After This
 
-After BIM tools are complete, potential next cycles:
-- Advanced error handling and recovery tools
+**URGENT: Vercel AI SDK + MiniMax Integration** (Move to immediately after Cycle 26)
+
+Use Vercel AI SDK (`@ai-sdk`) for direct MiniMax API access with native MCP tool support:
+- Install: `ai`, `@ai-sdk/mcp`, `vercel-minimax-ai-provider`
+- Create `VercelAIBackend` using `streamText` + `createMCPClient` to connect FreeCAD MCP tools
+- Benefits: Direct API (no opencode CLI), built-in tool calling, automatic streaming
+- MiniMax endpoint: `https://api.minimaxi.com/v1`, model: `MiniMax-M2.7`
+- MCP tools auto-discovered and converted to AI SDK tools
+
+After MiniMax integration:
 - Gemini CLI integration (alternative backend)
 - Additional custom tools based on user feedback
+- Drawing/annotation tools
+- Report generation tools
