@@ -33,15 +33,19 @@ function getOpenCodeConfig(): BackendConfig {
   const baseUrl = process.env.OPENAI_BASE_URL ||
     process.env.ANTHROPIC_BASE_URL ||
     process.env.GOOGLE_BASE_URL ||
-    '';
+    process.env.OPENCODE_GO_BASE_URL ||
+    'https://opencode.ai/zen/go/v1/messages';
 
   const apiKey = process.env.OPENAI_API_KEY ||
     process.env.ANTHROPIC_API_KEY ||
-    process.env.GOOGLE_API_KEY;
+    process.env.GOOGLE_API_KEY ||
+    process.env.OPENCODE_GO_API_KEY;
 
   let model = process.env.OPENAI_MODEL ||
     process.env.ANTHROPIC_MODEL ||
-    process.env.GOOGLE_MODEL;
+    process.env.GOOGLE_MODEL ||
+    process.env.OPENCODE_GO_MODEL ||
+    'minimax-m2.7';
 
   return {
     baseUrl,
