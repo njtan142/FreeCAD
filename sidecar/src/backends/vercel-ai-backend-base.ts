@@ -6,6 +6,7 @@
  */
 
 import { streamText, CoreTool, CoreMessage } from 'ai';
+import { z } from 'zod';
 import { AgentBackend, BackendConfig, AgentResponse, MessageContext, MCPTool } from '../agent-backend.js';
 import { ToolCall } from '../types.js';
 
@@ -191,19 +192,17 @@ Objects: ${context.documentInfo.objectCount}`;
     return messages;
   }
 
-  protected async initializeMCPTools(tools: MCPTool[]): Promise<any[]> {
-    const mcpTools: any[] = [];
+  protected async initializeMCPTools(tools: MCPTool[]): Promise<Record<string, any>> {
+    const mcpTools: Record<string, any> = {};
 
     for (const tool of tools) {
-      mcpTools.push({
-        type: 'function',
-        name: tool.name,
+      mcpTools[tool.name] = {
         description: tool.description,
         parameters: tool.inputSchema,
-      });
+      };
     }
 
-    console.log(`[${this.name}] Initialized ${mcpTools.length} MCP tools`);
+    console.log(`[${this.name}] Initialized ${Object.keys(mcpTools).length} MCP tools`);
     return mcpTools;
   }
 
