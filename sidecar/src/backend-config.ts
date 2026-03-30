@@ -14,6 +14,8 @@ export function getBackendConfig(backendName: string): BackendConfig {
       return getMiniMaxConfig();
     case 'gemini':
       return getGeminiConfig();
+    case 'openai-compatible':
+      return getOpenAICompatibleConfig();
     case 'claude':
     default:
       return getClaudeConfig();
@@ -80,6 +82,16 @@ function getGeminiConfig(): BackendConfig {
   };
 }
 
+function getOpenAICompatibleConfig(): BackendConfig {
+  return {
+    baseUrl: process.env.OPENAI_COMPATIBLE_BASE_URL || 'http://localhost:11434/v1',
+    apiKey: process.env.OPENAI_COMPATIBLE_API_KEY || 'no-key',
+    model: process.env.OPENAI_COMPATIBLE_MODEL || 'llama3.2',
+    temperature: process.env.OPENAI_COMPATIBLE_TEMPERATURE ? parseFloat(process.env.OPENAI_COMPATIBLE_TEMPERATURE) : undefined,
+    maxTokens: process.env.OPENAI_COMPATIBLE_MAX_TOKENS ? parseInt(process.env.OPENAI_COMPATIBLE_MAX_TOKENS, 10) : undefined,
+  };
+}
+
 export function loadOpenCodeConfig(): Record<string, string> {
   const config: Record<string, string> = {};
 
@@ -130,6 +142,14 @@ export function validateBackendConfig(backendName: string, config: BackendConfig
   if (backendName === 'gemini') {
     if (!config.apiKey && !process.env.GEMINI_API_KEY) {
       errors.push('Gemini backend requires GEMINI_API_KEY environment variable');
+    }
+  }
+
+  if (backendName === 'openai-compatible') {
+    const isLocal = (config.baseUrl?.includes('localhost') || config.baseUrl?.includes('127.0.0.1')) &&
+                    (config.apiKey === 'no-key' || !config.apiKey);
+    if (!isLocal && !config.apiKey && !process.env.OPENAI_COMPATIBLE_API_KEY) {
+      errors.push('OpenAI-compatible backend requires OPENAI_COMPATIBLE_API_KEY for cloud providers');
     }
   }
 
