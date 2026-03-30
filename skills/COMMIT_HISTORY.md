@@ -1070,3 +1070,120 @@ The original large commit for Advanced Error Handling and Recovery Tools have be
 - **Files modified**: 6 (__init__.py, agent-tools.ts, result-formatters.ts, sidecar/README.md, CURRENT_PLAN.md, PROJECT.md)
 - **Total insertions**: ~1,250 lines
 - **Total deletions**: ~215 lines
+
+---
+
+## Cycle 27 - Incremental Commits
+
+The original large commit "feat(sidecar): Add Vercel AI SDK + MiniMax backend for Cycle 27" (d8b45744c2f) has been refactored into 4 incremental commits.
+
+| Commit Hash | Message | Files Changed |
+|-------------|---------|---------------|
+| `a9be0e2949` | feat(sidecar): add VercelAIBackend class with MiniMax support | vercel-ai-backend.ts |
+| `54019180d9` | feat(sidecar): add MiniMax backend config and validation | backend-config.ts |
+| `2460f9cf19` | feat(sidecar): register VercelAIBackend and add --minimax CLI flag | index.ts |
+| `890a54bb6a` | chore(sidecar): add ai dependency and dev:minimax script | package.json |
+
+### Commit Progression
+
+1. **VercelAIBackend class**: Added `vercel-ai-backend.ts` (364 lines) implementing the AgentBackend interface using Vercel AI SDK for MiniMax API access:
+   - Native streaming support with `streamText`
+   - Built-in tool calling via AI SDK
+   - MCP tool integration via @modelcontextprotocol/sdk
+   - FreeCAD bridge integration for Python execution
+   - Message building with system prompt for FreeCAD CAD assistance
+   - Session ID generation and health check
+
+2. **MiniMax backend config**: Updated `backend-config.ts` to add `getMiniMaxConfig()` function returning baseUrl, apiKey, model, temperature, maxTokens from environment variables; added `minimax` case to `getBackendConfig()` switch; added validation in `validateBackendConfig()` requiring MINIMAX_API_KEY
+
+3. **Backend registration and CLI flag**: Updated `index.ts` to import VercelAIBackend, register it in `registerBackends()`, add `--minimax` CLI flag parsing, and output backend initialization messages
+
+4. **Package dependencies**: Updated `package.json` to add `ai` (^3.0.0) and `@ai-sdk/openai` (^0.0.0) dependencies; added `dev:minimax` npm script for convenient development
+
+### Summary
+
+- **Total commits**: 4
+- **Files created**: 1 (vercel-ai-backend.ts)
+- **Files modified**: 3 (backend-config.ts, index.ts, package.json)
+- **Total insertions**: ~389 lines
+- **Total deletions**: ~0 lines
+
+---
+
+## Cycle 28 - Incremental Commits
+
+The original large commit "feat(sidecar): Add Google Gemini backend for Cycle 28" (188954c385) has been refactored into 4 incremental commits.
+
+| Commit Hash | Message | Files Changed |
+|-------------|---------|---------------|
+| `eab5d70901` | feat(sidecar): add GeminiBackend class with Google AI provider | gemini-ai-backend.ts |
+| `4de048464a` | feat(sidecar): register GeminiBackend and add --gemini CLI flag | index.ts |
+| `5157f744a8` | chore(sidecar): add @ai-sdk/google dependency and dev:gemini script | package.json |
+| `5179911a34` | docs(sidecar): add Gemini backend documentation | sidecar/README.md |
+
+### Commit Progression
+
+1. **GeminiBackend class**: Added `gemini-ai-backend.ts` (842 lines) implementing the AgentBackend interface using Google AI SDK:
+   - Native streaming support with `streamText`
+   - Built-in tool calling via AI SDK
+   - MCP tool integration via @modelcontextprotocol/sdk
+   - FreeCAD bridge integration for Python execution
+   - Message building with system prompt for FreeCAD CAD assistance
+   - Session ID generation and health check
+
+2. **Backend registration and CLI flag**: Updated `index.ts` to import GeminiBackend, register it in `registerBackends()`, add `--gemini` CLI flag parsing, and output backend initialization messages
+
+3. **Package dependencies**: Updated `package.json` to add `@ai-sdk/google` (^0.0.4) dependency; added `dev:gemini` npm script for convenient development
+
+4. **Sidecar documentation**: Updated `sidecar/README.md` with comprehensive documentation for Gemini backend including CLI usage, environment variables, and model configuration
+
+### Summary
+
+- **Total commits**: 4
+- **Files created**: 1 (gemini-ai-backend.ts)
+- **Files modified**: 3 (index.ts, package.json, sidecar/README.md)
+- **Total insertions**: ~849 lines
+- **Total deletions**: ~8 lines
+
+---
+
+## Cycle 29 - Incremental Commits
+
+The original large commit "feat(sidecar): Add OpenAI-compatible backend for Ollama, LM Studio, Groq" (169b4e61f2) has been refactored into 5 incremental commits.
+
+| Commit Hash | Message | Files Changed |
+|-------------|---------|---------------|
+| `d37d6244ba` | feat(sidecar): add OpenAICompatibleBackend class with multi-provider support | openai-compatible-backend.ts |
+| `d37f031c18` | feat(sidecar): add provider quick-config files for Ollama, LM Studio, Groq | .env.ollama, .env.lmstudio, .env.groq |
+| `b37d492653` | feat(sidecar): register OpenAICompatibleBackend with CLI shortcuts | backend-config.ts, index.ts |
+| `80dd7763ab` | chore(sidecar): add dev scripts for Ollama, LM Studio, Groq | package.json |
+| `b2e324246d` | docs(sidecar): add OpenAI-compatible provider documentation | sidecar/README.md |
+
+### Commit Progression
+
+1. **OpenAICompatibleBackend class**: Added `openai-compatible-backend.ts` (847 lines) implementing the AgentBackend interface using Vercel AI SDK's @ai-sdk/openai provider:
+   - Native streaming support with `streamText`
+   - Built-in tool calling via AI SDK
+   - MCP tool integration via @modelcontextprotocol/sdk
+   - FreeCAD bridge integration for Python execution
+   - Multi-provider support via baseUrl configuration
+   - Support for Ollama, LM Studio, Groq, and any OpenAI-compatible API
+
+2. **Provider quick-config files**: Added `.env.ollama`, `.env.lmstudio`, `.env.groq` template files for quick provider setup:
+   - Ollama: localhost:11434, llama3.2 model
+   - LM Studio: localhost:1234, local-model
+   - Groq: api.groq.com, llama-3.1-70b-versatile model
+
+3. **Backend registration and CLI shortcuts**: Updated `backend-config.ts` to add `getOpenAICompatibleConfig()` function and validation; updated `index.ts` to import and register OpenAICompatibleBackend with CLI shortcuts (--ollama, --lmstudio, --groq)
+
+4. **Dev scripts**: Updated `package.json` to add `dev:ollama`, `dev:lmstudio`, `dev:groq` npm scripts for convenient development
+
+5. **Sidecar documentation**: Updated `sidecar/README.md` with comprehensive documentation for OpenAI-compatible backend including environment variables, provider-specific defaults, quick start guide, and CLI shortcuts
+
+### Summary
+
+- **Total commits**: 5
+- **Files created**: 4 (openai-compatible-backend.ts, .env.ollama, .env.lmstudio, .env.groq)
+- **Files modified**: 3 (backend-config.ts, index.ts, package.json, sidecar/README.md)
+- **Total insertions**: ~938 lines
+- **Total deletions**: ~8 lines
