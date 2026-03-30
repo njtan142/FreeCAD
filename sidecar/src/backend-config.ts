@@ -10,6 +10,8 @@ export function getBackendConfig(backendName: string): BackendConfig {
   switch (backendName) {
     case 'opencode':
       return getOpenCodeConfig();
+    case 'minimax':
+      return getMiniMaxConfig();
     case 'claude':
     default:
       return getClaudeConfig();
@@ -56,6 +58,16 @@ function getOpenCodeConfig(): BackendConfig {
   };
 }
 
+function getMiniMaxConfig(): BackendConfig {
+  return {
+    baseUrl: process.env.MINIMAX_BASE_URL || 'https://api.minimaxi.com/v1',
+    apiKey: process.env.MINIMAX_API_KEY,
+    model: process.env.MINIMAX_MODEL || 'MiniMax-M2.7',
+    temperature: process.env.MINIMAX_TEMPERATURE ? parseFloat(process.env.MINIMAX_TEMPERATURE) : undefined,
+    maxTokens: process.env.MINIMAX_MAX_TOKENS ? parseInt(process.env.MINIMAX_MAX_TOKENS, 10) : undefined,
+  };
+}
+
 export function loadOpenCodeConfig(): Record<string, string> {
   const config: Record<string, string> = {};
 
@@ -94,6 +106,12 @@ export function validateBackendConfig(backendName: string, config: BackendConfig
   if (backendName === 'opencode') {
     if (!config.apiKey && !process.env.OPENAI_API_KEY && !process.env.ANTHROPIC_API_KEY && !process.env.GOOGLE_API_KEY) {
       errors.push('OpenCode backend requires an API key. Set OPENAI_API_KEY, ANTHROPIC_API_KEY, or GOOGLE_API_KEY');
+    }
+  }
+
+  if (backendName === 'minimax') {
+    if (!config.apiKey && !process.env.MINIMAX_API_KEY) {
+      errors.push('MiniMax backend requires MINIMAX_API_KEY environment variable');
     }
   }
 
