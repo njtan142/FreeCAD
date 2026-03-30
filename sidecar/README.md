@@ -8689,6 +8689,513 @@ Exports the current model to a file. (Use `export_to_format` for more options)
 
 **Supported formats:** STEP, STL, OBJ, DXF, FCStd
 
+---
+
+### Error Handling Tools
+
+The error handling tools help diagnose problems, suggest fixes, and recover from errors gracefully. They transform cryptic Python/FreeCAD errors into actionable guidance with context-aware recovery suggestions.
+
+**Error Categories:**
+| Category | Description |
+|----------|-------------|
+| `ATTRIBUTE_ERROR` | Object does not have the requested attribute |
+| `TYPE_ERROR` | Wrong type for operation (e.g., string instead of number) |
+| `VALUE_ERROR` | Invalid value provided to function |
+| `REFERENCE_ERROR` | Referenced object not found in document |
+| `CONSTRAINT_ERROR` | Geometric constraint conflict |
+| `SOLVER_ERROR` | Sketch solver failed to converge |
+| `BOOLEAN_ERROR` | Boolean operation failed |
+| `DOCUMENT_ERROR` | Document operation failed |
+| `PLACEMENT_ERROR` | Invalid placement/position |
+| `EXPRESSION_ERROR` | Invalid expression syntax |
+| `PERMISSION_ERROR` | Object is locked or read-only |
+| `MEMORY_ERROR` | Insufficient memory for operation |
+
+---
+
+#### `parse_error(errorText: string)`
+
+Parse Python/FreeCAD error text into structured data.
+
+**Parameters:**
+- `errorText` (required): Raw error text or traceback to parse
+
+**Response format:**
+```json
+{
+  "success": true,
+  "errorType": "AttributeError",
+  "errorMessage": "'Part' object has no attribute 'makeCuboid'",
+  "parsedData": {
+    "errorType": "AttributeError",
+    "message": "'Part' object has no attribute 'makeCuboid'",
+    "pythonError": true
+  },
+  "message": "Parsed error successfully"
+}
+```
+
+**Example usage:**
+```typescript
+{
+  name: "parse_error",
+  arguments: {
+    errorText: "Traceback (most recent call last):\n  File \"<input>\", line 1, in <module>\nAttributeError: 'Part' object has no attribute 'makeCuboid'"
+  }
+}
+```
+
+---
+
+#### `categorize_error(errorText: string)`
+
+Categorize error type based on error text.
+
+**Parameters:**
+- `errorText` (required): Raw error text to categorize
+
+**Response format:**
+```json
+{
+  "success": true,
+  "category": "ATTRIBUTE_ERROR",
+  "categoryDescription": "Object does not have the requested attribute",
+  "confidence": "high",
+  "message": "Error categorized as ATTRIBUTE_ERROR"
+}
+```
+
+**Example usage:**
+```typescript
+{
+  name: "categorize_error",
+  arguments: {
+    errorText: "AttributeError: 'Part' object has no attribute 'makeCuboid'"
+  }
+}
+```
+
+---
+
+#### `extract_traceback_info(tracebackText: string)`
+
+Extract file path, line number, and function name from a traceback.
+
+**Parameters:**
+- `tracebackText` (required): Python traceback text to analyze
+
+**Response format:**
+```json
+{
+  "success": true,
+  "tracebackInfo": {
+    "file": "/path/to/script.py",
+    "line": 42,
+    "function": "create_part",
+    "codeSnippet": "Part.makeBox(10, 10, 10)"
+  },
+  "stackDepth": 3,
+  "message": "Extracted traceback info"
+}
+```
+
+**Example usage:**
+```typescript
+{
+  name: "extract_traceback_info",
+  arguments: {
+    tracebackText: "Traceback (most recent call last):\n  File \"script.py\", line 42, in create_part\n    Part.makeBox(10, 10, 10)\nAttributeError: 'Part' object has no attribute 'makeCuboid'"
+  }
+}
+```
+
+---
+
+#### `analyze_error_context(errorText: string, operationType: string)`
+
+Analyze error in context of the operation that was attempted.
+
+**Parameters:**
+- `errorText` (required): Raw error text
+- `operationType` (required): Type of operation that failed (e.g., "create_pad", "boolean_cut", "add_constraint")
+
+**Response format:**
+```json
+{
+  "success": true,
+  "analysis": {
+    "errorType": "SOLVER_ERROR",
+    "operationType": "add_constraint",
+    "likelyCauses": [
+      "Sketch is over-constrained",
+      "Conflicting constraints applied",
+      "Geometry elements do not exist"
+    ],
+    "contextualAdvice": "Check sketch geometry and remove conflicting constraints"
+  },
+  "message": "Error analyzed in operation context"
+}
+```
+
+**Example usage:**
+```typescript
+{
+  name: "analyze_error_context",
+  arguments: {
+    errorText: "SolverException: Failed to solve sketch",
+    operationType: "add_constraint"
+  }
+}
+```
+
+---
+
+#### `get_recovery_suggestions(errorText: string, operation: string)`
+
+Get suggested fixes based on error and operation type.
+
+**Parameters:**
+- `errorText` (required): Raw error text
+- `operation` (required): The operation that failed (e.g., "create_pad", "move_object")
+
+**Response format:**
+```json
+{
+  "success": true,
+  "suggestions": [
+    {
+      "action": "Check object existence",
+      "description": "Verify the object exists before performing operations",
+      "codeExample": "obj = FreeCAD.ActiveDocument.getObject('Box')\nif obj is None:\n    raise ValueError('Box not found')"
+    },
+    {
+      "action": "Validate geometry",
+      "description": "Ensure sketch geometry is valid before constraint operations",
+      "codeExample": "# Run sketch.validate() before solving"
+    }
+  ],
+  "primarySuggestion": "Check object existence",
+  "message": "Generated 2 recovery suggestions"
+}
+```
+
+**Example usage:**
+```typescript
+{
+  name: "get_recovery_suggestions",
+  arguments: {
+    errorText: "ReferenceError: Object 'Box' not found",
+    operation: "move_object"
+  }
+}
+```
+
+---
+
+#### `validate_operation(objectName: string, operation: string)`
+
+Validate that an operation can succeed before attempting it.
+
+**Parameters:**
+- `objectName` (required): Name of the object to validate
+- `operation` (required): Operation to validate (e.g., "move", "rotate", "delete")
+
+**Response format:**
+```json
+{
+  "success": true,
+  "validation": {
+    "objectExists": true,
+    "objectType": "Part::Feature",
+    "operation": "move",
+    "canProceed": true,
+    "warnings": []
+  },
+  "message": "Operation validation passed"
+}
+```
+
+**Example usage:**
+```typescript
+{
+  name: "validate_operation",
+  arguments: {
+    objectName: "Box",
+    operation: "move"
+  }
+}
+```
+
+---
+
+#### `get_common_errors(operationType: string)`
+
+Get common errors for a given operation type.
+
+**Parameters:**
+- `operationType` (required): Type of operation (e.g., "boolean_cut", "create_pad", "add_constraint")
+
+**Response format:**
+```json
+{
+  "success": true,
+  "operationType": "boolean_cut",
+  "commonErrors": [
+    {
+      "error": "Shapes do not intersect",
+      "frequency": "high",
+      "solutions": [
+        "Reposition shapes so they overlap",
+        "Check if one shape is on a hidden layer"
+      ]
+    },
+    {
+      "error": "Invalid shape for boolean",
+      "frequency": "medium",
+      "solutions": [
+        "Validate shapes with validate_shape tool",
+        "Heal shapes with heal_shape tool"
+      ]
+    }
+  ],
+  "errorCount": 2,
+  "message": "Found 2 common errors for boolean_cut"
+}
+```
+
+**Example usage:**
+```typescript
+{
+  name: "get_common_errors",
+  arguments: {
+    operationType: "create_pad"
+  }
+}
+```
+
+---
+
+#### `get_operation_history(count?: number)`
+
+Get recent operations with their status.
+
+**Parameters:**
+- `count` (optional): Number of recent operations to retrieve. Default: 10
+
+**Response format:**
+```json
+{
+  "success": true,
+  "operations": [
+    {
+      "id": 1,
+      "operation": "create_pad",
+      "objectName": "Sketch",
+      "status": "success",
+      "timestamp": "2024-01-15T10:30:00Z"
+    },
+    {
+      "id": 2,
+      "operation": "boolean_cut",
+      "objectName": "Box",
+      "status": "failed",
+      "error": "Shapes do not intersect",
+      "timestamp": "2024-01-15T10:31:00Z"
+    }
+  ],
+  "operationCount": 2,
+  "message": "Retrieved 2 operations"
+}
+```
+
+**Example usage:**
+```typescript
+{
+  name: "get_operation_history",
+  arguments: {
+    count: 5
+  }
+}
+```
+
+---
+
+#### `get_last_error()`
+
+Get the most recent error details.
+
+**Response format:**
+```json
+{
+  "success": true,
+  "lastError": {
+    "operation": "boolean_cut",
+    "errorType": "BOOLEAN_ERROR",
+    "errorMessage": "Shapes do not intersect",
+    "timestamp": "2024-01-15T10:31:00Z",
+    "context": {
+      "objects": ["Box", "Cylinder"]
+    }
+  },
+  "message": "Retrieved last error"
+}
+```
+
+**Example usage:**
+```typescript
+{
+  name: "get_last_error",
+  arguments: {}
+}
+```
+
+---
+
+#### `clear_error_history()`
+
+Clear the error tracking history.
+
+**Response format:**
+```json
+{
+  "success": true,
+  "clearedCount": 15,
+  "message": "Cleared 15 entries from error history"
+}
+```
+
+**Example usage:**
+```typescript
+{
+  name: "clear_error_history",
+  arguments: {}
+}
+```
+
+---
+
+#### `suggest_undo_strategy(objectName: string, failedOperation: string)`
+
+Suggest an undo approach after a failed operation.
+
+**Parameters:**
+- `objectName` (required): Name of the object involved in the failed operation
+- `failedOperation` (required): The operation that failed
+
+**Response format:**
+```json
+{
+  "success": true,
+  "strategy": {
+    "recommendedAction": "undo_last",
+    "steps": [
+      "Undo the last operation using FreeCAD.ActiveDocument.undo()",
+      "Verify object state with get_object_properties",
+      "Reattempt operation with corrected parameters"
+    ],
+    "alternativeActions": [
+      "Delete and recreate the object if state is corrupted",
+      "Use revert() to restore to last saved state"
+    ]
+  },
+  "message": "Undo strategy suggested"
+}
+```
+
+**Example usage:**
+```typescript
+{
+  name: "suggest_undo_strategy",
+  arguments: {
+    objectName: "Box",
+    failedOperation: "boolean_cut"
+  }
+}
+```
+
+---
+
+#### `recover_from_validation_error(validationResult: object)`
+
+Generate recovery code for validation failures.
+
+**Parameters:**
+- `validationResult` (required): The validation result object from `validate_operation`
+
+**Response format:**
+```json
+{
+  "success": true,
+  "recoveryCode": "# Recovery code for validation failure\nobj = FreeCAD.ActiveDocument.getObject('Box')\nif obj is None:\n    obj = FreeCAD.ActiveDocument.addObject('Part::Feature', 'Box')\n    obj.Shape = Part.makeBox(10, 10, 10)",
+  "actions": [
+    "Create object if it does not exist",
+    "Set default properties"
+  ],
+  "message": "Generated recovery code"
+}
+```
+
+**Example usage:**
+```typescript
+{
+  name: "recover_from_validation_error",
+  arguments: {
+    validationResult: {
+      "objectExists": false,
+      "operation": "move",
+      "canProceed": false
+    }
+  }
+}
+```
+
+---
+
+#### `safe_retry(operation: string, parameters: object, maxAttempts?: number)`
+
+Execute an operation with additional safety checks and retry logic.
+
+**Parameters:**
+- `operation` (required): The operation to perform
+- `parameters` (required): Operation parameters
+- `maxAttempts` (optional): Maximum retry attempts. Default: 3
+
+**Response format:**
+```json
+{
+  "success": true,
+  "attempts": 1,
+  "operation": "move_object",
+  "parameters": {
+    "objectName": "Box",
+    "position": {"x": 50, "y": 50, "z": 0}
+  },
+  "result": {
+    "objectName": "Box",
+    "beforePosition": {"x": 0, "y": 0, "z": 0},
+    "afterPosition": {"x": 50, "y": 50, "z": 0}
+  },
+  "message": "Operation succeeded on attempt 1"
+}
+```
+
+**Example usage:**
+```typescript
+{
+  name: "safe_retry",
+  arguments: {
+    operation: "move_object",
+    parameters: {
+      objectName: "Box",
+      position: {"x": 50, "y": 50, "z": 0}
+    },
+    maxAttempts: 3
+  }
+}
+```
+
+---
+
 ## API
 
 ### Dock Server (WebSocket)
