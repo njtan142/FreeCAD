@@ -9,6 +9,7 @@
     "dev": "ts-node src/index.ts",
     "dev:minimax": "ts-node src/index.ts --backend minimax",
     "dev:gemini": "ts-node src/index.ts --backend gemini",
+    "dev:claude-ai": "ts-node src/index.ts --backend claude-ai",
     "dev:ollama": "ts-node src/index.ts --backend openai-compatible",
     "dev:lmstudio": "ts-node src/index.ts --backend openai-compatible",
     "dev:groq": "ts-node src/index.ts --backend openai-compatible",
@@ -23,6 +24,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "@ai-sdk/anthropic": "^0.0.0",
     "@ai-sdk/google": "^0.0.0",
     "@ai-sdk/openai": "^0.0.0",
     "@anthropic-ai/claude-agent-sdk": "^0.1.0",
