@@ -1021,3 +1021,52 @@ The original large commit for BIM Workbench Tools (Architecture-Specific Operati
 - **Files modified**: 5 (__init__.py, agent-tools.ts, result-formatters.ts, CURRENT_PLAN.md, PROJECT.md)
 - **Total insertions**: ~4,110 lines
 - **Total deletions**: ~214 lines
+
+---
+
+## Cycle 26 - Incremental Commits
+
+The original large commit for Advanced Error Handling and Recovery Tools have been refactored into 5 incremental commits (implementation in Cycles 25-26, documentation in Cycle 26).
+
+| Commit Hash | Message | Files Changed |
+|-------------|---------|---------------|
+| `137c825e48` | feat(llm): add error handling and recovery handlers | error_handlers.py, __init__.py |
+| `40efbac1b4` | feat(sidecar): add error handling and recovery tools | agent-tools.ts, result-formatters.ts |
+| `ae39810435` | feat(python): update plan documentation for Cycle 26 | CURRENT_PLAN.md, PROJECT.md |
+| `4ca7885be5` | feat(sidecar): rename pipe tool to BIM pipe and add formatters | agent-tools.ts |
+| `335fdaf710` | docs: add error handling tools documentation | sidecar/README.md |
+
+### Commit Progression
+
+1. **Python error handlers** (137c825e48): Added `error_handlers.py` with 13 handlers for error analysis and recovery:
+   - Error parsing and analysis: handle_parse_error, handle_get_error_category, handle_extract_traceback_info, handle_analyze_error_context
+   - Recovery suggestions: handle_get_recovery_suggestions, handle_validate_operation, handle_get_common_errors
+   - Operation tracking: handle_get_operation_history, handle_get_last_error, handle_clear_error_history
+   - Error recovery actions: handle_suggest_undo_strategy, handle_recover_from_validation_error, handle_safe_retry
+
+   Updated `__init__.py` to export all 13 new handlers
+
+2. **TypeScript error handling tools** (40efbac1b4): Added 13 error handling tools to agent-tools.ts:
+   - parse_error, categorize_error, extract_traceback_info, analyze_error_context
+   - get_recovery_suggestions, validate_operation, get_common_errors
+   - get_operation_history, get_last_error, clear_error_history
+   - suggest_undo_strategy, recover_from_validation_error, safe_retry_operation
+
+   Added 10 result formatters to result-formatters.ts:
+   - formatErrorParse, formatErrorCategory, formatTracebackInfo, formatErrorContext
+   - formatRecoverySuggestions, formatValidationResult, formatCommonErrors
+   - formatOperationHistory, formatLastError, formatUndoStrategy, formatSafeRetryResult
+
+3. **Plan documentation updates** (ae39810435): Updated CURRENT_PLAN.md and PROJECT.md to mark Cycle 26 implementation complete
+
+4. **BIM pipe tool rename** (4ca7885be5): Renamed createPipeTool to createBimPipeTool with improved descriptions for architectural/BIM pipe elements
+
+5. **Sidecar documentation** (335fdaf710): Updated sidecar/README.md with comprehensive documentation for all 13 error handling tools including usage examples, error categories reference, and recovery workflow guidance
+
+### Summary
+
+- **Total commits**: 5 (2 implementation + 3 documentation/minor changes)
+- **Files created**: 1 (error_handlers.py)
+- **Files modified**: 6 (__init__.py, agent-tools.ts, result-formatters.ts, sidecar/README.md, CURRENT_PLAN.md, PROJECT.md)
+- **Total insertions**: ~1,250 lines
+- **Total deletions**: ~215 lines

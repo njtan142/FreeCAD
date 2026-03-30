@@ -90,6 +90,10 @@ class DockServer {
             sessionId,
             documentInfo,
             selectedObjects,
+            conversationHistory: this.conversationState.messages.map(m => ({
+                role: m.role,
+                content: m.content,
+            })),
         };
     }
     async start() {

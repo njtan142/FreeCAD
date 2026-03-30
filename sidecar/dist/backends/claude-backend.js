@@ -5,15 +5,52 @@
  * Implements AgentBackend interface for Claude Code CLI.
  * Refactored from claude-code-process.ts.
  */
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ClaudeBackend = void 0;
 const child_process_1 = require("child_process");
+const crypto_1 = require("crypto");
+const fs = __importStar(require("fs"));
+const path = __importStar(require("path"));
 class ClaudeBackend {
     name = 'claude';
     description = 'Anthropic Claude (via Claude Code CLI)';
     process = null;
     config = {};
     sessionId = '';
+    mcpConfigPath = '';
     async initialize(config) {
         this.config = {
             sessionDir: config.sessionDir || process.cwd(),
@@ -21,24 +58,69 @@ class ClaudeBackend {
             ...config,
         };
         this.sessionId = this.generateSessionId();
+        this.mcpConfigPath = this.createMcpConfig();
         console.log(`[ClaudeBackend] Initialized session: ${this.sessionId}`);
+        console.log(`[ClaudeBackend] MCP config: ${this.mcpConfigPath}`);
     }
     generateSessionId() {
-        return `freecad-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        return (0, crypto_1.randomUUID)();
+    }
+    createMcpConfig() {
+        // Use compiled JS for MCP server (ts-node has stdin issues)
+        // __dirname is src/backends when running via ts-node, so go up two levels
+        const sidecarDir = path.resolve(__dirname, '..', '..');
+        const mcpServerScript = path.resolve(sidecarDir, 'dist', 'mcp-stdio-server.js');
+        console.log('[ClaudeBackend] MCP server script:', mcpServerScript);
+        console.log('[ClaudeBackend] MCP server exists:', fs.existsSync(mcpServerScript));
+        const config = {
+            mcpServers: {
+                'freecad': {
+                    command: 'node',
+                    args: [mcpServerScript],
+                    cwd: sidecarDir,
+                    env: {
+                        FREECAD_BRIDGE_HOST: 'localhost',
+                        FREECAD_BRIDGE_PORT: '8766',
+                    },
+                },
+            },
+        };
+        const configDir = this.config.sessionDir || process.cwd();
+        const configPath = path.join(configDir, '.freecad-mcp-config.json');
+        fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+        console.log('[ClaudeBackend] MCP config written to:', configPath);
+        return configPath;
     }
     async sendMessage(message, context, tools, onChunk) {
         return new Promise((resolve, reject) => {
+            const messageSessionId = (0, crypto_1.randomUUID)();
+            const systemPrompt = `You are a FreeCAD CAD assistant. You help users create, modify, and query 3D models in FreeCAD.
+
+IMPORTANT: You have MCP tools from the "freecad" server to interact with FreeCAD directly. ALWAYS use these MCP tools. NEVER use Bash, Read, Grep, Write, Glob, Edit, Agent, or other file/code tools.
+
+Your primary tool is "execute_freecad_python" — it runs Python code directly inside FreeCAD's live interpreter with full access to all FreeCAD APIs:
+- FreeCAD (App), FreeCADGui (Gui)
+- Part, PartDesign, Sketcher, Draft, Arch, Path, TechDraw, FEM, Mesh, Spreadsheet
+- All workbenches and modules
+
+Use execute_freecad_python for ALL CAD operations: creating geometry, modifying objects, boolean operations, assemblies, BIM elements, sketches, etc.
+
+Other helper tools: query_model_state, list_objects, get_object_properties, get_selection, undo, redo, save_document.
+
+When creating objects, always call doc.recompute() after modifications. Use print(json.dumps(...)) to return structured results.`;
             const args = [
                 '-p',
-                '--input-format', 'stream-json',
+                '--verbose',
                 '--output-format', 'stream-json',
-                '--session-id', this.sessionId,
-                '--no-session-persistence',
+                '--session-id', messageSessionId,
+                '--mcp-config', this.mcpConfigPath,
+                '--append-system-prompt', systemPrompt,
+                '--disallowedTools', 'Bash', 'Read', 'Edit', 'Write', 'Grep', 'Glob', 'Agent', 'WebFetch', 'WebSearch',
             ];
             if (this.config.dangerouslySkipPermissions) {
                 args.push('--dangerously-skip-permissions');
             }
-            console.log('[ClaudeBackend] Spawning claude with session:', this.sessionId);
+            console.log('[ClaudeBackend] Spawning claude with session:', messageSessionId);
             const proc = (0, child_process_1.spawn)('claude', args, {
                 stdio: ['pipe', 'pipe', 'pipe'],
                 env: { ...process.env },
@@ -55,25 +137,43 @@ class ClaudeBackend {
                     for (const line of lines) {
                         try {
                             const parsed = JSON.parse(line);
-                            if (parsed.type === 'content' || parsed.type === 'text') {
+                            console.log('[ClaudeBackend] stream event:', parsed.type, parsed.subtype || '', parsed.tool_name || '');
+                            if (parsed.type === 'assistant' && parsed.message?.content) {
+                                for (const block of parsed.message.content) {
+                                    if (block.type === 'text') {
+                                        console.log('[ClaudeBackend] text:', block.text.substring(0, 200));
+                                        onChunk(block.text);
+                                    }
+                                    else if (block.type === 'tool_use') {
+                                        console.log('[ClaudeBackend] tool_use:', block.name);
+                                    }
+                                }
+                            }
+                            else if (parsed.type === 'content_block_delta') {
+                                if (parsed.delta?.text) {
+                                    onChunk(parsed.delta.text);
+                                }
+                            }
+                            else if (parsed.type === 'content' || parsed.type === 'text') {
                                 onChunk(parsed.text || '');
                             }
-                            else if (parsed.type === 'tool_use') {
-                                // Handle streaming tool use if needed
+                            else if (parsed.type === 'result') {
+                                console.log('[ClaudeBackend] result:', (parsed.result || '').substring(0, 200));
                             }
                         }
                         catch {
-                            // Not JSON, treat as text chunk
-                            onChunk(chunk);
+                            console.log('[ClaudeBackend] raw output:', chunk.substring(0, 200));
                         }
                     }
                 }
                 catch {
-                    onChunk(chunk);
+                    // ignore parse errors
                 }
             });
             proc.stderr?.on('data', (data) => {
-                stderrBuffer += data.toString();
+                const text = data.toString();
+                stderrBuffer += text;
+                console.log('[ClaudeBackend] stderr:', text.substring(0, 300));
             });
             proc.on('close', (code) => {
                 console.log('[ClaudeBackend] Process exited with code:', code);
@@ -99,9 +199,18 @@ class ClaudeBackend {
                 }
             });
             const contextMessage = this.buildContextMessage(context);
-            const fullMessage = contextMessage ? `${contextMessage}\n\n${message}` : message;
-            const input = JSON.stringify({ type: 'user', content: fullMessage }) + '\n';
-            proc.stdin?.write(input, () => {
+            const historyBlock = this.buildConversationHistory(context);
+            const parts = [];
+            if (contextMessage)
+                parts.push(contextMessage);
+            if (historyBlock)
+                parts.push(historyBlock);
+            parts.push(message);
+            const fullMessage = parts.join('\n\n');
+            console.log('[ClaudeBackend] Prompt length:', fullMessage.length, 'chars');
+            console.log('[ClaudeBackend] Prompt preview:', fullMessage.substring(0, 300));
+            // With -p (print mode), just pipe the message via stdin as plain text
+            proc.stdin?.write(fullMessage, () => {
                 proc.stdin?.end();
             });
             setTimeout(() => {
@@ -115,6 +224,21 @@ class ClaudeBackend {
                 }
             }, 120000);
         });
+    }
+    buildConversationHistory(context) {
+        if (!context.conversationHistory || context.conversationHistory.length === 0) {
+            return '';
+        }
+        const history = context.conversationHistory.slice(0, -1);
+        if (history.length === 0)
+            return '';
+        const lines = ['[Conversation History]'];
+        for (const msg of history) {
+            const role = msg.role === 'user' ? 'User' : 'Assistant';
+            lines.push(`${role}: ${msg.content}`);
+        }
+        lines.push('[End History]');
+        return lines.join('\n');
     }
     buildContextMessage(context) {
         const parts = [];
@@ -138,22 +262,28 @@ class ClaudeBackend {
         for (const line of lines) {
             try {
                 const parsed = JSON.parse(line);
-                if (parsed.type === 'content' || parsed.type === 'text') {
-                    content += parsed.text || '';
+                if (parsed.type === 'assistant' && parsed.message?.content) {
+                    for (const block of parsed.message.content) {
+                        if (block.type === 'text') {
+                            content += block.text;
+                        }
+                        else if (block.type === 'tool_use') {
+                            toolCalls.push({
+                                id: block.id || `call_${Date.now()}`,
+                                name: block.name,
+                                arguments: block.input || {},
+                            });
+                        }
+                    }
                 }
-                else if (parsed.type === 'tool_use') {
-                    toolCalls.push({
-                        id: parsed.id || `call_${Date.now()}`,
-                        name: parsed.name,
-                        arguments: parsed.input || {},
-                    });
-                }
-                else if (parsed.result) {
-                    content += parsed.result;
+                else if (parsed.type === 'result') {
+                    if (parsed.result && !content) {
+                        content = parsed.result;
+                    }
                 }
             }
             catch {
-                content += line;
+                // skip non-JSON lines
             }
         }
         return {
@@ -183,6 +313,13 @@ class ClaudeBackend {
             this.process = null;
         }
         this.sessionId = '';
+        // Clean up MCP config
+        if (this.mcpConfigPath && fs.existsSync(this.mcpConfigPath)) {
+            try {
+                fs.unlinkSync(this.mcpConfigPath);
+            }
+            catch { /* ignore */ }
+        }
         console.log('[ClaudeBackend] Disconnected');
     }
 }

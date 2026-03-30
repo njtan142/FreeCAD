@@ -17,6 +17,7 @@ export interface MessageContext {
     modified: boolean;
     objectCount: number;
   };
+  conversationHistory?: Array<{ role: string; content: string }>;
 }
 
 export interface AgentResponse {

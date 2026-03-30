@@ -12,6 +12,10 @@
  * - OpenCode backend for multi-LLM support (OpenAI, Anthropic, Google, local)
  */
 
+import * as dotenv from 'dotenv';
+dotenv.config();
+
+import * as http from 'http';
 import { createSdkMcpServer } from '@anthropic-ai/claude-agent-sdk';
 import { DockServer } from './dock-server';
 import { FreeCADBridge } from './freecad-bridge';
@@ -263,6 +267,34 @@ async function main() {
     await dockServer.start();
     console.log(`[Sidecar] Dock widget server listening on port ${config.dockServerPort}`);
     console.log(`[Sidecar] MCP server 'freecad-tools' registered with ${tools.length} tools`);
+
+    // HTTP proxy for MCP stdio server to execute Python via the sidecar's bridge
+    const httpServer = http.createServer((req, res) => {
+      if (req.method === 'POST' && req.url === '/execute') {
+        let body = '';
+        req.on('data', (chunk) => { body += chunk; });
+        req.on('end', async () => {
+          try {
+            const { code } = JSON.parse(body);
+            if (!freeCADBridge.isConnected()) {
+              await freeCADBridge.connect();
+            }
+            const result = await freeCADBridge.executePython(code);
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify(result));
+          } catch (error) {
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ success: false, output: '', error: String(error) }));
+          }
+        });
+      } else {
+        res.writeHead(404);
+        res.end();
+      }
+    });
+    httpServer.listen(8767, () => {
+      console.log('[Sidecar] HTTP proxy for MCP server listening on port 8767');
+    });
 
     freeCADBridge.connect().catch((err) => {
       console.warn(`[Sidecar] Could not connect to FreeCAD bridge: ${err.message}`);

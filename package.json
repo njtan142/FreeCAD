@@ -14,6 +14,8 @@
     "pixi:full": "pixi run initialize && pixi run configure-debug && pixi run build-debug",
     "sidecar:build": "cd sidecar && npm run build",
     "sidecar:start": "cd sidecar && npm start",
-    "sidecar:dev": "cd sidecar && npm run dev"
+    "sidecar:dev": "cd sidecar && npm run dev",
+    "sidecar:dev:opencode": "cd sidecar && npm run dev -- --backend opencode",
+    "sidecar:dev:minimax": "cd sidecar && npm run dev -- --backend opencode"
   }
 }

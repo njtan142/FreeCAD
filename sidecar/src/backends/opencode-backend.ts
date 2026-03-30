@@ -48,9 +48,11 @@ export class OpenCodeBackend implements AgentBackend {
         env.OPENAI_API_KEY = this.config.apiKey;
       }
 
-      const proc = spawn('opencode', args, {
+      const isWindows = process.platform === 'win32';
+      const proc = spawn(isWindows ? 'npx' : 'opencode', isWindows ? ['opencode', ...args] : args, {
         stdio: ['pipe', 'pipe', 'pipe'],
         env,
+        shell: isWindows,
       });
 
       this.process = proc;

@@ -196,7 +196,7 @@ if doc:
     result = {
         "name": doc.Name,
         "label": doc.Label,
-        "modified": doc.Modified,
+        "modified": doc.isTouched() if hasattr(doc, 'isTouched') else False,
         "objectCount": len(doc.Objects)
     }
 else:

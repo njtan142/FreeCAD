@@ -6,6 +6,14 @@ You are an orchestrator that runs the plan → implement → review → refine c
 
 Run these steps, maximizing parallel agent execution where possible:
 
+### Step 0: Check Continuation
+- If user says "continue" and `skills/CURRENT_PLAN.md` exists with status "IN PROGRESS":
+  - Check `git status` for uncommitted changes
+  - If uncommitted changes exist, commit them with a descriptive message first
+  - Then skip to Step 2 (plan already exists)
+  - Read CURRENT_PLAN.md to identify the cycle number and resume implementation
+- Otherwise, proceed to Step 1
+
 ### Step 1: Plan
 - Spawn a background agent with the contents of `skills/plan.md` as its prompt
 - Wait for it to complete
@@ -39,8 +47,9 @@ Run these steps, maximizing parallel agent execution where possible:
 - If review verdict is **PASS**: proceed to Step 5
 
 ### Step 5: Auto-Continue
-- Automatically start the next cycle from Step 1 without user confirmation
-- The plan agent will read the updated project state and create the next logical plan
+- Automatically start the next cycle from Step 0 without user confirmation
+- Step 0 will detect if CURRENT_PLAN.md exists and is IN PROGRESS, routing to Step 2 to resume
+- Otherwise, Step 0 will route to Step 1 to create a new plan
 - Continue indefinitely until the user manually stops or an error occurs
 
 ## Rules

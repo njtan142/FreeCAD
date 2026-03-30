@@ -187,16 +187,18 @@ def handle_selection() -> dict:
         
         try:
             import FreeCADGui as Gui
-            gui_doc = Gui.getDocument(doc.Name)
-            if gui_doc:
-                selection = gui_doc.getSelection()
-                for sel in selection:
-                    selected.append({
-                        "name": sel.Object.Name if hasattr(sel, 'Object') else None,
-                        "label": sel.Object.Label if hasattr(sel, 'Object') else None,
-                        "type": sel.Object.TypeId if hasattr(sel, 'Object') else None,
-                        "subElement": sel.SubElementNames if hasattr(sel, 'SubElementNames') else None
-                    })
+            for sel in Gui.Selection.getSelection():
+                selected.append({
+                    "name": sel.Name,
+                    "label": sel.Label,
+                    "type": sel.TypeId,
+                    "subElement": None
+                })
+            # Also capture sub-element selections
+            for sel in Gui.Selection.getSelectionEx():
+                for i, obj_entry in enumerate(selected):
+                    if obj_entry["name"] == sel.ObjectName and sel.SubElementNames:
+                        selected[i]["subElement"] = list(sel.SubElementNames)
         except Exception:
             # GUI not available or no selection
             pass

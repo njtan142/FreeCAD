@@ -36,6 +36,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ClaudeCodeSession = void 0;
 exports.createClaudeCodeSession = createClaudeCodeSession;
 const child_process_1 = require("child_process");
+const crypto_1 = require("crypto");
 const events_1 = require("events");
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
@@ -58,7 +59,7 @@ class ClaudeCodeSession extends events_1.EventEmitter {
         this.mcpConfigPath = this.createMcpConfig();
     }
     generateSessionId() {
-        return `freecad-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        return (0, crypto_1.randomUUID)();
     }
     createMcpConfig() {
         const toolCommands = this.tools.reduce((acc, tool) => {
@@ -87,6 +88,7 @@ class ClaudeCodeSession extends events_1.EventEmitter {
         return new Promise((resolve, reject) => {
             const args = [
                 '-p',
+                '--verbose',
                 '--input-format', 'stream-json',
                 '--output-format', 'stream-json',
                 '--session-id', this.sessionId,
@@ -122,7 +124,12 @@ class ClaudeCodeSession extends events_1.EventEmitter {
             proc.on('error', (err) => {
                 reject(err);
             });
-            const input = JSON.stringify({ type: 'user', content }) + '\n';
+            const input = JSON.stringify({
+                type: 'user',
+                message: { role: 'user', content },
+                parent_tool_use_id: null,
+                session_id: this.sessionId,
+            }) + '\n';
             proc.stdin?.write(input, () => {
                 proc.stdin?.end();
             });

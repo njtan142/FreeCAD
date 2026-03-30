@@ -1266,6 +1266,35 @@ export declare function createAgentTools(freeCADBridge: FreeCADBridge): (import(
     }>, z.ZodArray<z.ZodNumber, "many">, z.ZodString]>>;
     name: z.ZodOptional<z.ZodString>;
 }> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
+    start: z.ZodOptional<z.ZodUnion<[z.ZodObject<{
+        x: z.ZodNumber;
+        y: z.ZodNumber;
+        z: z.ZodNumber;
+    }, "strip", z.ZodTypeAny, {
+        x: number;
+        y: number;
+        z: number;
+    }, {
+        x: number;
+        y: number;
+        z: number;
+    }>, z.ZodArray<z.ZodNumber, "many">]>>;
+    end: z.ZodOptional<z.ZodUnion<[z.ZodObject<{
+        x: z.ZodNumber;
+        y: z.ZodNumber;
+        z: z.ZodNumber;
+    }, "strip", z.ZodTypeAny, {
+        x: number;
+        y: number;
+        z: number;
+    }, {
+        x: number;
+        y: number;
+        z: number;
+    }>, z.ZodArray<z.ZodNumber, "many">]>>;
+    radius: z.ZodOptional<z.ZodNumber>;
+    name: z.ZodOptional<z.ZodString>;
+}> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{
     objects: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
     name: z.ZodOptional<z.ZodString>;
 }> | import("@anthropic-ai/claude-agent-sdk").SdkMcpToolDefinition<{

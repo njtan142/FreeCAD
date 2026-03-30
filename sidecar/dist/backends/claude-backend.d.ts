@@ -11,9 +11,12 @@ export declare class ClaudeBackend implements AgentBackend {
     private process;
     private config;
     private sessionId;
+    private mcpConfigPath;
     initialize(config: BackendConfig): Promise<void>;
     private generateSessionId;
+    private createMcpConfig;
     sendMessage(message: string, context: MessageContext, tools: MCPTool[], onChunk: (chunk: string) => void): Promise<AgentResponse>;
+    private buildConversationHistory;
     private buildContextMessage;
     private parseResponse;
     healthCheck(): Promise<boolean>;

@@ -1,111 +1,90 @@
-# Cycle 25 Review - BIM/Arch Workbench Tools
+## Review: Cycle 26 - Advanced Error Handling and Recovery Tools
+### Verdict: NEEDS_FIXES
+### Summary: Implementation is structurally complete with all 13 handlers, 13 tools, and 10 formatters, but has critical bugs: syntax error in generated recovery code, `handle_safe_retry` only supports "undo"/"redo" operations, and multiple formatters access fields that don't exist in the handler return values.
 
-## Summary
+### Issues:
 
-Cycle 25 implemented BIM/Arch workbench tools for FreeCAD LLMBridge, adding 35 handlers for architectural CAD operations. The implementation spans two commits: one for Python handlers and one for TypeScript integration.
+**Critical bugs:**
 
-## Files Changed
+1. **[error_handlers.py:1030-1039]** Syntax error in `_generate_recovery_code`:
+   - Line 1034 shows `"import FreeCAD as App",` which is a tuple, not an import statement
+   - The generated code will be invalid Python
 
-### Commit 7065258bd2 (Python handlers):
-- `src/Mod/LLMBridge/llm_bridge/bim_handlers.py` - 2222 lines, 35 handlers
-- `src/Mod/LLMBridge/llm_bridge/__init__.py` - Added bim_handlers imports/exports
+2. **[error_handlers.py:1134-1148]** `handle_safe_retry` only supports "undo" and "redo" operations:
+   - Any other operation (e.g., "create_pad", "set_property") returns `unknown_operation` error
+   - The sidecar's `safeRetryOperationTool` passes arbitrary operations, which will all fail
 
-### Commit 874a42942d (TypeScript integration):
-- `sidecar/src/agent-tools.ts` - 35 tool definitions (~776 lines added)
-- `sidecar/src/result-formatters.ts` - 35 formatter functions (~737 lines added)
+3. **[error_handlers.py:1134-1148]** `max_retries` parameter is received but never used:
+   - Sidecar passes `max_retries` at line 21420 but Python handler ignores it
+   - No retry loop is implemented
 
-## Handlers Implemented (35 total)
+4. **[result-formatters.ts:4999-5054]** `formatErrorContext` accesses non-existent fields:
+   - Expects `data.operation`, `data.object_name`, `data.workbench`, `data.recent_actions`
+   - `handle_analyze_error_context` returns `operation_type`, `category`, `error_summary`, `likely_causes`, `recovery_suggestions`
+   - **Field mismatch**: `data.operation` vs returned `operation_type`, missing `recent_actions`, `related_objects`, etc.
 
-| Category | Count | Handlers |
-|----------|-------|----------|
-| Building Structure | 5 | handle_create_site, handle_create_building, handle_create_building_part, handle_create_building_level, handle_get_building_hierarchy |
-| Architectural Elements | 7 | handle_create_wall, handle_create_window, handle_create_door, handle_create_roof, handle_create_stairs, handle_create_curtain_wall, handle_create_space |
-| Structural Elements | 6 | handle_create_column, handle_create_beam, handle_create_slab, handle_create_frame, handle_create_truss, handle_create_fence |
-| Equipment & Infrastructure | 4 | handle_create_equipment, handle_create_pipe, handle_create_pipe_connector, handle_create_panel |
-| Annotation & Grids | 4 | handle_create_axis, handle_create_grid, handle_create_section_plane, handle_create_schedule |
-| IFC Data Management | 5 | handle_set_ifc_type, handle_get_ifc_properties, handle_set_ifc_property, handle_get_bim_material, handle_assign_material |
-| Quick Construction | 4 | handle_quick_wall, handle_quick_window, handle_quick_door, handle_quick_floor |
+5. **[result-formatters.ts:5056-5109]** `formatRecoverySuggestions` accesses non-existent fields:
+   - Expects `data.can_retry`, `data.recovery_priority`, `data.alternative_approaches`
+   - `handle_get_recovery_suggestions` returns `operation`, `category`, `suggestions`, `count`
+   - **Field mismatch**: No `can_retry`, `recovery_priority`, or `alternative_approaches` in return
 
-## Issues Found
+6. **[result-formatters.ts:5111-5156]** `formatValidationResult` accesses wrong field:
+   - Expects `data.validation_errors` but handler returns `data.issues`
+   - Also expects `data.suggestions` which is not in the return value
 
-### BUG - Critical: `formatBuildingHierarchy` data key mismatch
+7. **[result-formatters.ts:5158-5197]** `formatCommonErrors` accesses wrong field:
+   - Expects `data.common_errors` as array of `{error, solution}` objects
+   - Handler returns `common_errors` as flat string array
+   - **Field mismatch**: `error.error` vs actual string elements
 
-**Location:** `sidecar/src/result-formatters.ts:4217-4245`
+8. **[result-formatters.ts:5199-5241]** `formatOperationHistory` accesses non-existent field:
+   - Expects `data.total_count` but handler returns `data.total_recorded`
 
-**Problem:** The TypeScript formatter `formatBuildingHierarchy` expects `data.sites` but the Python handler `handle_get_building_hierarchy` returns `data.hierarchy`.
+9. **[result-formatters.ts:5291-5345]** `formatUndoStrategy` accesses non-existent fields:
+   - Expects `data.recommended_action`, `data.steps`, `data.affected_objects`
+   - Handler returns `suggested_undo_steps` as list, `object_name`, `failed_operation`, `can_undo`, `undo_available`
 
-**Python handler returns:**
+### Security issues: None found
+
+### Minor issues:
+
+10. **[error_handlers.py:1112]** Potential KeyError in `handle_safe_retry`:
+    - If `validation["data"]` is `None`, accessing `result["data"]["is_valid"]` will raise KeyError
+    - Should check if `result["data"]` exists before accessing nested fields
+
+11. **[error_handlers.py:1016-1079]** `_generate_recovery_code` has hardcoded import inside generated code:
+    - Should use actual object name from validation_result, not always "Unknown"
+
+### Suggested Fixes:
+
+1. **error_handlers.py:1030-1039** - Fix syntax error:
 ```python
-return {
-    "success": True,
-    "data": {
-        "hierarchy": hierarchy,  # <-- key is "hierarchy"
-        "count": len(hierarchy),
-        ...
-    },
-}
+lines = [
+    "# Recovery code for validation failure",
+    f"# Object: {object_name}",
+    "",
+    "import FreeCAD as App",  # Not a tuple
+    "",
+    # ... rest
+]
 ```
 
-**TypeScript formatter expects:**
-```typescript
-if (data.sites && Array.isArray(data.sites)) {  // <-- expects "sites"
-```
+2. **error_handlers.py:1134-1148** - Expand `handle_safe_retry` to support actual operations or return a clear error that only undo/redo are supported.
 
-**Impact:** The `get_building_hierarchy` tool will display "No hierarchy data" even on success.
+3. **error_handlers.py** - Add `max_retries` parameter to `handle_safe_retry` and implement retry logic.
 
-### Minor: Unused helper function
+4. **result-formatters.ts** - Align all formatter field accesses with actual handler return values, or align handlers to return what formatters expect.
 
-**Location:** `bim_handlers.py:187-216`
-
-The function `_is_bim_object()` is defined but never used anywhere in the codebase. It appears to be dead code.
-
-### Minor: Unusual pattern in `_is_bim_object`
-
-**Location:** `bim_handlers.py:216`
-
+5. **error_handlers.py:1112** - Add null check:
 ```python
-return obj.TypeId in bim_types or any(obj.isDerivedFrom(f"Arch::") for _ in [1])
+if not result.get("success") or result["data"] is None:
+    return {"success": False, "error": "Validation failed", "data": None}
 ```
 
-The `any(obj.isDerivedFrom(f"Arch::") for _ in [1])` construct is unusual - it creates a single-element list just to call `any()`. This always returns `False` since `obj.isDerivedFrom("Arch::")` would need an actual class name. However, since this function is unused, it has no impact.
-
-## Security Assessment
-
-**Status:** PASS
-
-- No shell injection vectors found
-- Input validation through `_parse_point()` and `_parse_placement()` properly sanitizes inputs
-- Object names are retrieved via `doc.getObject()` which only accesses existing document objects
-- No user-controlled strings are passed to `eval()` or `exec()`
-- Error messages are properly escaped in JSON responses
-
-## Code Correctness
-
-**Status:** MOSTLY CORRECT (1 bug found)
-
-- All handlers return consistent JSON structure with `success`, `error`, and `data` fields
-- All handlers properly check for `App.ActiveDocument is None`
-- Placement parameter parsing handles Vector, Placement, and dict formats as specified
-- IFC type assignment uses `IfcType` attribute where applicable
-- Most formatters correctly access the data fields returned by handlers
-
-## Match with Plan
-
-**Status:** MATCHES with 1 bug
-
-The plan specified 35 handlers and 35 were implemented:
-- bim_handlers.py created with 35 handlers
-- All handlers exported in __init__.py
-- 35 new tools added to agent-tools.ts
-- 35 new result formatters added
-- All tools integrated in createAgentTools()
-
-## Verdict
-
-**Status:** COMPLETED with 1 bug
-
-Cycle 25 successfully implemented the BIM/Arch workbench tools with 35 handlers covering building structure, architectural elements, structural elements, equipment, annotations, IFC data management, and quick construction workflows.
-
-**Required Action:** Fix the `formatBuildingHierarchy` data key mismatch (use `data.hierarchy` instead of `data.sites`).
-
-**Recommendation:** After fixing the bug, run end-to-end tests with FreeCAD runtime as noted in the plan's deferred acceptance criteria.
+### What was done well:
+- All 13 handlers are present and exported correctly
+- All 13 tools are properly defined with Zod schemas in agent-tools.ts
+- All 10 formatters are implemented
+- ERROR_CATEGORIES and ERROR_PATTERNS are comprehensive
+- OPERATION_ERRORS dictionary provides good coverage of common errors per operation type
+- Handler return structure is consistent with other handlers in the codebase

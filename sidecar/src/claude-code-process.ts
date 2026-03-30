@@ -1,4 +1,5 @@
 import { spawn, ChildProcess } from 'child_process';
+import { randomUUID } from 'crypto';
 import { EventEmitter } from 'events';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -33,7 +34,7 @@ export class ClaudeCodeSession extends EventEmitter {
   }
 
   private generateSessionId(): string {
-    return `freecad-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    return randomUUID();
   }
 
   private createMcpConfig(): string {
@@ -68,6 +69,7 @@ export class ClaudeCodeSession extends EventEmitter {
     return new Promise((resolve, reject) => {
       const args = [
         '-p',
+        '--verbose',
         '--input-format', 'stream-json',
         '--output-format', 'stream-json',
         '--session-id', this.sessionId,
@@ -111,7 +113,12 @@ export class ClaudeCodeSession extends EventEmitter {
         reject(err);
       });
 
-      const input = JSON.stringify({ type: 'user', content }) + '\n';
+      const input = JSON.stringify({
+        type: 'user',
+        message: { role: 'user', content },
+        parent_tool_use_id: null,
+        session_id: this.sessionId,
+      }) + '\n';
       proc.stdin?.write(input, () => {
         proc.stdin?.end();
       });
