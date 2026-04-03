@@ -1,9 +1,10 @@
+import { Mock } from 'vitest';
 import { FreeCADBridge } from '../../src/backends/vercel-ai-backend-base';
 
 export interface MockFreeCADBridge extends FreeCADBridge {
-  executePython: jest.Mock<Promise<{ success: boolean; output: string; error?: string }>, [string]>;
-  isConnected: jest.Mock<boolean, []>;
-  connect: jest.Mock<Promise<void>, []>;
+  executePython: Mock<Promise<{ success: boolean; output: string; error?: string }>, [string]>;
+  isConnected: Mock<boolean, []>;
+  connect: Mock<Promise<void>, []>;
   executionHistory: string[];
 }
 
@@ -11,9 +12,9 @@ export function createMockBridge() {
   const executionHistory: string[] = [];
   
   const mockBridge: MockFreeCADBridge = {
-    isConnected: jest.fn(() => true),
-    connect: jest.fn(async () => {}),
-    executePython: jest.fn(async (code: string) => {
+    isConnected: vi.fn(() => true),
+    connect: vi.fn(async () => {}),
+    executePython: vi.fn(async (code: string) => {
       executionHistory.push(code);
       return { success: true, output: '{"success": true}' };
     }),
@@ -25,11 +26,11 @@ export function createMockBridge() {
 
 export function createFailingMockBridge() {
   return {
-    isConnected: jest.fn(() => false),
-    connect: jest.fn(async () => {
+    isConnected: vi.fn(() => false),
+    connect: vi.fn(async () => {
       throw new Error('Connection failed');
     }),
-    executePython: jest.fn(async () => ({
+    executePython: vi.fn(async () => ({
       success: false,
       output: '',
       error: 'Bridge not connected',
@@ -39,9 +40,9 @@ export function createFailingMockBridge() {
 
 export function createSuccessfulMockBridge(output: string) {
   return {
-    isConnected: jest.fn(() => true),
-    connect: jest.fn(async () => {}),
-    executePython: jest.fn(async () => ({
+    isConnected: vi.fn(() => true),
+    connect: vi.fn(async () => {}),
+    executePython: vi.fn(async () => ({
       success: true,
       output,
     })),

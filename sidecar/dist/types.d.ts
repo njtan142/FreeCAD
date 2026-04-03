@@ -25,15 +25,14 @@ export interface BackendConfig {
 }
 /**
  * MCP Tool format for backend communication
+ *
+ * Note: inputSchema can be either a Zod schema (from agent SDK tools) or a JSON schema.
+ * Backends will handle conversion as needed.
  */
 export interface MCPTool {
     name: string;
     description: string;
-    inputSchema: {
-        type: 'object';
-        properties?: Record<string, any>;
-        required?: string[];
-    };
+    inputSchema?: any;
 }
 /**
  * Represents the result of a tool execution

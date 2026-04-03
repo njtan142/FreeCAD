@@ -59,7 +59,7 @@ function getOpenCodeConfig(): BackendConfig {
 function getMiniMaxConfig(): BackendConfig {
   return {
     baseUrl: process.env.MINIMAX_BASE_URL || 'https://api.minimaxi.com/v1',
-    apiKey: process.env.MINIMAX_API_KEY,
+    apiKey: process.env.MINIMAX_API_KEY || process.env.OPENAI_API_KEY,
     model: process.env.MINIMAX_MODEL || 'MiniMax-M2.7',
     temperature: process.env.MINIMAX_TEMPERATURE ? parseFloat(process.env.MINIMAX_TEMPERATURE) : undefined,
     maxTokens: process.env.MINIMAX_MAX_TOKENS ? parseInt(process.env.MINIMAX_MAX_TOKENS, 10) : undefined,

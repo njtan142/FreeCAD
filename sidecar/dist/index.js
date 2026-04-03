@@ -48,6 +48,8 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.backendRegistry = exports.createSdkMcpServer = exports.createAgentTools = exports.FreeCADBridge = exports.DockServer = exports.config = void 0;
 exports.parseArgs = parseArgs;
+const dotenv = __importStar(require("dotenv"));
+dotenv.config();
 const http = __importStar(require("http"));
 const claude_agent_sdk_1 = require("@anthropic-ai/claude-agent-sdk");
 Object.defineProperty(exports, "createSdkMcpServer", { enumerable: true, get: function () { return claude_agent_sdk_1.createSdkMcpServer; } });
@@ -62,6 +64,11 @@ const backend_registry_1 = require("./backend-registry");
 Object.defineProperty(exports, "backendRegistry", { enumerable: true, get: function () { return backend_registry_1.backendRegistry; } });
 const claude_backend_1 = require("./backends/claude-backend");
 const opencode_backend_1 = require("./backends/opencode-backend");
+const vercel_ai_backend_1 = require("./backends/vercel-ai-backend");
+const gemini_ai_backend_1 = require("./backends/gemini-ai-backend");
+const claude_ai_backend_1 = require("./backends/claude-ai-backend");
+const azure_openai_backend_1 = require("./backends/azure-openai-backend");
+const openai_compatible_backend_1 = require("./backends/openai-compatible-backend");
 const backend_config_1 = require("./backend-config");
 const child_process_1 = require("child_process");
 function parseArgs() {
@@ -97,6 +104,21 @@ function parseArgs() {
         else if (arg === '--opencode') {
             parsed.backend = 'opencode';
         }
+        else if (arg === '--minimax') {
+            parsed.backend = 'minimax';
+        }
+        else if (arg === '--gemini') {
+            parsed.backend = 'gemini';
+        }
+        else if (arg === '--claude-ai') {
+            parsed.backend = 'claude-ai';
+        }
+        else if (arg === '--azure-openai') {
+            parsed.backend = 'azure-openai';
+        }
+        else if (arg === '--openai-compatible' || arg === '--ollama' || arg === '--lmstudio' || arg === '--groq') {
+            parsed.backend = 'openai-compatible';
+        }
     }
     return parsed;
 }
@@ -121,6 +143,11 @@ function isOpenCodeAvailable() {
 function registerBackends() {
     backend_registry_1.backendRegistry.register(new claude_backend_1.ClaudeBackend());
     backend_registry_1.backendRegistry.register(new opencode_backend_1.OpenCodeBackend());
+    backend_registry_1.backendRegistry.register(new vercel_ai_backend_1.VercelAIBackend());
+    backend_registry_1.backendRegistry.register(new gemini_ai_backend_1.GeminiBackend());
+    backend_registry_1.backendRegistry.register(new claude_ai_backend_1.ClaudeAIBackend());
+    backend_registry_1.backendRegistry.register(new azure_openai_backend_1.AzureOpenAIBackend());
+    backend_registry_1.backendRegistry.register(new openai_compatible_backend_1.OpenAICompatibleBackend());
 }
 const config = {
     dockServerPort: parseInt(process.env.DOCK_SERVER_PORT || '8765', 10),
@@ -235,6 +262,9 @@ async function main() {
         host: config.freeCADBridgeHost,
         port: config.freeCADBridgePort,
     });
+    if ('setFreeCADBridge' in backend) {
+        backend.setFreeCADBridge(freeCADBridge);
+    }
     if (cliArgs.resume) {
         const session = (0, session_manager_1.loadSession)(cliArgs.resume);
         if (session) {

@@ -1,8 +1,16 @@
 # Cycle Count
 
-**Current Cycle**: 26 (NEXT - Advanced Features)
+**Current Cycle**: 34 (NEXT - TBD)
 
 ## History
+- Cycle 33: Fill Missing Tool Gaps in Vercel AI Backend - COMPLETED
+- Cycle 32: Add Azure OpenAI Backend via Vercel AI SDK - COMPLETED
+- Cycle 31: Add Anthropic Claude Backend via Vercel AI SDK - COMPLETED
+- Cycle 30: Refactor Vercel AI SDK Backends into Unified Base Class - COMPLETED
+- Cycle 29: OpenAI-Compatible Providers Backend (Ollama, LM Studio, Groq) - COMPLETED
+- Cycle 28: Vercel AI SDK + Google Gemini Integration - COMPLETED
+- Cycle 27: Vercel AI SDK + MiniMax Integration - COMPLETED
+- Cycle 26: Advanced Error Handling and Recovery Tools - COMPLETED
 - Cycle 25: BIM Workbench Tools - COMPLETED
 - Cycle 24: Spreadsheet Workbench Tools (BOM & Parametric Tables) - COMPLETED
 - Cycle 24: Spreadsheet Workbench Tools (BOM & Parametric Tables) - COMPLETED

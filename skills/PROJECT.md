@@ -133,13 +133,19 @@ This is a diverging fork. We modify FreeCAD directly without worrying about upst
   - Added error parsing, categorization, traceback extraction, context analysis
   - Added recovery suggestions, validation, operation history tracking
   - Added undo strategy suggestions and safe retry functionality
-- [ ] **URGENT: Vercel AI SDK + MiniMax Integration** — Use Vercel AI SDK for direct MiniMax API access with MCP tool support
-  - Install `ai`, `@ai-sdk/mcp`, and `vercel-minimax-ai-provider` packages
-  - Create `VercelAIBackend` using `streamText` with `createMCPClient` to connect to FreeCAD's MCP tools
-  - Benefits: Direct API access (no opencode CLI needed), built-in tool calling, streaming support
-  - MiniMax provides OpenAI-compatible API at `https://api.minimaxi.com/v1` with model `MiniMax-M2.7`
-  - MCP tools auto-discovered and converted to AI SDK tools
-  - Add `sidecar:dev:minimax` npm script for easy launching
+- [x] **Cycle 27: Vercel AI SDK + MiniMax Integration** (COMPLETED)
+  - Created `sidecar/src/backends/vercel-ai-backend.ts` using Vercel AI SDK
+  - Integrated `streamText` with OpenAI-compatible provider for MiniMax API
+  - Implemented `onToolCall` callback for MCP tool execution
+  - Added `executeViaBridge` handling 50+ tool categories across all FreeCAD workbenches
+  - Added `npm run dev:minimax` script for easy launching
+- [x] **Cycle 28: Vercel AI SDK + Google Gemini Integration** (COMPLETED)
+  - Created `sidecar/src/backends/gemini-ai-backend.ts` using Vercel AI SDK with `@ai-sdk/google` provider
+  - Implemented native Google Gemini API access with `google()` model factory
+  - Added `healthCheck()` using Google-specific `?key=` query parameter authentication
+  - Integrated `setFreeCADBridge` for FreeCAD Python execution bridge
+  - Added `validateBackendConfig()` check for `GEMINI_API_KEY` environment variable
+  - Added `npm run dev:gemini` script for easy launching
 - [ ] Define additional custom tools as needed
 - [ ] **Multi-Agent Backend Support** — Support alternative LLM agents beyond Claude Code CLI
   - [x] **OpenCode integration** — Add OpenCode as an alternative agent backend (COMPLETED - Cycle 20)

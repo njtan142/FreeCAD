@@ -16,6 +16,6 @@
     "sidecar:start": "cd sidecar && npm start",
     "sidecar:dev": "cd sidecar && npm run dev",
     "sidecar:dev:opencode": "cd sidecar && npm run dev -- --backend opencode",
-    "sidecar:dev:minimax": "cd sidecar && npm run dev -- --backend opencode"
+    "sidecar:dev:minimax": "cd sidecar && npm run dev -- --backend minimax"
   }
 }

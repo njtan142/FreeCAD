@@ -1,90 +1,76 @@
-## Review: Cycle 26 - Advanced Error Handling and Recovery Tools
+## Review: Cycle 34 - Comprehensive Testing Suite
 ### Verdict: NEEDS_FIXES
-### Summary: Implementation is structurally complete with all 13 handlers, 13 tools, and 10 formatters, but has critical bugs: syntax error in generated recovery code, `handle_safe_retry` only supports "undo"/"redo" operations, and multiple formatters access fields that don't exist in the handler return values.
+### Summary: Implementation covers most plan items but has critical issues with jest vs vitest incompatibility in backend-tester.ts and openai-compatible-backend.test.ts, and missing categorizeToolsByHandler utility.
 
-### Issues:
+### Detailed Review
 
-**Critical bugs:**
+#### What Was Implemented (vs Plan)
+| Plan Item | Status | Notes |
+|-----------|--------|-------|
+| `sidecar/test/utils.ts` | ✅ Done | Missing `categorizeToolsByHandler` function |
+| `sidecar/test/backend/backend-tester.ts` | ⚠️ Done | Uses jest types (not vitest) - compatibility issue |
+| `sidecar/vitest.config.ts` | ✅ Done | Proper vitest config |
+| `sidecar/package.json` (Vitest) | ✅ Done | vitest ^2.0.0 added |
+| `sidecar/test/backend/tool-coverage.test.ts` | ✅ Done | Extracts tools dynamically |
+| `sidecar/test/backend/backend-parity.test.ts` | ✅ Done | Tests 22 tools across 3 backends |
+| `sidecar/test/backend/tool-code-generation.test.ts` | ✅ Done | Covers 11 categories |
+| `sidecar/test/backend/send-message-integration.test.ts` | ⚠️ Partial | Tests exist but don't fully exercise sendMessage flow |
+| `sidecar/test/backend/gemini-backend.test.ts` | ✅ Done | 9 tests for health/config |
+| `sidecar/test/backend/minimax-backend.test.ts` | ✅ Done | 8 tests for health/config |
+| `sidecar/test/backend/azure-backend.test.ts` | ✅ Done | 10 tests including env validation |
+| `sidecar/test/backend/openai-compatible-backend.test.ts` | ⚠️ Done | Uses jest.fn() directly |
 
-1. **[error_handlers.py:1030-1039]** Syntax error in `_generate_recovery_code`:
-   - Line 1034 shows `"import FreeCAD as App",` which is a tuple, not an import statement
-   - The generated code will be invalid Python
+#### Critical Issues
 
-2. **[error_handlers.py:1134-1148]** `handle_safe_retry` only supports "undo" and "redo" operations:
-   - Any other operation (e.g., "create_pad", "set_property") returns `unknown_operation` error
-   - The sidecar's `safeRetryOperationTool` passes arbitrary operations, which will all fail
+1. **jest types used in vitest environment** (`backend-tester.ts:4,14-15`)
+   - `jest.Mock`, `jest.fn()` are jest-specific
+   - Vitest provides `vi.fn()` as equivalent
+   - Should import from `vitest` not `jest`
 
-3. **[error_handlers.py:1134-1148]** `max_retries` parameter is received but never used:
-   - Sidecar passes `max_retries` at line 21420 but Python handler ignores it
-   - No retry loop is implemented
+2. **openai-compatible-backend.test.ts:43** uses `jest.fn()` directly
+   - Should use `vi.fn()` for Vitest compatibility
 
-4. **[result-formatters.ts:4999-5054]** `formatErrorContext` accesses non-existent fields:
-   - Expects `data.operation`, `data.object_name`, `data.workbench`, `data.recent_actions`
-   - `handle_analyze_error_context` returns `operation_type`, `category`, `error_summary`, `likely_causes`, `recovery_suggestions`
-   - **Field mismatch**: `data.operation` vs returned `operation_type`, missing `recent_actions`, `related_objects`, etc.
+3. **Missing `categorizeToolsByHandler` utility** (Plan Step 7)
+   - The plan lists this utility function but it was not implemented
+   - `tool-coverage.test.ts` doesn't categorize missing tools by handler module
 
-5. **[result-formatters.ts:5056-5109]** `formatRecoverySuggestions` accesses non-existent fields:
-   - Expects `data.can_retry`, `data.recovery_priority`, `data.alternative_approaches`
-   - `handle_get_recovery_suggestions` returns `operation`, `category`, `suggestions`, `count`
-   - **Field mismatch**: No `can_retry`, `recovery_priority`, or `alternative_approaches` in return
+4. **Backend parity incomplete** (Acceptance Criteria)
+   - Plan says "10 pairs total" for 5 backends
+   - `backend-parity.test.ts` only tests 3 backends (minimax, gemini, openai-compatible)
+   - Missing: ClaudeAIBackend and AzureOpenAIBackend
 
-6. **[result-formatters.ts:5111-5156]** `formatValidationResult` accesses wrong field:
-   - Expects `data.validation_errors` but handler returns `data.issues`
-   - Also expects `data.suggestions` which is not in the return value
+5. **send-message-integration.test.ts tests are shallow**
+   - `should handle execute_freecad_python tool via bridge` test sets up mock but doesn't actually call sendMessage
+   - No actual end-to-end flow verification
 
-7. **[result-formatters.ts:5158-5197]** `formatCommonErrors` accesses wrong field:
-   - Expects `data.common_errors` as array of `{error, solution}` objects
-   - Handler returns `common_errors` as flat string array
-   - **Field mismatch**: `error.error` vs actual string elements
+#### Minor Issues
 
-8. **[result-formatters.ts:5199-5241]** `formatOperationHistory` accesses non-existent field:
-   - Expects `data.total_count` but handler returns `data.total_recorded`
+- `backend-tester.ts:1` imports `FreeCADBridge` from backend-base but this may not export that type
+- Test coverage for Animation Tools category is missing from `tool-code-generation.test.ts`
+- Path Tools only tests 2 tools, but plan suggests broader coverage
 
-9. **[result-formatters.ts:5291-5345]** `formatUndoStrategy` accesses non-existent fields:
-   - Expects `data.recommended_action`, `data.steps`, `data.affected_objects`
-   - Handler returns `suggested_undo_steps` as list, `object_name`, `failed_operation`, `can_undo`, `undo_available`
+#### Test Quality
 
-### Security issues: None found
+- **Tool Coverage**: Good - dynamically extracts from source files
+- **Backend Parity**: Needs more backends tested
+- **Code Generation**: Good category coverage, 3+ representative tools per category met
+- **Integration Tests**: Weak - need actual sendMessage flow testing
+- **Backend-Specific**: Good health check and configuration validation
 
-### Minor issues:
+#### What Passes Acceptance Criteria
 
-10. **[error_handlers.py:1112]** Potential KeyError in `handle_safe_retry`:
-    - If `validation["data"]` is `None`, accessing `result["data"]["is_valid"]` will raise KeyError
-    - Should check if `result["data"]` exists before accessing nested fields
+- [x] `npm run test` runs all tests (if jest issue fixed)
+- [ ] Tool coverage test reports 0 missing tools (not verified)
+- [ ] Backend parity test passes for all backend pairs (only 3/5 backends)
+- [x] Each tool category has at least 3 representative tool tests
+- [ ] Integration tests verify full `sendMessage` flow
+- [x] Each backend has specific tests for health check and configuration
+- [x] Test utilities can extract tool names from agent-tools.ts dynamically
+- [ ] Tests run in < 60 seconds (not verified)
 
-11. **[error_handlers.py:1016-1079]** `_generate_recovery_code` has hardcoded import inside generated code:
-    - Should use actual object name from validation_result, not always "Unknown"
+#### Recommended Fixes
 
-### Suggested Fixes:
-
-1. **error_handlers.py:1030-1039** - Fix syntax error:
-```python
-lines = [
-    "# Recovery code for validation failure",
-    f"# Object: {object_name}",
-    "",
-    "import FreeCAD as App",  # Not a tuple
-    "",
-    # ... rest
-]
-```
-
-2. **error_handlers.py:1134-1148** - Expand `handle_safe_retry` to support actual operations or return a clear error that only undo/redo are supported.
-
-3. **error_handlers.py** - Add `max_retries` parameter to `handle_safe_retry` and implement retry logic.
-
-4. **result-formatters.ts** - Align all formatter field accesses with actual handler return values, or align handlers to return what formatters expect.
-
-5. **error_handlers.py:1112** - Add null check:
-```python
-if not result.get("success") or result["data"] is None:
-    return {"success": False, "error": "Validation failed", "data": None}
-```
-
-### What was done well:
-- All 13 handlers are present and exported correctly
-- All 13 tools are properly defined with Zod schemas in agent-tools.ts
-- All 10 formatters are implemented
-- ERROR_CATEGORIES and ERROR_PATTERNS are comprehensive
-- OPERATION_ERRORS dictionary provides good coverage of common errors per operation type
-- Handler return structure is consistent with other handlers in the codebase
+1. Replace `jest` imports with `vitest` in `backend-tester.ts` and `openai-compatible-backend.test.ts`
+2. Add `categorizeToolsByHandler` utility function to `utils.ts`
+3. Add ClaudeAIBackend and AzureOpenAIBackend to backend-parity.test.ts
+4. Enhance send-message-integration.test.ts to actually test full sendMessage flow

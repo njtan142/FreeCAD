@@ -35,9 +35,11 @@ class OpenCodeBackend {
             if (this.config.apiKey) {
                 env.OPENAI_API_KEY = this.config.apiKey;
             }
-            const proc = (0, child_process_1.spawn)('opencode', args, {
+            const isWindows = process.platform === 'win32';
+            const proc = (0, child_process_1.spawn)(isWindows ? 'npx' : 'opencode', isWindows ? ['opencode', ...args] : args, {
                 stdio: ['pipe', 'pipe', 'pipe'],
                 env,
+                shell: isWindows,
             });
             this.process = proc;
             let stdoutBuffer = '';

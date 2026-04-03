@@ -59,7 +59,7 @@ export class DockServer {
     return this.tools.map((tool) => ({
       name: tool.name,
       description: tool.description || '',
-      inputSchema: tool.inputSchema as MCPTool['inputSchema'],
+      inputSchema: tool.inputSchema,
     }));
   }
 

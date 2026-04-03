@@ -79,8 +79,7 @@ class ClaudeBackend {
                     args: [mcpServerScript],
                     cwd: sidecarDir,
                     env: {
-                        FREECAD_BRIDGE_HOST: 'localhost',
-                        FREECAD_BRIDGE_PORT: '8766',
+                        FREECAD_PROXY_PORT: '8767',
                     },
                 },
             },
@@ -112,19 +111,41 @@ When creating objects, always call doc.recompute() after modifications. Use prin
                 '-p',
                 '--verbose',
                 '--output-format', 'stream-json',
-                '--session-id', messageSessionId,
+                '--model', 'claude-sonnet-4-6',
+                '--permission-mode', 'auto',
                 '--mcp-config', this.mcpConfigPath,
                 '--append-system-prompt', systemPrompt,
-                '--disallowedTools', 'Bash', 'Read', 'Edit', 'Write', 'Grep', 'Glob', 'Agent', 'WebFetch', 'WebSearch',
+                '--disallowed-tools', 'Bash,Read,Edit,Write,Grep,Glob,Agent,WebFetch,WebSearch',
             ];
             if (this.config.dangerouslySkipPermissions) {
                 args.push('--dangerously-skip-permissions');
             }
-            console.log('[ClaudeBackend] Spawning claude with session:', messageSessionId);
+            console.log('[ClaudeBackend] Spawning claude with args:', args.join(' '));
+            console.log('[ClaudeBackend] Platform:', process.platform);
+            console.log('[ClaudeBackend] Working directory:', process.cwd());
+            console.log('[ClaudeBackend] Shell:', process.platform === 'win32' ? 'powershell.exe' : 'bash');
+            console.log('[ClaudeBackend] Environment variables (filtered):');
+            const envKeys = ['ANTHROPIC_API_KEY', 'HOME', 'USERPROFILE', 'CLAUDE_SESSION_DIR', 'PATH'];
+            for (const key of envKeys) {
+                const value = process.env[key];
+                if (value) {
+                    console.log(`  ${key}: ${key === 'ANTHROPIC_API_KEY' ? '***' : value.substring(0, 100)}`);
+                }
+                else {
+                    console.log(`  ${key}: (not set)`);
+                }
+            }
+            // For Claude Code CLI auth: remove ANTHROPIC_API_KEY if set
+            // so Claude CLI uses OAuth instead of API key authentication
+            const env = { ...process.env };
+            delete env.ANTHROPIC_API_KEY;
             const proc = (0, child_process_1.spawn)('claude', args, {
                 stdio: ['pipe', 'pipe', 'pipe'],
-                env: { ...process.env },
+                env,
+                cwd: process.cwd(),
             });
+            console.log('[ClaudeBackend] Subprocess spawned with PID:', proc.pid);
+            console.log('[ClaudeBackend] ANTHROPIC_API_KEY removed from env for OAuth auth');
             this.process = proc;
             let stdoutBuffer = '';
             let stderrBuffer = '';
@@ -132,6 +153,7 @@ When creating objects, always call doc.recompute() after modifications. Use prin
             proc.stdout?.on('data', (data) => {
                 const chunk = data.toString();
                 stdoutBuffer += chunk;
+                console.log('[ClaudeBackend] stdout chunk received, length:', chunk.length);
                 try {
                     const lines = chunk.split('\n').filter(l => l.trim());
                     for (const line of lines) {
@@ -161,29 +183,35 @@ When creating objects, always call doc.recompute() after modifications. Use prin
                                 console.log('[ClaudeBackend] result:', (parsed.result || '').substring(0, 200));
                             }
                         }
-                        catch {
-                            console.log('[ClaudeBackend] raw output:', chunk.substring(0, 200));
+                        catch (e) {
+                            console.log('[ClaudeBackend] JSON parse error, raw output:', line.substring(0, 300));
                         }
                     }
                 }
-                catch {
-                    // ignore parse errors
+                catch (e) {
+                    console.log('[ClaudeBackend] stdout parse error:', e instanceof Error ? e.message : String(e));
                 }
             });
             proc.stderr?.on('data', (data) => {
                 const text = data.toString();
                 stderrBuffer += text;
-                console.log('[ClaudeBackend] stderr:', text.substring(0, 300));
+                console.log('[ClaudeBackend] stderr chunk received, length:', text.length);
+                console.log('[ClaudeBackend] stderr content:', text);
             });
             proc.on('close', (code) => {
                 console.log('[ClaudeBackend] Process exited with code:', code);
+                console.log('[ClaudeBackend] stdout buffer length:', stdoutBuffer.length);
+                console.log('[ClaudeBackend] stderr buffer length:', stderrBuffer.length);
+                console.log('[ClaudeBackend] First 500 chars of stdout:', stdoutBuffer.substring(0, 500));
+                console.log('[ClaudeBackend] First 500 chars of stderr:', stderrBuffer.substring(0, 500));
                 if (!resolved) {
                     if (code === 0) {
                         const response = this.parseResponse(stdoutBuffer);
                         resolve(response);
                     }
                     else {
-                        console.error('[ClaudeBackend] stderr:', stderrBuffer);
+                        console.error('[ClaudeBackend] Full stderr:', stderrBuffer);
+                        console.error('[ClaudeBackend] Full stdout:', stdoutBuffer);
                         resolve({
                             content: stdoutBuffer || '',
                             error: `Claude exited with code ${code}: ${stderrBuffer}`,
@@ -193,6 +221,8 @@ When creating objects, always call doc.recompute() after modifications. Use prin
                 }
             });
             proc.on('error', (err) => {
+                console.error('[ClaudeBackend] Process error:', err.message);
+                console.error('[ClaudeBackend] Error stack:', err.stack);
                 if (!resolved) {
                     resolved = true;
                     reject(err);
@@ -210,11 +240,17 @@ When creating objects, always call doc.recompute() after modifications. Use prin
             console.log('[ClaudeBackend] Prompt length:', fullMessage.length, 'chars');
             console.log('[ClaudeBackend] Prompt preview:', fullMessage.substring(0, 300));
             // With -p (print mode), just pipe the message via stdin as plain text
+            console.log('[ClaudeBackend] Writing to stdin, message length:', fullMessage.length);
             proc.stdin?.write(fullMessage, () => {
+                console.log('[ClaudeBackend] Stdin write complete, closing stdin');
                 proc.stdin?.end();
+            });
+            proc.stdin?.on('error', (err) => {
+                console.error('[ClaudeBackend] stdin error:', err.message);
             });
             setTimeout(() => {
                 if (!resolved) {
+                    console.log('[ClaudeBackend] Request timeout after 120s, killing process');
                     proc.kill();
                     resolved = true;
                     resolve({

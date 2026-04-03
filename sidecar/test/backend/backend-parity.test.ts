@@ -3,10 +3,11 @@ import { VercelAIBackend } from '../../src/backends/vercel-ai-backend';
 import { GeminiBackend } from '../../src/backends/gemini-ai-backend';
 import { AzureOpenAIBackend } from '../../src/backends/azure-openai-backend';
 import { OpenAICompatibleBackend } from '../../src/backends/openai-compatible-backend';
+import { ClaudeAIBackend } from '../../src/backends/claude-ai-backend';
 
 interface BackendInstance {
   name: string;
-  backend: VercelAIBackend | GeminiBackend | AzureOpenAIBackend | OpenAICompatibleBackend;
+  backend: VercelAIBackend | GeminiBackend | AzureOpenAIBackend | OpenAICompatibleBackend | ClaudeAIBackend;
 }
 
 const backends: BackendInstance[] = [];
@@ -18,10 +19,15 @@ describe('Backend Parity', () => {
     process.env.MINIMAX_API_KEY = 'test-minimax-key';
     process.env.GEMINI_API_KEY = 'test-gemini-key';
     process.env.OPENAI_COMPATIBLE_API_KEY = 'test-openai-compatible-key';
+    process.env.AZURE_OPENAI_API_KEY = 'test-azure-key';
+    process.env.AZURE_OPENAI_ENDPOINT = 'https://test.openai.azure.com';
+    process.env.CLAUDE_API_KEY = 'test-claude-key';
     
     backends.push({ name: 'minimax', backend: new VercelAIBackend() });
     backends.push({ name: 'gemini', backend: new GeminiBackend() });
     backends.push({ name: 'openai-compatible', backend: new OpenAICompatibleBackend() });
+    backends.push({ name: 'azure-openai', backend: new AzureOpenAIBackend() });
+    backends.push({ name: 'claude', backend: new ClaudeAIBackend() });
   });
 
   const testTools = [

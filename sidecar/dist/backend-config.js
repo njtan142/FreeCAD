@@ -12,6 +12,12 @@ function getBackendConfig(backendName) {
     switch (backendName) {
         case 'opencode':
             return getOpenCodeConfig();
+        case 'minimax':
+            return getMiniMaxConfig();
+        case 'gemini':
+            return getGeminiConfig();
+        case 'openai-compatible':
+            return getOpenAICompatibleConfig();
         case 'claude':
         default:
             return getClaudeConfig();
@@ -27,30 +33,50 @@ function getOpenCodeConfig() {
     const baseUrl = process.env.OPENAI_BASE_URL ||
         process.env.ANTHROPIC_BASE_URL ||
         process.env.GOOGLE_BASE_URL ||
-        'https://api.openai.com/v1';
+        process.env.OPENCODE_GO_BASE_URL ||
+        'https://opencode.ai/zen/go/v1/messages';
     const apiKey = process.env.OPENAI_API_KEY ||
         process.env.ANTHROPIC_API_KEY ||
-        process.env.GOOGLE_API_KEY;
+        process.env.GOOGLE_API_KEY ||
+        process.env.OPENCODE_GO_API_KEY;
     let model = process.env.OPENAI_MODEL ||
         process.env.ANTHROPIC_MODEL ||
-        process.env.GOOGLE_MODEL;
-    if (!model) {
-        if (baseUrl.includes('openai')) {
-            model = 'gpt-4';
-        }
-        else if (baseUrl.includes('anthropic')) {
-            model = 'claude-3-5-sonnet-20241022';
-        }
-        else if (baseUrl.includes('google')) {
-            model = 'gemini-2.0-flash';
-        }
-    }
+        process.env.GOOGLE_MODEL ||
+        process.env.OPENCODE_GO_MODEL ||
+        'minimax-m2.7';
     return {
         baseUrl,
         apiKey,
         model,
         temperature: process.env.OPENAI_TEMPERATURE ? parseFloat(process.env.OPENAI_TEMPERATURE) : undefined,
         maxTokens: process.env.OPENAI_MAX_TOKENS ? parseInt(process.env.OPENAI_MAX_TOKENS, 10) : undefined,
+    };
+}
+function getMiniMaxConfig() {
+    return {
+        baseUrl: process.env.MINIMAX_BASE_URL || 'https://api.minimaxi.com/v1',
+        apiKey: process.env.MINIMAX_API_KEY || process.env.OPENAI_API_KEY,
+        model: process.env.MINIMAX_MODEL || 'MiniMax-M2.7',
+        temperature: process.env.MINIMAX_TEMPERATURE ? parseFloat(process.env.MINIMAX_TEMPERATURE) : undefined,
+        maxTokens: process.env.MINIMAX_MAX_TOKENS ? parseInt(process.env.MINIMAX_MAX_TOKENS, 10) : undefined,
+    };
+}
+function getGeminiConfig() {
+    return {
+        baseUrl: process.env.GEMINI_BASE_URL || 'https://generativelanguage.googleapis.com/v1beta',
+        apiKey: process.env.GEMINI_API_KEY,
+        model: process.env.GEMINI_MODEL || 'gemini-2.0-flash',
+        temperature: process.env.GEMINI_TEMPERATURE ? parseFloat(process.env.GEMINI_TEMPERATURE) : undefined,
+        maxTokens: process.env.GEMINI_MAX_TOKENS ? parseInt(process.env.GEMINI_MAX_TOKENS, 10) : undefined,
+    };
+}
+function getOpenAICompatibleConfig() {
+    return {
+        baseUrl: process.env.OPENAI_COMPATIBLE_BASE_URL || 'http://localhost:11434/v1',
+        apiKey: process.env.OPENAI_COMPATIBLE_API_KEY || 'no-key',
+        model: process.env.OPENAI_COMPATIBLE_MODEL || 'llama3.2',
+        temperature: process.env.OPENAI_COMPATIBLE_TEMPERATURE ? parseFloat(process.env.OPENAI_COMPATIBLE_TEMPERATURE) : undefined,
+        maxTokens: process.env.OPENAI_COMPATIBLE_MAX_TOKENS ? parseInt(process.env.OPENAI_COMPATIBLE_MAX_TOKENS, 10) : undefined,
     };
 }
 function loadOpenCodeConfig() {
@@ -87,6 +113,23 @@ function validateBackendConfig(backendName, config) {
     if (backendName === 'opencode') {
         if (!config.apiKey && !process.env.OPENAI_API_KEY && !process.env.ANTHROPIC_API_KEY && !process.env.GOOGLE_API_KEY) {
             errors.push('OpenCode backend requires an API key. Set OPENAI_API_KEY, ANTHROPIC_API_KEY, or GOOGLE_API_KEY');
+        }
+    }
+    if (backendName === 'minimax') {
+        if (!config.apiKey && !process.env.MINIMAX_API_KEY) {
+            errors.push('MiniMax backend requires MINIMAX_API_KEY environment variable');
+        }
+    }
+    if (backendName === 'gemini') {
+        if (!config.apiKey && !process.env.GEMINI_API_KEY) {
+            errors.push('Gemini backend requires GEMINI_API_KEY environment variable');
+        }
+    }
+    if (backendName === 'openai-compatible') {
+        const isLocal = (config.baseUrl?.includes('localhost') || config.baseUrl?.includes('127.0.0.1')) &&
+            (config.apiKey === 'no-key' || !config.apiKey);
+        if (!isLocal && !config.apiKey && !process.env.OPENAI_COMPATIBLE_API_KEY) {
+            errors.push('OpenAI-compatible backend requires OPENAI_COMPATIBLE_API_KEY for cloud providers');
         }
     }
     return errors;

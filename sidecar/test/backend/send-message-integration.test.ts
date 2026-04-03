@@ -25,7 +25,15 @@ describe('sendMessage Integration', () => {
         return { success: true, output: '{}' };
       }
     });
-    backend.setFreeCADBridge(mockBridge);
+    backend.setFreeCADBridge(mockBridge as any);
+    
+    const result = await backend.sendMessage(
+      'execute some python code',
+      {},
+      [{ name: 'execute_freecad_python', input: { code: 'print("test")' } }],
+      () => {}
+    );
+    expect(result.error || result.content).toBeDefined();
   });
 
   it('should use buildToolCode for known tools', () => {

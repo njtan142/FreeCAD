@@ -40,7 +40,7 @@ describe('OpenAI-Compatible Backend Specific', () => {
   });
 
   it('should handle health check for local providers', async () => {
-    const mockFetch = jest.fn(() => Promise.resolve({ ok: true }));
+    const mockFetch = vi.fn(() => Promise.resolve({ ok: true }));
     global.fetch = mockFetch;
     
     const result = await backend.healthCheck();
