@@ -5,7 +5,7 @@
  * Provides native streaming, built-in tool calling, and MCP tool integration.
  */
 
-import { streamText, Tool, ModelMessage, jsonSchema } from 'ai';
+import { streamText, Tool, ModelMessage, jsonSchema, stepCountIs } from 'ai';
 import { z } from 'zod';
 import { AgentBackend, BackendConfig, AgentResponse, MessageContext, MCPTool } from '../agent-backend.js';
 import { ToolCall } from '../types.js';
@@ -96,7 +96,7 @@ export abstract class VercelAIBackendBase implements AgentBackend {
         tools: mcpTools as any,
         maxOutputTokens: this.config.maxTokens || 4096,
         temperature: this.config.temperature || 0.7,
-        maxSteps: 10,
+        stopWhen: stepCountIs(10),
       });
 
       let fullContent = '';
