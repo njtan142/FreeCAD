@@ -96,6 +96,7 @@ export abstract class VercelAIBackendBase implements AgentBackend {
         tools: mcpTools as any,
         maxOutputTokens: this.config.maxTokens || 4096,
         temperature: this.config.temperature || 0.7,
+        maxSteps: 10,
       });
 
       let fullContent = '';
@@ -106,21 +107,16 @@ export abstract class VercelAIBackendBase implements AgentBackend {
           fullContent += delta.text;
           onChunk(delta.text);
         } else if (delta.type === 'tool-call') {
-          console.log(`[${this.name}] Tool call received: ${delta.toolName}`);
+          console.log(`[${this.name}] Tool call: ${delta.toolName}`);
           toolCalls.push({
             id: delta.toolCallId,
             name: delta.toolName,
             arguments: delta.input,
           });
-          // Execute tool and handle result
-          try {
-            const toolResult = await this.executeViaBridge(delta.toolName, delta.input as Record<string, any>);
-            console.log(`[${this.name}] Tool result:`, JSON.stringify(toolResult).substring(0, 200));
-          } catch (error) {
-            console.error(`[${this.name}] Tool execution failed:`, error);
-          }
+        } else if (delta.type === 'tool-result') {
+          console.log(`[${this.name}] Tool result for ${(delta as any).toolName}:`, String((delta as any).result).substring(0, 200));
         } else if (delta.type === 'finish') {
-          console.log(`[${this.name}] Stream finished. Total content: ${fullContent.length} chars, Tool calls: ${toolCalls.length}`);
+          console.log(`[${this.name}] Stream finished. Content: ${fullContent.length} chars, Tool calls: ${toolCalls.length}`);
         }
       }
 
@@ -204,9 +200,18 @@ Objects: ${context.documentInfo.objectCount}`;
 
     for (const tool of tools) {
       const schema = tool.inputSchema || { type: 'object', properties: {} };
-      mcpTools[tool.name] = {
+      const toolName = tool.name;
+      mcpTools[toolName] = {
         description: tool.description,
         parameters: jsonSchema(schema),
+        execute: async (args: Record<string, any>) => {
+          try {
+            const result = await this.executeViaBridge(toolName, args);
+            return JSON.stringify(result);
+          } catch (error) {
+            return JSON.stringify({ success: false, error: String(error) });
+          }
+        },
       };
     }
 
