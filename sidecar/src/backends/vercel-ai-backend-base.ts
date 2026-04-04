@@ -114,7 +114,7 @@ export abstract class VercelAIBackendBase implements AgentBackend {
           });
           // Execute tool and handle result
           try {
-            const toolResult = await this.executeViaBridge(delta.toolName, delta.input);
+            const toolResult = await this.executeViaBridge(delta.toolName, delta.input as Record<string, any>);
             console.log(`[${this.name}] Tool result:`, JSON.stringify(toolResult).substring(0, 200));
           } catch (error) {
             console.error(`[${this.name}] Tool execution failed:`, error);
