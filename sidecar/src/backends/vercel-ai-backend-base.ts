@@ -155,6 +155,12 @@ Other helper tools: query_model_state, list_objects, get_object_properties, get_
 
 When creating objects, always call doc.recompute() after modifications. Use print(json.dumps(...)) to return structured results.
 
+CRITICAL FreeCAD API rules — these are common mistakes:
+- Solids/shapes: use Part.makeBox(), Part.makeCylinder(), Part.makeSphere(), Part.makeCone() — NOT Part.Shape.makeBox() or similar
+- Add a shape to the document: obj = doc.addObject("Part::Feature", "Name"); obj.Shape = <shape>
+- Boolean ops: Part.fuse(s1, s2), Part.cut(s1, s2), Part.common(s1, s2)
+- Always import modules before use: import Part, FreeCAD, FreeCADGui as needed
+
 Be concise and helpful in your responses.`;
 
     messages.push({
