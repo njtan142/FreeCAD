@@ -439,11 +439,17 @@ except ImportError:
     except Exception as e:
         print(json.dumps({'success': False, 'error': str(e)}))`;
 
-      case 'create_sketch':
+      case 'create_sketch': {
+        // Handler: handle_create_sketch(support=None, map_mode='FlatFace', name=None)
+        // Tool schema uses: support/mapMode/name (agent-tools) or attachmentObject/attachmentMode/name (old)
+        const skSupport = args.support || args.attachmentObject || null;
+        const validModes = ['Deactivated','FlatFace','Plane','ThreePoints','ThreePlanes','Curved','Axis','Concentric','RefPlane'];
+        const rawMode = args.mapMode || args.attachmentMode;
+        const skMode = validModes.includes(rawMode) ? rawMode : (skSupport ? 'FlatFace' : 'Deactivated');
         return `import json
 try:
     from llm_bridge.sketcher_handlers import handle_create_sketch
-    result = handle_create_sketch(${this.py(args.name || null)}, ${this.py(args.attachmentObject || null)}, ${this.py(args.attachmentMode || 'FlatFace')})
+    result = handle_create_sketch(support=${this.py(skSupport)}, map_mode=${this.py(skMode)}, name=${this.py(args.name || null)})
     print(json.dumps(result))
 except ImportError:
     try:
@@ -452,14 +458,11 @@ except ImportError:
             print(json.dumps({'success': False, 'error': 'No active document'}))
         else:
             sketch = doc.addObject('Sketcher::SketchObject', ${this.py(args.name || 'Sketch')})
-            if ${this.py(args.attachmentObject || null)}:
-                att_obj = doc.getObject(${this.py(args.attachmentObject)})
-                if att_obj:
-                    sketch.AttachmentSupport = [att_obj]
             doc.recompute()
             print(json.dumps({'success': True, 'name': sketch.Name, 'label': sketch.Label}))
     except Exception as e:
         print(json.dumps({'success': False, 'error': str(e)}))`;
+      }
 
       case 'add_sketch_geometry':
         return `import json
@@ -512,19 +515,21 @@ except ImportError:
     print(json.dumps({'success': False, 'error': 'This tool requires MCP connection'}))`;
 
       case 'create_pad':
+        // Handler: handle_create_pad(sketch_name, length=None, name=None, body_name=None)
         return `import json
 try:
     from llm_bridge.feature_handlers import handle_create_pad
-    result = handle_create_pad(${this.py(args.bodyName || '')}, ${this.py(args.length || '10mm')}, ${this.py(args.sketchName || null)})
+    result = handle_create_pad(sketch_name=${this.py(args.sketchName || args.sketch || '')}, length=${this.py(args.length || '10mm')}, name=${this.py(args.name || null)}, body_name=${this.py(args.bodyName || null)})
     print(json.dumps(result))
 except ImportError:
     print(json.dumps({'success': False, 'error': 'This tool requires MCP connection'}))`;
 
       case 'create_pocket':
+        // Handler: handle_create_pocket(sketch_name, length=None, name=None, body_name=None)
         return `import json
 try:
     from llm_bridge.feature_handlers import handle_create_pocket
-    result = handle_create_pocket(${this.py(args.bodyName || '')}, ${this.py(args.length || '10mm')}, ${this.py(args.sketchName || null)})
+    result = handle_create_pocket(sketch_name=${this.py(args.sketchName || args.sketch || '')}, length=${this.py(args.length || '10mm')}, name=${this.py(args.name || null)}, body_name=${this.py(args.bodyName || null)})
     print(json.dumps(result))
 except ImportError:
     print(json.dumps({'success': False, 'error': 'This tool requires MCP connection'}))`;
