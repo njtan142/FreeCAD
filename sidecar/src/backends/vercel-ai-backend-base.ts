@@ -5,7 +5,7 @@
  * Provides native streaming, built-in tool calling, and MCP tool integration.
  */
 
-import { streamText, CoreTool, CoreMessage, jsonSchema } from 'ai';
+import { streamText, Tool, ModelMessage, jsonSchema } from 'ai';
 import { z } from 'zod';
 import { AgentBackend, BackendConfig, AgentResponse, MessageContext, MCPTool } from '../agent-backend.js';
 import { ToolCall } from '../types.js';
@@ -92,9 +92,9 @@ export abstract class VercelAIBackendBase implements AgentBackend {
 
       const result = await streamText({
         model,
-        messages: messages as CoreMessage[],
+        messages: messages as ModelMessage[],
         tools: mcpTools as any,
-        maxTokens: this.config.maxTokens || 4096,
+        maxOutputTokens: this.config.maxTokens || 4096,
         temperature: this.config.temperature || 0.7,
       });
 
@@ -103,18 +103,18 @@ export abstract class VercelAIBackendBase implements AgentBackend {
 
       for await (const delta of result.fullStream) {
         if (delta.type === 'text-delta') {
-          fullContent += delta.textDelta;
-          onChunk(delta.textDelta);
+          fullContent += delta.text;
+          onChunk(delta.text);
         } else if (delta.type === 'tool-call') {
           console.log(`[${this.name}] Tool call received: ${delta.toolName}`);
           toolCalls.push({
             id: delta.toolCallId,
             name: delta.toolName,
-            arguments: delta.args,
+            arguments: delta.input,
           });
           // Execute tool and handle result
           try {
-            const toolResult = await this.executeViaBridge(delta.toolName, delta.args);
+            const toolResult = await this.executeViaBridge(delta.toolName, delta.input);
             console.log(`[${this.name}] Tool result:`, JSON.stringify(toolResult).substring(0, 200));
           } catch (error) {
             console.error(`[${this.name}] Tool execution failed:`, error);
@@ -137,8 +137,8 @@ export abstract class VercelAIBackendBase implements AgentBackend {
     }
   }
 
-  protected buildMessages(message: string, context: MessageContext): CoreMessage[] {
-    const messages: CoreMessage[] = [];
+  protected buildMessages(message: string, context: MessageContext): ModelMessage[] {
+    const messages: ModelMessage[] = [];
 
     const systemPrompt = `You are a FreeCAD CAD assistant. You help users create, modify, and query 3D models in FreeCAD.
 
