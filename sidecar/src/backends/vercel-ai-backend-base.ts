@@ -160,6 +160,7 @@ CRITICAL FreeCAD API rules — these are common mistakes:
 - Add a shape to the document: obj = doc.addObject("Part::Feature", "Name"); obj.Shape = <shape>
 - Boolean ops: Part.fuse(s1, s2), Part.cut(s1, s2), Part.common(s1, s2)
 - Always import modules before use: import Part, FreeCAD, FreeCADGui as needed
+- NEVER assume object names. Before querying or modifying any object by name, always call list_objects first to get the actual names in the document.
 
 Be concise and helpful in your responses.`;
 

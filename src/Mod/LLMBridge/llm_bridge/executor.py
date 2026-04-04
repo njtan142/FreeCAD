@@ -101,7 +101,12 @@ def execute_code(code):
                      "continue", "assert ", "#")
                 ):
                     try:
+                        # Snapshot stdout position so eval side-effects
+                        # (e.g. print calls) don't duplicate exec output.
+                        _pos = stdout_capture.tell()
                         result_value = eval(last_line, _exec_namespace)
+                        stdout_capture.seek(_pos)
+                        stdout_capture.truncate(_pos)
                     except Exception:
                         pass
 
