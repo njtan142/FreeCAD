@@ -633,25 +633,23 @@ export function createAgentTools(freeCADBridge: FreeCADBridge) {
 function createExecuteFreeCADPythonTool(freeCADBridge: FreeCADBridge) {
   return tool(
     'execute_freecad_python',
-    `Execute Python code in FreeCAD's environment. Use this to create, modify, or query CAD models.
+    `Execute arbitrary Python code in FreeCAD's interpreter. Use this as a FALLBACK ONLY when no dedicated structured tool exists for the operation.
 
-The code runs in FreeCAD's Python interpreter with full access to:
-- FreeCAD module (FreeCAD, FreeCADGui)
-- Part workbench (Part, PartDesign)
-- Draft workbench (Draft)
-- All other FreeCAD modules and APIs
+PREFER dedicated tools over this one:
+- Creating bodies: use create_body
+- Sketching: use create_sketch, add_sketch_geometry, add constraints
+- PartDesign features: use create_pad, create_pocket, create_revolution, create_fillet, create_chamfer
+- Primitives: use create_box, create_cylinder, create_sphere, create_cone
+- Queries: use list_objects, get_object_properties, query_model_state
+- Transforms: use move_object, rotate_object
+- Booleans: use boolean_fuse, boolean_cut, boolean_common
 
-Examples:
-- Create a box: "import Part; Part.makeBox(10, 10, 10)"
-- Get active document: "doc = FreeCAD.ActiveDocument"
-- List objects: "FreeCAD.ActiveDocument.Objects"
+Only use execute_freecad_python for operations that have no dedicated tool, or as a last resort after structured tools have failed.
 
-Always use this tool when you need to:
-1. Create new geometry or features
-2. Modify existing objects
-3. Change document properties
-4. Query model state
-5. Perform any CAD operation`,
+Common API rules when writing Python:
+- Part.makeBox/Cylinder/Sphere() not Part.Shape.makeBox()
+- Add to doc: obj=doc.addObject("Part::Feature","Name"); obj.Shape=shape
+- Always call doc.recompute() after changes`,
     {
       code: z.string().describe('Python code to execute in FreeCAD'),
     },
