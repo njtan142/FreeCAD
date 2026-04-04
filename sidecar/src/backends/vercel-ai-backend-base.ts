@@ -114,7 +114,7 @@ export abstract class VercelAIBackendBase implements AgentBackend {
             arguments: delta.input,
           });
         } else if (delta.type === 'tool-result') {
-          console.log(`[${this.name}] Tool result for ${(delta as any).toolName}:`, String((delta as any).result).substring(0, 200));
+          console.log(`[${this.name}] Tool result for ${(delta as any).toolName}:`, String((delta as any).output).substring(0, 200));
         } else if (delta.type === 'finish') {
           console.log(`[${this.name}] Stream finished. Content: ${fullContent.length} chars, Tool calls: ${toolCalls.length}`);
         }
@@ -245,6 +245,19 @@ Objects: ${context.documentInfo.objectCount}`;
     return await this.freeCADBridge.executePython(code);
   }
 
+  /** Serialize a value to a Python literal (handles null→None, bool casing, strings, numbers). */
+  protected py(val: any): string {
+    if (val === null || val === undefined) return 'None';
+    if (typeof val === 'boolean') return val ? 'True' : 'False';
+    if (typeof val === 'number') return String(val);
+    if (typeof val === 'string') return JSON.stringify(val);
+    // objects/arrays: produce JSON then patch JS→Python keywords
+    return JSON.stringify(val)
+      .replace(/\bnull\b/g, 'None')
+      .replace(/\btrue\b/g, 'True')
+      .replace(/\bfalse\b/g, 'False');
+  }
+
   protected buildToolCode(toolName: string, args: Record<string, any>): string {
     const argsJson = JSON.stringify(args);
     switch (toolName) {
@@ -270,7 +283,7 @@ except ImportError:
 
       case 'get_object_properties':
         return `import json
-obj_name = ${JSON.stringify(args.objectName || '')}
+obj_name = ${this.py(args.objectName || '')}
 try:
     from llm_bridge.query_handlers import handle_get_object_properties
     result = handle_get_object_properties(obj_name)
@@ -335,10 +348,10 @@ except ImportError:
         return `import json
 try:
     from llm_bridge.file_handlers import handle_open_document
-    result = handle_open_document(${JSON.stringify(args.filePath || '')})
+    result = handle_open_document(${this.py(args.filePath || '')})
     print(json.dumps(result))
 except ImportError:
-    file_path = ${JSON.stringify(args.filePath || '')}
+    file_path = ${this.py(args.filePath || '')}
     if file_path and file_path.strip():
         try:
             FreeCAD.open(file_path)
@@ -352,11 +365,11 @@ except ImportError:
         return `import json
 try:
     from llm_bridge.file_handlers import handle_export_to_format
-    result = handle_export_to_format(${JSON.stringify(args.filePath || '')}, ${JSON.stringify(args.format || 'STEP')})
+    result = handle_export_to_format(${this.py(args.filePath || '')}, ${this.py(args.format || 'STEP')})
     print(json.dumps(result))
 except ImportError:
-    file_path = ${JSON.stringify(args.filePath || '')}
-    format = ${JSON.stringify(args.format || 'STEP')}.upper()
+    file_path = ${this.py(args.filePath || '')}
+    format = ${this.py(args.format || 'STEP')}.upper()
     if not App.ActiveDocument:
         print(json.dumps({'success': False, 'error': 'No active document'}))
     elif not file_path:
@@ -416,11 +429,11 @@ except ImportError:
         return `import json
 try:
     from llm_bridge.file_handlers import handle_create_new_document
-    result = handle_create_new_document(${JSON.stringify(args.name || null)}, ${JSON.stringify(args.type || 'Part')})
+    result = handle_create_new_document(${this.py(args.name || null)}, ${this.py(args.type || 'Part')})
     print(json.dumps(result))
 except ImportError:
     try:
-        doc = FreeCAD.newDocument(${JSON.stringify(args.name || '')})
+        doc = FreeCAD.newDocument(${this.py(args.name || '')})
         print(json.dumps({'success': True, 'documentName': doc.Name, 'documentLabel': doc.Label}))
     except Exception as e:
         print(json.dumps({'success': False, 'error': str(e)}))`;
@@ -429,7 +442,7 @@ except ImportError:
         return `import json
 try:
     from llm_bridge.sketcher_handlers import handle_create_sketch
-    result = handle_create_sketch(${JSON.stringify(args.name || null)}, ${JSON.stringify(args.attachmentObject || null)}, ${JSON.stringify(args.attachmentMode || 'FlatFace')})
+    result = handle_create_sketch(${this.py(args.name || null)}, ${this.py(args.attachmentObject || null)}, ${this.py(args.attachmentMode || 'FlatFace')})
     print(json.dumps(result))
 except ImportError:
     try:
@@ -437,9 +450,9 @@ except ImportError:
         if not doc:
             print(json.dumps({'success': False, 'error': 'No active document'}))
         else:
-            sketch = doc.addObject('Sketcher::SketchObject', ${JSON.stringify(args.name || 'Sketch')})
-            if ${JSON.stringify(args.attachmentObject || null)}:
-                att_obj = doc.getObject(${JSON.stringify(args.attachmentObject)})
+            sketch = doc.addObject('Sketcher::SketchObject', ${this.py(args.name || 'Sketch')})
+            if ${this.py(args.attachmentObject || null)}:
+                att_obj = doc.getObject(${this.py(args.attachmentObject)})
                 if att_obj:
                     sketch.AttachmentSupport = [att_obj]
             doc.recompute()
@@ -451,7 +464,7 @@ except ImportError:
         return `import json
 try:
     from llm_bridge.sketcher_handlers import handle_add_geometry
-    result = handle_add_geometry(${JSON.stringify(args.sketchName || '')}, ${JSON.stringify(args.geometryType || 'Line')}, ${JSON.stringify(args.parameters || {})})
+    result = handle_add_geometry(${this.py(args.sketchName || '')}, ${this.py(args.geometryType || 'Line')}, ${this.py(args.parameters || {})})
     print(json.dumps(result))
 except ImportError:
     print(json.dumps({'success': False, 'error': 'This tool requires MCP connection'}))`;
@@ -475,7 +488,7 @@ except ImportError:
         return `import json
 try:
     from llm_bridge.feature_handlers import handle_create_body
-    result = handle_create_body(${JSON.stringify(args.name || null)})
+    result = handle_create_body(${this.py(args.name || null)})
     print(json.dumps(result))
 except ImportError:
     try:
@@ -483,7 +496,7 @@ except ImportError:
         if not doc:
             print(json.dumps({'success': False, 'error': 'No active document'}))
         else:
-            body = doc.addObject('PartDesign::Body', ${JSON.stringify(args.name || 'Body')})
+            body = doc.addObject('PartDesign::Body', ${this.py(args.name || 'Body')})
             print(json.dumps({'success': True, 'name': body.Name, 'label': body.Label}))
     except Exception as e:
         print(json.dumps({'success': False, 'error': str(e)}))`;
@@ -492,7 +505,7 @@ except ImportError:
         return `import json
 try:
     from llm_bridge.feature_handlers import handle_set_active_body
-    result = handle_set_active_body(${JSON.stringify(args.bodyName || '')})
+    result = handle_set_active_body(${this.py(args.bodyName || '')})
     print(json.dumps(result))
 except ImportError:
     print(json.dumps({'success': False, 'error': 'This tool requires MCP connection'}))`;
@@ -501,7 +514,7 @@ except ImportError:
         return `import json
 try:
     from llm_bridge.feature_handlers import handle_create_pad
-    result = handle_create_pad(${JSON.stringify(args.bodyName || '')}, ${JSON.stringify(args.length || '10mm')}, ${JSON.stringify(args.sketchName || null)})
+    result = handle_create_pad(${this.py(args.bodyName || '')}, ${this.py(args.length || '10mm')}, ${this.py(args.sketchName || null)})
     print(json.dumps(result))
 except ImportError:
     print(json.dumps({'success': False, 'error': 'This tool requires MCP connection'}))`;
@@ -510,7 +523,7 @@ except ImportError:
         return `import json
 try:
     from llm_bridge.feature_handlers import handle_create_pocket
-    result = handle_create_pocket(${JSON.stringify(args.bodyName || '')}, ${JSON.stringify(args.length || '10mm')}, ${JSON.stringify(args.sketchName || null)})
+    result = handle_create_pocket(${this.py(args.bodyName || '')}, ${this.py(args.length || '10mm')}, ${this.py(args.sketchName || null)})
     print(json.dumps(result))
 except ImportError:
     print(json.dumps({'success': False, 'error': 'This tool requires MCP connection'}))`;
@@ -533,7 +546,7 @@ except ImportError:
         return `import json
 try:
     from llm_bridge.boolean_handlers import handle_${toolName.replace(/_([a-z])/g, (_, c) => c.toUpperCase())}
-    result = handle_${toolName.replace(/_([a-z])/g, (_, c) => c.toUpperCase())}(${JSON.stringify(args.objectName || '')}, ${JSON.stringify(args.toolName || '')})
+    result = handle_${toolName.replace(/_([a-z])/g, (_, c) => c.toUpperCase())}(${this.py(args.objectName || '')}, ${this.py(args.toolName || '')})
     print(json.dumps(result))
 except ImportError:
     print(json.dumps({'success': False, 'error': 'This tool requires MCP connection'}))`;
@@ -602,7 +615,7 @@ except ImportError:
         return `import json
 try:
     from llm_bridge.property_handlers import handle_set_object_property
-    result = handle_set_object_property(${JSON.stringify(args.objectName || '')}, ${JSON.stringify(args.propertyName || '')}, ${JSON.stringify(args.value || '')})
+    result = handle_set_object_property(${this.py(args.objectName || '')}, ${this.py(args.propertyName || '')}, ${this.py(args.value || '')})
     print(json.dumps(result))
 except ImportError:
     print(json.dumps({'success': False, 'error': 'This tool requires MCP connection'}))`;
@@ -940,7 +953,7 @@ except ImportError:
     print(json.dumps({'success': True, 'data': objects}))`;
       case 'object_details':
         return `import json
-obj_name = ${JSON.stringify(args.objectName || '')}
+obj_name = ${this.py(args.objectName || '')}
 try:
     from llm_bridge.query_handlers import handle_object_details
     result = handle_object_details(obj_name)
@@ -970,7 +983,7 @@ except ImportError:
     print(json.dumps({'success': True, 'data': selection}))`;
       case 'dependencies':
         return `import json
-obj_name = ${JSON.stringify(args.objectName || '')}
+obj_name = ${this.py(args.objectName || '')}
 try:
     from llm_bridge.query_handlers import handle_dependencies
     result = handle_dependencies(obj_name)
@@ -978,7 +991,7 @@ try:
 except ImportError:
     print(json.dumps({'success': False, 'error': 'Dependency tracking requires MCP connection'}))`;
       default:
-        return `print(json.dumps({'success': False, 'error': 'Unknown intent: ' + ${JSON.stringify(intent)}}))`;
+        return `print(json.dumps({'success': False, 'error': 'Unknown intent: ' + ${this.py(intent)}}))`;
     }
   }
 
@@ -988,10 +1001,10 @@ except ImportError:
     return `import json
 try:
     from llm_bridge.file_handlers import handle_save_document
-    result = handle_save_document(${JSON.stringify(filePath)}, ${JSON.stringify(format)})
+    result = handle_save_document(${this.py(filePath)}, ${this.py(format)})
     print(json.dumps(result))
 except ImportError:
-    file_path = ${JSON.stringify(filePath)}
+    file_path = ${this.py(filePath)}
     if App.ActiveDocument:
         try:
             if file_path == 'AutoSave':
